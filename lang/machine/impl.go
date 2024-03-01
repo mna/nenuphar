@@ -6,9 +6,17 @@ import "fmt"
 // low-level interface to be available for higher-level APIs. Those functions
 // belong in this file.
 
+// A Callable value f may be the operand of a function call, f(x). Clients
+// should use the Call function, never the CallInternal method.
+type Callable interface {
+	types.Value
+	Name() string
+	CallInternal(thread *Thread, args types.Tuple, kwargs []types.Tuple) (types.Value, error)
+}
+
 // Call calls the function or Callable value fn with the specified positional
 // and keyword arguments.
-func Call(thread *types.Thread, fn types.Value, args types.Tuple, kwargs []types.Tuple) (types.Value, error) {
+func Call(thread *Thread, fn types.Value, args types.Tuple, kwargs []types.Tuple) (types.Value, error) {
 	c, ok := fn.(types.Callable)
 	if !ok {
 		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())

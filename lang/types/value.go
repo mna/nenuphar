@@ -42,14 +42,6 @@ type Ordered interface {
 	Cmp(y Value, depth int) (int, error)
 }
 
-// A Callable value f may be the operand of a function call, f(x). Clients
-// should use the Call API function, never the CallInternal method.
-type Callable interface {
-	Value
-	Name() string
-	CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error)
-}
-
 // An Iterable abstracts a sequence of values. An iterable value may be
 // iterated over. Unlike a Sequence, the length of an Iterable is not
 // necessarily known in advance of iteration.

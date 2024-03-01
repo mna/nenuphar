@@ -1,8 +1,10 @@
-package types
+package machine
 
 import (
 	"context"
 	"io"
+
+	"github.com/mna/nenuphar/lang/types"
 )
 
 type Thread struct {
@@ -33,7 +35,7 @@ type Thread struct {
 
 	// Load is an optional function value to call to load modules (called by the
 	// LOAD opcode).
-	Load func(*Thread, string) (Value, error)
+	Load func(*Thread, string) (types.Value, error)
 
 	ctx       context.Context
 	ctxCancel func()

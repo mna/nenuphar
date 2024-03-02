@@ -14,55 +14,59 @@ type Callable interface {
 	CallInternal(thread *Thread, args types.Tuple, kwargs []types.Tuple) (types.Value, error)
 }
 
-// Call calls the function or Callable value fn with the specified positional
+// Call calls the function or Callable value v with the specified positional
 // and keyword arguments.
-func Call(thread *Thread, fn types.Value, args types.Tuple, kwargs []types.Tuple) (types.Value, error) {
-	c, ok := fn.(types.Callable)
-	if !ok {
-		return nil, fmt.Errorf("invalid call of non-function (%s)", fn.Type())
+func Call(th *Thread, v types.Value, args types.Tuple, kwargs []types.Tuple) (types.Value, error) {
+	var fn *types.Function
+	var cb types.Callable
+
+	switch v := v.(type) {
+	case *types.Function:
+		fn = v
+	case types.Callable:
+		cb = v
+	default:
+		return nil, fmt.Errorf("invalid call of non-callable (%s)", fn.Type())
 	}
 
-	// Allocate and push a new frame.
+	// Allocate and push a new frame. As an optimization, use slack portion of
+	// thread.callStack slice as a freelist of empty frames.
 	var fr *Frame
-	// Optimization: use slack portion of thread.stack
-	// slice as a freelist of empty frames.
-	if n := len(thread.stack); n < cap(thread.stack) {
-		fr = thread.stack[n : n+1][0]
+	if n := len(th.callStack); n < cap(th.callStack) {
+		fr = th.callStack[n : n+1][0]
 	}
 	if fr == nil {
 		fr = new(Frame)
 	}
 
-	if thread.stack == nil {
-		// one-time initialization of thread
-		if thread.maxSteps == 0 {
-			thread.maxSteps-- // (MaxUint64)
-		}
+	if th.callStack == nil {
+		th.init()
 	}
 
-	thread.stack = append(thread.stack, fr) // push
+	th.callStack = append(th.callStack, fr) // push
 
-	fr.callable = c
-
-	thread.beginProfSpan()
-
-	// Use defer to ensure that panics from built-ins
-	// pass through the interpreter without leaving
-	// it in a bad state.
+	// Use defer to ensure that panics from built-ins pass through the
+	// interpreter without leaving it in a bad state.
 	defer func() {
-		thread.endProfSpan()
-
 		// clear out any references
-		// TODO(adonovan): opt: zero fr.Locals and
-		// reuse it if it is large enough.
+		// TODO(adonovan): opt: zero fr.Locals and reuse it if it is large enough.
 		*fr = Frame{}
 
-		thread.stack = thread.stack[:len(thread.stack)-1] // pop
+		th.callStack = th.callStack[:len(th.callStack)-1] // pop
 	}()
 
-	result, err := c.CallInternal(thread, args, kwargs)
+	var result types.Value
+	var err error
 
-	// Sanity check: nil is not a valid Starlark value.
+	if fn != nil {
+		fr.callable = fn
+		result, err = Run(th, fn)
+	} else {
+		fr.callable = cb
+		result, err = cb.CallInternal(th, args, kwargs)
+	}
+
+	// Sanity check: nil is not a valid value.
 	if result == nil && err == nil {
 		err = fmt.Errorf("internal error: nil (not None) returned from %s", fn)
 	}
@@ -70,7 +74,7 @@ func Call(thread *Thread, fn types.Value, args types.Tuple, kwargs []types.Tuple
 	// Always return an EvalError with an accurate frame.
 	if err != nil {
 		if _, ok := err.(*EvalError); !ok {
-			err = thread.evalError(err)
+			err = th.evalError(err)
 		}
 	}
 

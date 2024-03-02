@@ -8,9 +8,8 @@ import (
 // Frame records a call to a Callable value (including module toplevel) or a
 // built-in function or method.
 type Frame struct {
-	callable types.Callable // current function (or toplevel) or built-in
-	pc       uint32         // program counter (non built-in only)
-	locals   []types.Value  // local variables (non built-in only)
+	callable types.Value // current function (or toplevel) or callable
+	pc       uint32      // program counter (non built-in only)
 }
 
 // Position returns the source position of the current point of execution in

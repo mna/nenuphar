@@ -8,7 +8,7 @@ import (
 // initialization behavior of a module is also represented by a (top-level)
 // Function.
 type Function struct {
-	funcode  *compiler.Funcode
+	Funcode  *compiler.Funcode
 	module   *module
 	defaults Tuple // TODO: support default values?
 	freevars Tuple

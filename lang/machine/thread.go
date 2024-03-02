@@ -3,6 +3,7 @@ package machine
 import (
 	"context"
 	"io"
+	"sync/atomic"
 
 	"github.com/mna/nenuphar/lang/types"
 )
@@ -39,4 +40,26 @@ type Thread struct {
 
 	ctx       context.Context
 	ctxCancel func()
+	callStack []*Frame
+	cancelled atomic.Bool
+
+	steps, maxSteps uint64
+}
+
+func (th *Thread) init() {
+	// one-time initialization of thread
+	if th.MaxSteps <= 0 {
+		th.maxSteps-- // (MaxUint64)
+	} else {
+		th.maxSteps = uint64(th.MaxSteps)
+	}
+	if th.ctx == nil {
+		th.ctx = context.Background()
+		th.ctxCancel = func() {}
+	} else {
+		go func() {
+			<-th.ctx.Done()
+			th.cancelled.Store(true)
+		}()
+	}
 }

@@ -62,13 +62,13 @@ const ( //nolint:revive
 	RETURN       //          value RETURN       -
 	SETINDEX     //        a i new SETINDEX     -
 	INDEX        //            a i INDEX        elem
-	SETDICT      // dict key value SETDICT      -
-	SETDICTUNIQ  // dict key value SETDICTUNIQ  -
+	SETMAP       // dict key value SETMAP      -
+	SETDICTUNIQ  // dict key value SETDICTUNIQ  - TODO: may not be necessary (lua does not fail when key is reassigned in same literal)
 	APPEND       //      list elem APPEND       -
 	SLICE        //   x lo hi step SLICE        slice
 	INPLACE_ADD  //            x y INPLACE_ADD  z      where z is x+y or x.extend(y) TODO: strictly useful to reuse x if it is a list, otherwise ADD creates new list
 	INPLACE_PIPE //            x y INPLACE_PIPE z      where z is x|y TODO: strictly useful to reuse x if it is a Dict, otherwise PIPE creates a new Dict
-	MAKEDICT     //              - MAKEDICT     dict
+	MAKEMAP      //              - MAKEMAP     dict
 	RUNDEFER     //              - RUNDEFER     -      next opcode must run deferred blocks
 	DEFEREXIT    //              - DEFEREXIT    -      run next defferred block or if no more deferred block to execute, resume
 
@@ -103,8 +103,8 @@ const ( //nolint:revive
 	// n>>8 is #positional args and n&0xff is #named args (pairs).
 	CALL        // fn positional named                CALL<n>        result
 	CALL_VAR    // fn positional named *args          CALL_VAR<n>    result
-	CALL_KW     // fn positional named       **kwargs CALL_KW<n>     result
-	CALL_VAR_KW // fn positional named *args **kwargs CALL_VAR_KW<n> result
+	CALL_KW     // fn positional named       **kwargs CALL_KW<n>     result TODO: see if kwargs are required
+	CALL_VAR_KW // fn positional named *args **kwargs CALL_VAR_KW<n> result TODO: see if kwargs are required
 
 	OpcodeArgMin = JMP
 	OpcodeMax    = CALL_VAR_KW
@@ -150,7 +150,7 @@ var opcodeNames = [...]string{
 	LOCALCELL:    "localcell",
 	LT:           "lt",
 	LTLT:         "ltlt",
-	MAKEDICT:     "makedict",
+	MAKEMAP:      "makemap",
 	MAKEFUNC:     "makefunc",
 	MAKELIST:     "makelist",
 	MAKETUPLE:    "maketuple",
@@ -167,7 +167,7 @@ var opcodeNames = [...]string{
 	PREDECLARED:  "predeclared",
 	RETURN:       "return",
 	RUNDEFER:     "rundefer",
-	SETDICT:      "setdict",
+	SETMAP:       "setmap",
 	SETDICTUNIQ:  "setdictuniq",
 	SETFIELD:     "setfield",
 	SETGLOBAL:    "setglobal",
@@ -264,7 +264,7 @@ var stackEffect = [...]int8{
 	LOCALCELL:    +1,
 	LT:           -1,
 	LTLT:         -1,
-	MAKEDICT:     +1,
+	MAKEMAP:      +1,
 	MAKEFUNC:     0,
 	MAKELIST:     variableStackEffect,
 	MAKETUPLE:    variableStackEffect,
@@ -282,7 +282,7 @@ var stackEffect = [...]int8{
 	RETURN:       -1,
 	RUNDEFER:     0,
 	SETLOCALCELL: -1,
-	SETDICT:      -3,
+	SETMAP:       -3,
 	SETDICTUNIQ:  -3,
 	SETFIELD:     -2,
 	SETGLOBAL:    -1,

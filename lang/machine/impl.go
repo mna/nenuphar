@@ -594,3 +594,120 @@ func Unary(op token.Token, x types.Value) (types.Value, error) {
 
 	return nil, fmt.Errorf("unknown unary op: %s %s", op, x.Type())
 }
+
+// Iterate return a new iterator for the value if iterable, nil otherwise. If
+// the result is non-nil, the caller must call Done when finished with it.
+//
+// Warning: Iterate(x) != nil does not imply Len(x) >= 0. Some iterables may
+// have unknown length.
+func Iterate(x types.Value) types.Iterator {
+	if x, ok := x.(types.Iterable); ok {
+		return x.Iterate()
+	}
+	return nil
+}
+
+// setIndex implements x[y] = z.
+func setIndex(x, y, z types.Value) error {
+	switch x := x.(type) {
+	case types.HasSetKey:
+		if err := x.SetKey(y, z); err != nil {
+			return err
+		}
+
+	case types.HasSetIndex:
+		n := x.Len()
+		i, err := AsInt32(y)
+		if err != nil {
+			return err
+		}
+		origI := i
+		if i < 0 {
+			i += n
+		}
+		if i < 0 || i >= n {
+			return outOfRange(origI, n, x)
+		}
+		return x.SetIndex(i, z)
+
+	default:
+		return fmt.Errorf("%s value does not support item assignment", x.Type())
+	}
+	return nil
+}
+
+// getIndex implements x[y].
+func getIndex(x, y types.Value) (types.Value, error) {
+	switch x := x.(type) {
+	case types.Mapping: // dict
+		z, found, err := x.Get(y)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			return nil, fmt.Errorf("key %v not in %s", y, x.Type())
+		}
+		return z, nil
+
+	case types.Indexable: // string, list, tuple
+		n := x.Len()
+		i, err := AsInt32(y)
+		if err != nil {
+			return nil, fmt.Errorf("%s index: %s", x.Type(), err)
+		}
+		origI := i
+		if i < 0 {
+			i += n
+		}
+		if i < 0 || i >= n {
+			return nil, outOfRange(origI, n, x)
+		}
+		return x.Index(i), nil
+	}
+	return nil, fmt.Errorf("unhandled index operation %s[%s]", x.Type(), y.Type())
+}
+
+// getAttr implements x.dot.
+func getAttr(x types.Value, name string) (types.Value, error) {
+	hasAttr, ok := x.(types.HasAttrs)
+	if !ok {
+		return nil, fmt.Errorf("%s has no .%s field or method", x.Type(), name)
+	}
+
+	var errmsg string
+	v, err := hasAttr.Attr(name)
+	if err == nil {
+		if v != nil {
+			return v, nil // success
+		}
+		// (nil, nil) => generic error
+		errmsg = fmt.Sprintf("%s has no .%s field or method", x.Type(), name)
+	} else if nsa, ok := err.(types.NoSuchAttrError); ok {
+		errmsg = string(nsa)
+	} else {
+		return nil, err // return error as is
+	}
+
+	// TODO: add spelling hint
+	//if n := spell.Nearest(name, hasAttr.AttrNames()); n != "" {
+	//	errmsg = fmt.Sprintf("%s (did you mean .%s?)", errmsg, n)
+	//}
+
+	return nil, fmt.Errorf("%s", errmsg)
+}
+
+// setField implements x.name = y.
+func setField(x types.Value, name string, y types.Value) error {
+	if x, ok := x.(types.HasSetField); ok {
+		err := x.SetField(name, y)
+		if _, ok := err.(types.NoSuchAttrError); ok {
+			// TODO: No such field: check spelling.
+			//if n := spell.Nearest(name, x.AttrNames()); n != "" {
+			//	err = fmt.Errorf("%s (did you mean .%s?)", err, n)
+			//}
+		}
+		return err
+	}
+
+	return fmt.Errorf("can't assign to .%s field of %s", name, x.Type())
+}

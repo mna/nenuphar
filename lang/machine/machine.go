@@ -191,6 +191,206 @@ loop:
 			}
 			pc = arg
 
+		case CALL, CALL_VAR, CALL_KW, CALL_VAR_KW:
+			var kwargs types.Value
+			if op == CALL_KW || op == CALL_VAR_KW {
+				kwargs = stack[sp-1]
+				sp--
+			}
+
+			var args types.Value
+			if op == CALL_VAR || op == CALL_VAR_KW {
+				args = stack[sp-1]
+				sp--
+			}
+
+			// named args (pairs)
+			var kvpairs []types.Tuple
+			if nkvpairs := int(arg & 0xff); nkvpairs > 0 {
+				kvpairs = make([]types.Tuple, 0, nkvpairs)
+				kvpairsAlloc := make(types.Tuple, 2*nkvpairs) // allocate a single backing array
+				sp -= 2 * nkvpairs
+				for i := 0; i < nkvpairs; i++ {
+					pair := kvpairsAlloc[:2:2]
+					kvpairsAlloc = kvpairsAlloc[2:]
+					pair[0] = stack[sp+2*i]   // name
+					pair[1] = stack[sp+2*i+1] // value
+					kvpairs = append(kvpairs, pair)
+				}
+			}
+			if kwargs != nil {
+				// Add key/value items from **kwargs dictionary.
+				dict, ok := kwargs.(types.IterableMapping)
+				if !ok {
+					inFlightErr = fmt.Errorf("argument after ** must be a mapping, not %s", kwargs.Type())
+					break loop
+				}
+				items := dict.Items()
+				for _, item := range items {
+					if _, ok := item[0].(types.String); !ok {
+						inFlightErr = fmt.Errorf("keywords must be strings, not %s", item[0].Type())
+						break loop
+					}
+				}
+				if len(kvpairs) == 0 {
+					kvpairs = items
+				} else {
+					kvpairs = append(kvpairs, items...)
+				}
+			}
+
+			// positional args
+			var positional types.Tuple
+			if npos := int(arg >> 8); npos > 0 {
+				positional = stack[sp-npos : sp]
+				sp -= npos
+
+				// Copy positional arguments into a new array,
+				// unless the callee is another Starlark function,
+				// in which case it can be trusted not to mutate them.
+				if _, ok := stack[sp-1].(*types.Function); !ok || args != nil {
+					positional = append(types.Tuple(nil), positional...)
+				}
+			}
+			if args != nil {
+				// Add elements from *args sequence.
+				iter := Iterate(args)
+				if iter == nil {
+					inFlightErr = fmt.Errorf("argument after * must be iterable, not %s", args.Type())
+					break loop
+				}
+				var elem types.Value
+				for iter.Next(&elem) {
+					positional = append(positional, elem)
+				}
+				iter.Done()
+			}
+
+			function := stack[sp-1]
+
+			z, err := Call(th, function, positional, kvpairs)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp-1] = z
+
+		case ITERPUSH:
+			x := stack[sp-1]
+			sp--
+			iter := Iterate(x)
+			if iter == nil {
+				inFlightErr = fmt.Errorf("%s value is not iterable", x.Type())
+				break loop
+			}
+			iterstack = append(iterstack, iter)
+
+		case ITERJMP:
+			iter := iterstack[len(iterstack)-1]
+			if iter.Next(&stack[sp]) {
+				sp++
+			} else {
+				if runDefer {
+					runDefer = false
+					if hasDeferredExecution(int64(fr.pc), int64(arg), fcode.Defers, nil, &pc) {
+						deferredStack = append(deferredStack, int64(arg)) // push
+						break
+					}
+				}
+				pc = arg
+			}
+
+		case ITERPOP:
+			n := len(iterstack) - 1
+			iterstack[n].Done()
+			iterstack = iterstack[:n]
+
+		case NOT:
+			stack[sp-1] = !stack[sp-1].Truth()
+
+		case RETURN:
+			// TODO(mna): if we allow RETURN in a defer, does that clear the
+			// inFlightErr? I think we should only allow it in a catch, so that
+			// RETURN always clears inFlightErr (and CATCHJMP is not needed when a
+			// catch ends in a return).
+			result = stack[sp-1]
+			sp--
+			inFlightErr = nil
+			if runDefer {
+				runDefer = false
+				// a RETURN "to" address is never covered by a deferred block (it jumps
+				// outside the function), so run any defers that covers the "from" pc
+				// (ignore catch blocks).
+				if hasDeferredExecution(int64(fr.pc), -1, fcode.Defers, nil, &pc) {
+					// -1 means break loop and return whatever result and inFlightErr are
+					// present
+					deferredStack = append(deferredStack, -1) // push
+					break
+				}
+			}
+			break loop
+
+		case SETINDEX:
+			z := stack[sp-1]
+			y := stack[sp-2]
+			x := stack[sp-3]
+			sp -= 3
+			inFlightErr = setIndex(x, y, z)
+			if inFlightErr != nil {
+				break loop
+			}
+
+		case INDEX:
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+			z, err := getIndex(x, y)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp] = z
+			sp++
+
+		case ATTR:
+			x := stack[sp-1]
+			name := fcode.Prog.Names[arg]
+			y, err := getAttr(x, name)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp-1] = y
+
+		case SETFIELD:
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+			name := fcode.Prog.Names[arg]
+			if err := setField(x, name, y); err != nil {
+				inFlightErr = err
+				break loop
+			}
+
+		case MAKEMAP:
+			stack[sp] = types.NewMap(0)
+			sp++
+
+		case SETMAP:
+			m := stack[sp-3].(*types.Map) // TODO: shouldn't that generate a catchable runtime error?
+			k := stack[sp-2]
+			v := stack[sp-1]
+			sp -= 3
+			if err := m.SetKey(k, v); err != nil {
+				inFlightErr = err
+				break loop
+			}
+
+		case APPEND:
+			elem := stack[sp-1]
+			list := stack[sp-2].(*types.Array) // TODO: shouldn't that generate a catchable runtime error?
+			sp -= 2
+			list.elems = append(list.elems, elem)
 		}
 	}
 

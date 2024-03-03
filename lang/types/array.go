@@ -13,67 +13,67 @@ type Array struct {
 	itercount uint32 // number of active iterators (ignored if frozen)
 }
 
-// NewList returns a list containing the specified elements.
-// Callers should not subsequently modify elems.
-func NewList(elems []Value) *List { return &List{elems: elems} }
+// NewArray returns an array containing the specified elements. Callers should
+// not subsequently modify elems.
+func NewArray(elems []Value) *Array { return &Array{elems: elems} }
 
-func (l *List) Freeze() {
-	if !l.frozen {
-		l.frozen = true
-		for _, elem := range l.elems {
+func (a *Array) Freeze() {
+	if !a.frozen {
+		a.frozen = true
+		for _, elem := range a.elems {
 			elem.Freeze()
 		}
 	}
 }
 
-// checkMutable reports an error if the list should not be mutated.
-// verb+" list" should describe the operation.
-func (l *List) checkMutable(verb string) error {
-	if l.frozen {
-		return fmt.Errorf("cannot %s frozen list", verb)
+// checkMutable reports an error if the array should not be mutated.
+// verb+" array" should describe the operation.
+func (a *Array) checkMutable(verb string) error {
+	if a.frozen {
+		return fmt.Errorf("cannot %s frozen array", verb)
 	}
-	if l.itercount > 0 {
-		return fmt.Errorf("cannot %s list during iteration", verb)
+	if a.itercount > 0 {
+		return fmt.Errorf("cannot %s array during iteration", verb)
 	}
 	return nil
 }
 
-func (l *List) String() string        { return toString(l) }
-func (l *List) Type() string          { return "list" }
-func (l *List) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: list") }
-func (l *List) Truth() Bool           { return l.Len() > 0 }
-func (l *List) Len() int              { return len(l.elems) }
-func (l *List) Index(i int) Value     { return l.elems[i] }
+func (a *Array) String() string        { return toString(a) }
+func (a *Array) Type() string          { return "array" }
+func (a *Array) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: array") }
+func (a *Array) Truth() Bool           { return a.Len() > 0 }
+func (a *Array) Len() int              { return len(a.elems) }
+func (a *Array) Index(i int) Value     { return a.elems[i] }
 
-func (l *List) Slice(start, end, step int) Value {
+func (a *Array) Slice(start, end, step int) Value {
 	if step == 1 {
-		elems := append([]Value{}, l.elems[start:end]...)
-		return NewList(elems)
+		elems := append([]Value{}, a.elems[start:end]...)
+		return NewArray(elems)
 	}
 
 	sign := signum(step)
 	var list []Value
 	for i := start; signum(end-i) == sign; i += step {
-		list = append(list, l.elems[i])
+		list = append(list, a.elems[i])
 	}
-	return NewList(list)
+	return NewArray(list)
 }
 
-func (l *List) Attr(name string) (Value, error) { return builtinAttr(l, name, listMethods) }
-func (l *List) AttrNames() []string             { return builtinAttrNames(listMethods) }
+func (a *Array) Attr(name string) (Value, error) { return builtinAttr(a, name, listMethods) }
+func (a *Array) AttrNames() []string             { return builtinAttrNames(listMethods) }
 
-func (l *List) Iterate() Iterator {
-	if !l.frozen {
-		l.itercount++
+func (a *Array) Iterate() Iterator {
+	if !a.frozen {
+		a.itercount++
 	}
-	return &listIterator{l: l}
+	return &listIterator{l: a}
 }
 
-func (l *List) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
-	y := y_.(*List)
+func (a *Array) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+	y := y_.(*Array)
 	// It's tempting to check x == y as an optimization here,
 	// but wrong because a list containing NaN is not equal to itself.
-	return sliceCompare(op, l.elems, y.elems, depth)
+	return sliceCompare(op, a.elems, y.elems, depth)
 }
 
 func sliceCompare(op syntax.Token, x, y []Value, depth int) (bool, error) {
@@ -121,29 +121,29 @@ func (it *listIterator) Done() {
 	}
 }
 
-func (l *List) SetIndex(i int, v Value) error {
-	if err := l.checkMutable("assign to element of"); err != nil {
+func (a *Array) SetIndex(i int, v Value) error {
+	if err := a.checkMutable("assign to element of"); err != nil {
 		return err
 	}
-	l.elems[i] = v
+	a.elems[i] = v
 	return nil
 }
 
-func (l *List) Append(v Value) error {
-	if err := l.checkMutable("append to"); err != nil {
+func (a *Array) Append(v Value) error {
+	if err := a.checkMutable("append to"); err != nil {
 		return err
 	}
-	l.elems = append(l.elems, v)
+	a.elems = append(a.elems, v)
 	return nil
 }
 
-func (l *List) Clear() error {
-	if err := l.checkMutable("clear"); err != nil {
+func (a *Array) Clear() error {
+	if err := a.checkMutable("clear"); err != nil {
 		return err
 	}
-	for i := range l.elems {
-		l.elems[i] = nil // aid GC
+	for i := range a.elems {
+		a.elems[i] = nil // aid GC
 	}
-	l.elems = l.elems[:0]
+	a.elems = a.elems[:0]
 	return nil
 }

@@ -1,6 +1,6 @@
 package types
 
-import "github.com/mna/nenuphar-wip/syntax"
+import "github.com/mna/nenuphar/lang/token"
 
 // Value is the interface implemented by any value manipulated by the machine.
 type Value interface {
@@ -140,7 +140,7 @@ type HasSetKey interface {
 // Binary API function rather than calling the method directly.
 type HasBinary interface {
 	Value
-	Binary(op syntax.Token, y Value, side Side) (Value, error)
+	Binary(op token.Token, y Value, side Side) (Value, error)
 }
 
 type Side bool
@@ -158,7 +158,7 @@ const (
 // function rather than calling the method directly.
 type HasUnary interface {
 	Value
-	Unary(op syntax.Token) (Value, error)
+	Unary(op token.Token) (Value, error)
 }
 
 // A HasAttrs value has fields or methods that may be read by a dot expression

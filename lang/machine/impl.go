@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/mna/nenuphar-wip/syntax"
 	"github.com/mna/nenuphar/lang/token"
 	"github.com/mna/nenuphar/lang/types"
 )
@@ -206,6 +205,8 @@ func threeway(op token.Token, cmp int) bool {
 // Binary applies a strict binary operator (not AND or OR) to its operands. For
 // equality tests or ordered comparisons, use CompareDepth instead.
 func Binary(op token.Token, x, y types.Value) (types.Value, error) {
+	// TODO: revisit when language is more complete to determine if PLUS
+	// applies to strings, etc.
 	switch op {
 	case token.PLUS:
 		switch x := x.(type) {
@@ -325,30 +326,30 @@ func Binary(op token.Token, x, y types.Value) (types.Value, error) {
 
 	case token.SLASH:
 		switch x := x.(type) {
-		case Int:
-			xf := Float(x)
+		case types.Int:
+			xf := types.Float(x)
 			switch y := y.(type) {
-			case Int:
-				yf := Float(y)
+			case types.Int:
+				yf := types.Float(y)
 				if yf == 0.0 {
 					return nil, fmt.Errorf("floating-point division by zero")
 				}
 				return xf / yf, nil
-			case Float:
+			case types.Float:
 				if y == 0.0 {
 					return nil, fmt.Errorf("floating-point division by zero")
 				}
 				return xf / y, nil
 			}
-		case Float:
+		case types.Float:
 			switch y := y.(type) {
-			case Float:
+			case types.Float:
 				if y == 0.0 {
 					return nil, fmt.Errorf("floating-point division by zero")
 				}
 				return x / y, nil
-			case Int:
-				yf := Float(y)
+			case types.Int:
+				yf := types.Float(y)
 				if yf == 0.0 {
 					return nil, fmt.Errorf("floating-point division by zero")
 				}
@@ -356,31 +357,31 @@ func Binary(op token.Token, x, y types.Value) (types.Value, error) {
 			}
 		}
 
-	case syntax.SLASHSLASH:
+	case token.SLASHSLASH:
 		switch x := x.(type) {
-		case Int:
+		case types.Int:
 			switch y := y.(type) {
-			case Int:
+			case types.Int:
 				if y == 0 {
 					return nil, fmt.Errorf("floored division by zero")
 				}
 				return x / y, nil
-			case Float:
-				xf := Float(x)
+			case types.Float:
+				xf := types.Float(x)
 				if y == 0.0 {
 					return nil, fmt.Errorf("floored division by zero")
 				}
 				return floor(xf / y), nil
 			}
-		case Float:
+		case types.Float:
 			switch y := y.(type) {
-			case Float:
+			case types.Float:
 				if y == 0.0 {
 					return nil, fmt.Errorf("floored division by zero")
 				}
 				return floor(x / y), nil
-			case Int:
-				yf := Float(y)
+			case types.Int:
+				yf := types.Float(y)
 				if yf == 0.0 {
 					return nil, fmt.Errorf("floored division by zero")
 				}
@@ -388,91 +389,91 @@ func Binary(op token.Token, x, y types.Value) (types.Value, error) {
 			}
 		}
 
-	case syntax.PERCENT:
+	case token.PERCENT:
 		switch x := x.(type) {
-		case Int:
+		case types.Int:
 			switch y := y.(type) {
-			case Int:
+			case types.Int:
 				if y == 0 {
 					return nil, fmt.Errorf("integer modulo by zero")
 				}
 				return x % y, nil
-			case Float:
-				xf := Float(x)
+			case types.Float:
+				xf := types.Float(x)
 				if y == 0 {
 					return nil, fmt.Errorf("floating-point modulo by zero")
 				}
 				return xf.Mod(y), nil
 			}
-		case Float:
+		case types.Float:
 			switch y := y.(type) {
-			case Float:
+			case types.Float:
 				if y == 0.0 {
 					return nil, fmt.Errorf("floating-point modulo by zero")
 				}
 				return x.Mod(y), nil
-			case Int:
+			case types.Int:
 				if y == 0 {
 					return nil, fmt.Errorf("floating-point modulo by zero")
 				}
-				yf := Float(y)
+				yf := types.Float(y)
 				return x.Mod(yf), nil
 			}
-		case String:
+		case types.String:
 			return interpolate(string(x), y)
 		}
 
-	case syntax.NOT_IN:
-		z, err := Binary(syntax.IN, x, y)
+	case token.NOT_IN:
+		z, err := Binary(token.IN, x, y)
 		if err != nil {
 			return nil, err
 		}
 		return !z.Truth(), nil
 
-	case syntax.IN:
+	case token.IN:
 		switch y := y.(type) {
-		case *List:
+		case *types.Array:
 			for _, elem := range y.elems {
 				if eq, err := Equal(elem, x); err != nil {
 					return nil, err
 				} else if eq {
-					return True, nil
+					return types.True, nil
 				}
 			}
-			return False, nil
-		case Tuple:
+			return types.False, nil
+		case types.Tuple:
 			for _, elem := range y {
 				if eq, err := Equal(elem, x); err != nil {
 					return nil, err
 				} else if eq {
-					return True, nil
+					return types.True, nil
 				}
 			}
-			return False, nil
-		case Mapping: // e.g. dict
+			return types.False, nil
+		case types.Mapping: // e.g. dict
 			// Ignore error from Get as we cannot distinguish true
 			// errors (value cycle, type error) from "key not found".
 			_, found, _ := y.Get(x)
-			return Bool(found), nil
-		case *Set:
+			return types.Bool(found), nil
+		case *types.Set:
 			ok, err := y.Has(x)
-			return Bool(ok), err
-		case String:
-			needle, ok := x.(String)
+			return types.Bool(ok), err
+		case types.String:
+			needle, ok := x.(types.String)
 			if !ok {
 				return nil, fmt.Errorf("'in <string>' requires string as left operand, not %s", x.Type())
 			}
-			return Bool(strings.Contains(string(y), string(needle))), nil
-		case Bytes:
+			return types.Bool(strings.Contains(string(y), string(needle))), nil
+		case types.Bytes:
 			switch needle := x.(type) {
-			case Bytes:
-				return Bool(strings.Contains(string(y), string(needle))), nil
-			case Int:
+			case types.Bytes:
+				return types.Bool(strings.Contains(string(y), string(needle))), nil
+			case types.Int:
 				var b byte
 				if err := AsInt(needle, &b); err != nil {
 					return nil, fmt.Errorf("int in bytes: %s", err)
 				}
-				return Bool(strings.IndexByte(string(y), b) >= 0), nil
+				return types.Bool(strings.IndexByte(string(y), b) >= 0), nil
 			default:
 				return nil, fmt.Errorf("'in bytes' requires bytes or int as left operand, not %s", x.Type())
 			}
@@ -481,59 +482,59 @@ func Binary(op token.Token, x, y types.Value) (types.Value, error) {
 			if err != nil {
 				return nil, fmt.Errorf("'in <range>' requires integer as left operand, not %s", x.Type())
 			}
-			return Bool(y.contains(i)), nil
+			return types.Bool(y.contains(i)), nil
 		}
 
-	case syntax.PIPE:
+	case token.PIPE:
 		switch x := x.(type) {
-		case Int:
-			if y, ok := y.(Int); ok {
+		case types.Int:
+			if y, ok := y.(types.Int); ok {
 				return x | y, nil
 			}
 
-		case *Dict: // union
-			if y, ok := y.(*Dict); ok {
+		case *types.Map: // union
+			if y, ok := y.(*types.Map); ok {
 				return x.Union(y), nil
 			}
 
-		case *Set: // union
-			if y, ok := y.(*Set); ok {
+		case *types.Set: // union
+			if y, ok := y.(*types.Set); ok {
 				iter := Iterate(y)
 				defer iter.Done()
 				return x.Union(iter)
 			}
 		}
 
-	case syntax.AMP:
+	case token.AMPERSAND:
 		switch x := x.(type) {
-		case Int:
+		case types.Int:
 			if y, ok := y.(Int); ok {
 				return x & y, nil
 			}
-		case *Set: // intersection
-			if y, ok := y.(*Set); ok {
+		case *types.Set: // intersection
+			if y, ok := y.(*types.Set); ok {
 				iter := y.Iterate()
 				defer iter.Done()
 				return x.Intersection(iter)
 			}
 		}
 
-	case syntax.CIRCUMFLEX:
+	case token.CIRCUMFLEX:
 		switch x := x.(type) {
-		case Int:
-			if y, ok := y.(Int); ok {
+		case types.Int:
+			if y, ok := y.(types.Int); ok {
 				return x ^ y, nil
 			}
-		case *Set: // symmetric difference
-			if y, ok := y.(*Set); ok {
+		case *types.Set: // symmetric difference
+			if y, ok := y.(*types.Set); ok {
 				iter := y.Iterate()
 				defer iter.Done()
 				return x.SymmetricDifference(iter)
 			}
 		}
 
-	case syntax.LTLT, syntax.GTGT:
-		if x, ok := x.(Int); ok {
+	case token.LTLT, token.GTGT:
+		if x, ok := x.(types.Int); ok {
 			y, err := AsInt32(y)
 			if err != nil {
 				return nil, err
@@ -541,7 +542,7 @@ func Binary(op token.Token, x, y types.Value) (types.Value, error) {
 			if y < 0 {
 				return nil, fmt.Errorf("negative shift count: %v", y)
 			}
-			if op == syntax.LTLT {
+			if op == token.LTLT {
 				if y >= 512 {
 					return nil, fmt.Errorf("shift count too large: %v", y)
 				}
@@ -557,14 +558,14 @@ func Binary(op token.Token, x, y types.Value) (types.Value, error) {
 
 	// user-defined types
 	// (nil, nil) => unhandled
-	if x, ok := x.(HasBinary); ok {
-		z, err := x.Binary(op, y, Left)
+	if x, ok := x.(types.HasBinary); ok {
+		z, err := x.Binary(op, y, types.Left)
 		if z != nil || err != nil {
 			return z, err
 		}
 	}
-	if y, ok := y.(HasBinary); ok {
-		z, err := y.Binary(op, x, Right)
+	if y, ok := y.(types.HasBinary); ok {
+		z, err := y.Binary(op, x, types.Right)
 		if z != nil || err != nil {
 			return z, err
 		}
@@ -573,4 +574,23 @@ func Binary(op token.Token, x, y types.Value) (types.Value, error) {
 	// unsupported operand types
 unknown:
 	return nil, fmt.Errorf("unknown binary op: %s %s %s", x.Type(), op, y.Type())
+}
+
+// Unary applies a unary operator (+, -, ~, not) to its operand.
+func Unary(op token.Token, x types.Value) (types.Value, error) {
+	// The NOT operator is not customizable.
+	if op == token.NOT {
+		return !x.Truth(), nil
+	}
+
+	// Int, Float, and user-defined types
+	if x, ok := x.(types.HasUnary); ok {
+		// (nil, nil) => unhandled
+		y, err := x.Unary(op)
+		if y != nil || err != nil {
+			return y, err
+		}
+	}
+
+	return nil, fmt.Errorf("unknown unary op: %s %s", op, x.Type())
 }

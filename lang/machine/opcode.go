@@ -51,10 +51,10 @@ const ( //nolint:revive
 	UMINUS // x UMINUS -x
 	TILDE  // x TILDE ~x
 
-	NONE      // - NONE None
+	NIL       // - NIL Nil
 	TRUE      // - TRUE True
 	FALSE     // - FALSE False
-	MANDATORY // - MANDATORY Mandatory	     [sentinel value for required kwonly args]
+	MANDATORY // - MANDATORY Mandatory	     [sentinel value for required kwonly args] TODO: used to handle missing values, not needed if no defaults
 
 	ITERPUSH     //       iterable ITERPUSH     -    [pushes the iterator stack]
 	ITERPOP      //              - ITERPOP      -    [pops the iterator stack]
@@ -66,8 +66,8 @@ const ( //nolint:revive
 	SETDICTUNIQ  // dict key value SETDICTUNIQ  -
 	APPEND       //      list elem APPEND       -
 	SLICE        //   x lo hi step SLICE        slice
-	INPLACE_ADD  //            x y INPLACE_ADD  z      where z is x+y or x.extend(y)
-	INPLACE_PIPE //            x y INPLACE_PIPE z      where z is x|y
+	INPLACE_ADD  //            x y INPLACE_ADD  z      where z is x+y or x.extend(y) TODO: strictly useful to reuse x if it is a list, otherwise ADD creates new list
+	INPLACE_PIPE //            x y INPLACE_PIPE z      where z is x|y TODO: strictly useful to reuse x if it is a Dict, otherwise PIPE creates a new Dict
 	MAKEDICT     //              - MAKEDICT     dict
 	RUNDEFER     //              - RUNDEFER     -      next opcode must run deferred blocks
 	DEFEREXIT    //              - DEFEREXIT    -      run next defferred block or if no more deferred block to execute, resume
@@ -157,7 +157,7 @@ var opcodeNames = [...]string{
 	MANDATORY:    "mandatory",
 	MINUS:        "minus",
 	NEQ:          "neq",
-	NONE:         "none",
+	NIL:          "nil",
 	NOP:          "nop",
 	NOT:          "not",
 	PERCENT:      "percent",
@@ -271,7 +271,7 @@ var stackEffect = [...]int8{
 	MANDATORY:    +1,
 	MINUS:        -1,
 	NEQ:          -1,
-	NONE:         +1,
+	NIL:          +1,
 	NOP:          0,
 	NOT:          0,
 	PERCENT:      -1,

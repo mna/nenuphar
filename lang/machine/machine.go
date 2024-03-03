@@ -153,6 +153,44 @@ loop:
 			}
 			stack[sp] = z
 			sp++
+
+		case UPLUS, UMINUS, TILDE:
+			var unop token.Token
+			if op == TILDE {
+				unop = token.TILDE
+			} else {
+				unop = token.Token(op-UPLUS) + token.PLUS
+			}
+			x := stack[sp-1]
+			y, err := Unary(unop, x)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp-1] = y
+
+		case NIL:
+			stack[sp] = types.Nil
+			sp++
+
+		case TRUE:
+			stack[sp] = types.True
+			sp++
+
+		case FALSE:
+			stack[sp] = types.False
+			sp++
+
+		case JMP:
+			if runDefer {
+				runDefer = false
+				if hasDeferredExecution(int64(fr.pc), int64(arg), fcode.Defers, nil, &pc) {
+					deferredStack = append(deferredStack, int64(arg)) // push
+					break
+				}
+			}
+			pc = arg
+
 		}
 	}
 

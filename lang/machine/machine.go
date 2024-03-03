@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/mna/nenuphar/lang/token"
 	"github.com/mna/nenuphar/lang/types"
 )
 
@@ -121,6 +122,37 @@ loop:
 
 		case EXCH:
 			stack[sp-2], stack[sp-1] = stack[sp-1], stack[sp-2]
+
+		case EQL, NEQ, GT, LT, LE, GE:
+			op := token.Token(op-EQL) + token.EQL
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+			ok, err := CompareDepth(op, x, y, th.maxCompareDepth)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp] = types.Bool(ok)
+			sp++
+
+		case PLUS, MINUS, STAR, SLASH, SLASHSLASH, PERCENT, AMPERSAND,
+			PIPE, CIRCUMFLEX, LTLT, GTGT, IN:
+
+			binop := token.Token(op-PLUS) + token.PLUS
+			if op == IN {
+				binop = token.IN // IN token is out of order
+			}
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+			z, err := Binary(binop, x, y)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp] = z
+			sp++
 		}
 	}
 

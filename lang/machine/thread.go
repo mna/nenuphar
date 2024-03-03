@@ -34,6 +34,10 @@ type Thread struct {
 	// is reached, the thread is cancelled. A value <= 0 means no limit.
 	MaxCallStackDepth int
 
+	// MaxCompareDepth limits the number of nested comparison depth for compound
+	// types to prevent comparing cyclic values.
+	MaxCompareDepth int
+
 	// Load is an optional function value to call to load modules (called by the
 	// LOAD opcode).
 	Load func(*Thread, string) (types.Value, error)
@@ -44,6 +48,7 @@ type Thread struct {
 	cancelled atomic.Bool
 
 	steps, maxSteps uint64
+	maxCompareDepth uint64
 }
 
 func (th *Thread) init() {
@@ -52,6 +57,11 @@ func (th *Thread) init() {
 		th.maxSteps-- // (MaxUint64)
 	} else {
 		th.maxSteps = uint64(th.MaxSteps)
+	}
+	if th.MaxCompareDepth <= 0 {
+		th.maxCompareDepth-- // (MaxUint64)
+	} else {
+		th.maxCompareDepth = uint64(th.MaxCompareDepth)
 	}
 	if th.ctx == nil {
 		th.ctx = context.Background()

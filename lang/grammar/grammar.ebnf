@@ -117,9 +117,9 @@ FieldDef      = DeclStmt .
 
 binop = "+"   | "-"   | "*"  | "/"  | "//" | "^"  |
         "%"   | "&"   | "~"  | "|"  | ">>" | "<<" |
-				".."  | "<"   | "<=" | ">"  | ">=" | "==" |
-				"!="  | "and" | "or"                      .  // "in" ? don't use ".." for concatenation, use "+" ?
-unop  = "-" | "not" | "try" | "must" | "#" | "~" | "..." . // "try" returns nil if the expression fails, "must" turns an exception in a fatal error. "..." unpacks a tuple/array(?).
+				"<"   | "<=" | ">"  | ">=" | "=="  | "!=" |
+				"and" | "or"                              .  // "in" ? don't use ".." for concatenation, use "+" ?
+unop  = "+" | "-" | "~" | "not" | "try" | "must" | "#" | "..." . // "try" returns nil if the expression fails, "must" turns an exception in a fatal error. "..." unpacks a tuple/array(?).
 name  = /* start with letter or underscore, next any letter, digit or "_" */ .
 
 int         = decimal | hex | octal | binary . // same as Go's rules, except leading 0 for octal

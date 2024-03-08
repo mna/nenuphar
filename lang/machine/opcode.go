@@ -37,19 +37,23 @@ const ( //nolint:revive
 	STAR
 	SLASH
 	SLASHSLASH
+	CIRCUMFLEX
 	PERCENT
 	AMPERSAND
+	TILDE
 	PIPE
-	CIRCUMFLEX
-	LTLT
 	GTGT
+	LTLT
 
 	IN
 
 	// unary operators
-	UPLUS  // x UPLUS x
+	//   "try" and "must" compile to a block with a catch, and sets the value
+	//   to "nil" for "try", converts the error to a critical one for "must"
+	UPLUS  // x UPLUS  x
 	UMINUS // x UMINUS -x
-	TILDE  // x TILDE ~x
+	UTILDE // x UTILDE ~x
+	NOT    // x NOT    bool
 
 	NIL       // - NIL Nil
 	TRUE      // - TRUE True
@@ -58,7 +62,6 @@ const ( //nolint:revive
 
 	ITERPUSH     //       iterable ITERPUSH     -    [pushes the iterator stack]
 	ITERPOP      //              - ITERPOP      -    [pops the iterator stack]
-	NOT          //          value NOT          bool
 	RETURN       //          value RETURN       -
 	SETINDEX     //        a i new SETINDEX     -
 	INDEX        //            a i INDEX        elem
@@ -184,6 +187,7 @@ var opcodeNames = [...]string{
 	UNIVERSAL:    "universal",
 	UNPACK:       "unpack",
 	UPLUS:        "uplus",
+	UTILDE:       "utilde",
 }
 
 var reverseLookupOpcode = func() map[string]Opcode {

@@ -1,4 +1,6 @@
-/* NOTE: comment production omitted for brevity.
+/* NOTE: comment production omitted for brevity. `--` introduces a single-line
+ * comment, while --[[ ... ]] introduces a multi-line comment (with optional
+ * matching equal signs between the brackets, like Lua).
  *
  * this is used as reference to implement the parser - best effort will be
  * made to keep this up-to-date, but in doubt, the parser implementation is
@@ -12,6 +14,10 @@
  *   - Error handling: see doc/errors.md.
  *   - Generally speaking, a block = a scope. GuardStmt and IfBindStmt have
  *   different scoping semantics.
+ *   - No null-checking operators for now (`?.`, `?[`, etc.) as it's unclear
+ *   if it would be super important in that language (especially with `try`)
+ *   and it quickly adds up complexity (e.g. would it require `?(` for nil-
+ *   checking function call too?).
 */
 
 Chunk    = Block .
@@ -59,7 +65,7 @@ Tuple        = "tup" Array .
 FuncExpr     = "fn" Signature Body .
 ClassExpr    = "class" InheritClause ClassBody .
 SuffixedExpr = PrimaryExpr
-                 { "." name | "?." name | "#" name | "?#" name | "[" Expr "]" | FuncArgs } .
+                 { "." name | "[" Expr "]" | FuncArgs } .
 PrimaryExpr  = name | "(" Expr ")" .
 FuncArgs     = "(" [ExprList] ")" | Map | string | "!" .
 
@@ -82,20 +88,20 @@ BindGuardStmt   = "guard" DeclStmt "else" Block "end" .
 DoStmt       = "do" Block "end" .
 
 ForStmt          = CondForStmt | ThreePartForStmt | ForInStmt .
-CondForStmt      = "for" [ Cond ] DoStmt .
+CondForStmt      = "for" [ Cond ] DoStmt . // equivalent to a "while" in other languages
 ThreePartForStmt = "for" [ AssignStmt | DeclStmt | FuncCall ] ";" [ Cond ] ";" [ Expr ] DoStmt .
 ForInStmt        = "for" name { "," name } "in" ExprList DoStmt .
 
 DeferStmt    = "defer" Block "end" .
 CatchStmt    = "catch" Block "end" .
-ThrowStmt    = "throw" [ Expr ] .
+ThrowStmt    = "throw" [ Expr ] . // re-throws last error when no expression given, only allowed in "catch" blocks.
 
 FuncStmt     = "fn" name Signature Body .
 DeclStmt     = ( "let" | "const" ) name { "," name } [ "=" ExprList ] .
 LabelStmt    = "::" name "::" .
 RetStmt      = "return" [ Expr ] .
-BreakStmt    = "break" . // cannot break to a label, use goto for the same effect.
-ContinueStmt = "continue" .
+BreakStmt    = "break" . // cannot break to a label (?), use goto for the same effect.
+ContinueStmt = "continue" . // continue to label?
 GotoStmt     = "goto" name .
 
 ClassStmt     = "class" name InheritClause ClassBody .
@@ -112,8 +118,8 @@ FieldDef      = DeclStmt .
 binop = "+"   | "-"   | "*"  | "/"  | "//" | "^"  |
         "%"   | "&"   | "~"  | "|"  | ">>" | "<<" |
 				".."  | "<"   | "<=" | ">"  | ">=" | "==" |
-				"!="  | "and" | "or"                      .
-unop  = "-" | "not" | "try" | "must" | "#" | "~" | "..." .
+				"!="  | "and" | "or"                      .  // "in" ? don't use ".." for concatenation, use "+" ?
+unop  = "-" | "not" | "try" | "must" | "#" | "~" | "..." . // "try" returns nil if the expression fails, "must" turns an exception in a fatal error. "..." unpacks a tuple/array(?).
 name  = /* start with letter or underscore, next any letter, digit or "_" */ .
 
 int         = decimal | hex | octal | binary . // same as Go's rules, except leading 0 for octal

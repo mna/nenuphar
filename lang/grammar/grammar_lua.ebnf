@@ -1,0 +1,70 @@
+// this is the implementation grammar used by Lua in its parser.c, which
+// resolves precedence and left-recursion.
+
+Chunk = Block .
+Block = Statlist .
+
+Statlist = { Stat [";"] } .
+Stat     = Exprstat
+         |  ";"
+         |  Ifstat
+         |  Whilestat
+         |  do Block end
+         |  Forstat
+         |  Repeatstat
+         |  Funcstat
+         |  Localfunc
+         |  Localstat
+         |  Labelstat
+         |  Retstat
+         |  Breakstat
+         |  Gotostat
+         .
+
+Exprstat  = Func | Assignment .
+Explist   = Expr { "," Expr } .
+Expr      = Subexpr .
+Subexpr   = (Simpleexp | unop Subexpr) { binop Subexpr } .
+Simpleexp = float | int | string | nil | true | false | "..." |
+             Constructor | function Body | Suffixedexp .
+
+Constructor = "{" [ Field { Sep Field } [Sep] ] "}" .
+Sep         = "," | ";" .
+Field       = Listfield | Recfield .
+Listfield   = Expr .
+Recfield    = (name | "[" Expr "]") "=" Expr .
+
+Suffixedexp = Primaryexp
+                { "." name | "[" Expr "]" | ":" name Funcargs | Funcargs } .
+Primaryexp  = name | "(" Expr ")" .
+Funcargs    = "(" [ Explist ] ")" | Constructor | string .
+
+Body        = "(" Parlist ")" Block end .
+Parlist     = [ {name ","} (name | "...") ] .
+
+Assignment = Suffixedexp Restassign .
+Restassign = "," Suffixedexp Restassign | "=" Explist .
+Func       = Suffixedexp . /* Must be a function call  */
+
+Ifstat     = if Cond then Block {elseif Cond then Block} [else Block] end .
+Cond       = Expr .
+Whilestat  = while Cond do Block end .
+Forstat    = for (Fornum | Forlist) end .
+Fornum     = name "=" Expr "," Expr ["," Expr] Forbody .
+Forlist    = name {"," name} in Explist Forbody .
+Forbody    = do Block .
+Repeatstat = repeat Block until Cond .
+Funcstat   = function Funcname Body .
+Funcname   = name {Fieldsel} [":" name] .
+Fieldsel   = ["." | ":"] name . /* Does not seem quite right? Maybe because it is reused elsewhere? */
+Localstat  = local name attrib { "," name attrib } ["=" Explist] .
+Localfunc  = local function name Body .
+Labelstat  = "::" name "::" .
+Retstat    = return [Explist] [";"] .
+Breakstat  = break .
+Gotostat   = goto name .
+
+// terminals and comments omitted for brevity.
+attrib = .  binop = .  break = .  do = .  else = .  elseif = .  end = .  false = .
+float = .  for = .  function = .  goto = .  if = .  in = .  int = .  local = .  name = .
+nil = .  repeat = .  return = .  string = .  then = .  true = .  unop = .  until = .  while = .

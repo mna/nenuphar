@@ -1,0 +1,153 @@
+/* NOTE: comment production omitted for brevity.
+ *
+ * this is used as reference to implement the parser - best effort will be
+ * made to keep this up-to-date, but in doubt, the parser implementation is
+ * the canonical version.
+ *
+ * Guiding lines:
+ *   - JSON is valid syntax (trefle is a superset)
+ *   - Inspired by Lua, no need for statement terminators (not even newlines)
+ *   - Given that tuples (and "..." to unpack array/tuple) are supported, no
+ *   need for multi-value returns
+ *   - Error handling: see doc/errors.md.
+ *   - Generally speaking, a block = a scope. GuardStmt and IfBindStmt have
+ *   different scoping semantics.
+*/
+
+Chunk    = Block .
+Block    = { Stmt } .
+
+/*
+ * IMPLEMENTATION NOTE:
+ *
+ * RetStmt, BreakStmt, ContinueStmt, ThrowStmt and GotoStmt are only valid as
+ * last statement in a Block.
+*/
+Stmt     =  ";"
+         |  ExprStmt
+				 |  AssignStmt
+         |  IfStmt
+         |  GuardStmt
+         |  DoStmt
+         |  ForStmt
+         |  FuncStmt
+         |  LabelStmt
+         |  DeclStmt
+         |  RetStmt
+         |  BreakStmt
+         |  ContinueStmt
+         |  GotoStmt
+         |  ClassStmt
+				 /* error handling-related statements */
+         |  DeferStmt
+         |  CatchStmt
+         |  ThrowStmt
+         .
+
+ExprStmt     = FuncCall .
+ExprList     = Expr { "," Expr } .
+Expr         = (SimpleExpr | unop Expr) { binop Expr } .
+SimpleExpr   = float | int | string | "null" | "true" | "false" |
+               Map | Array | Set | Tuple | FuncExpr |
+               ClassExpr | SuffixedExpr .
+
+Map          = "{" [Field {"," Field} [","]] "}" .
+Field        = (name | string | "[" Expr "]") ":" Expr .
+Array        = "[" [Expr {"," Expr} [","]] "]" .
+Set          = "set" Array .
+Tuple        = "tup" Array .
+FuncExpr     = "fn" Signature Body .
+ClassExpr    = "class" InheritClause ClassBody .
+SuffixedExpr = PrimaryExpr
+                 { "." name | "?." name | "#" name | "?#" name | "[" Expr "]" | FuncArgs } .
+PrimaryExpr  = name | "(" Expr ")" .
+FuncArgs     = "(" [ExprList] ")" | Map | string | "!" .
+
+Signature    = "(" ParamList ")" | "!" .
+Body         = Block "end" .
+ParamList    = [ {name ","} ((name | "..." name) [","]) ] .
+
+AssignStmt   = SuffixedExpr {"," SuffixedExpr} "=" ExprList . // lhs has to be assignable
+FuncCall     = SuffixedExpr . /* Must be a function call  */
+
+IfStmt       = SimpleIfStmt | BindIfStmt .
+SimpleIfStmt = "if" Cond "then" Block { "elseif" Cond "then" Block } [ "else" Block ] "end" .
+BindIfStmt   = "if" DeclStmt "then" Block [ "else" Block ] "end" . // TODO: allow DeclStmt inside parens?
+Cond         = Expr .
+
+GuardStmt       = SimpleGuardStmt | BindGuardStmt . // block must exit with break/continue/return/throw.
+SimpleGuardStmt = "guard" Cond "else" Block "end" .
+BindGuardStmt   = "guard" DeclStmt "else" Block "end" .
+
+DoStmt       = "do" Block "end" .
+
+ForStmt          = CondForStmt | ThreePartForStmt | ForInStmt .
+CondForStmt      = "for" [ Cond ] DoStmt .
+ThreePartForStmt = "for" [ AssignStmt | DeclStmt | FuncCall ] ";" [ Cond ] ";" [ Expr ] DoStmt .
+ForInStmt        = "for" name { "," name } "in" ExprList DoStmt .
+
+DeferStmt    = "defer" Block "end" .
+CatchStmt    = "catch" Block "end" .
+ThrowStmt    = "throw" [ Expr ] .
+
+FuncStmt     = "fn" name Signature Body .
+DeclStmt     = ( "let" | "const" ) name { "," name } [ "=" ExprList ] .
+LabelStmt    = "::" name "::" .
+RetStmt      = "return" [ Expr ] .
+BreakStmt    = "break" . // cannot break to a label, use goto for the same effect.
+ContinueStmt = "continue" .
+GotoStmt     = "goto" name .
+
+ClassStmt     = "class" name InheritClause ClassBody .
+InheritClause = ( "(" Expr ")" | "!" ) .
+ClassBody     = { ( MethodDef | FieldDef ) } "end" .
+MethodDef     = FuncStmt .
+FieldDef      = DeclStmt .
+
+/*
+ * NOTE: terminals are handled by the scanner, but (sometimes simplified) rules
+ * are documented below.
+*/
+
+binop = "+"   | "-"   | "*"  | "/"  | "//" | "^"  |
+        "%"   | "&"   | "~"  | "|"  | ">>" | "<<" |
+				".."  | "<"   | "<=" | ">"  | ">=" | "==" |
+				"!="  | "and" | "or"                      .
+unop  = "-" | "not" | "try" | "must" | "#" | "~" | "..." .
+name  = /* start with letter or underscore, next any letter, digit or "_" */ .
+
+int         = decimal | hex | octal | binary . // same as Go's rules, except leading 0 for octal
+decimal     = "0" | ("1" … "9") [["_"] decdigits] .
+hex         = "0" ("x" | "X") ["_"] hexdigits .
+octal       = "0" ("o" | "O") ["_"] octdigits .
+binary      = "0" ("b" | "B") ["_"] bindigits .
+decdigits   = decdigit {["_"] decdigit} .
+hexdigits   = hexdigit {["_"] hexdigit} .
+octdigits   = octdigit {["_"] octdigit} .
+bindigits   = bindigit {["_"] bindigit} .
+decdigit    = "0" … "9" .
+hexdigit    = "a" … "f" | "A" … "F" | decdigit .
+octdigit    = "0" … "7" .
+bindigit    = "0" … "1" .
+
+float   = decf | hexf . // same as Go's rules
+decf    = decdigits "." [decdigits] [decexp] |
+          decdigits decexp                   |
+          "." decdigits [decexp]             .
+decexp  = ("e" | "E") ["+" | "-"] decdigits .
+hexf    = "0" ("x" | "X") hexmant hexexp .
+hexmant = ["_"] hexdigits "." [hexdigits] |
+          ["_"] hexdigits                 |
+          "." hexdigits                   .
+hexexp  = ("p" | "P") ["+" | "-"] decdigits .
+
+string   = short | long .
+short    = ( "\"" { char } "\"" ) | ( "'" { char } "'" ) .
+long     = "[" { "=" } "[" { rawchar } "]" { "=" } "]" . /* number of equal signs must match */
+char     = esc | rawchar .
+rawchar  = /* any byte */ .
+esc      = "\\" ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | "\\" | "/" | "\"" | "'" | "\n" | "z" ) |
+           "\\x" hexdigit hexdigit                  |
+           "\\" decdigit [ decdigit [ decdigit ] ]  |
+           "\\u hexdigit hexdigit hexdigit hexdigit |
+           "\\u{" hexdigit { hexdigit } "}"         .

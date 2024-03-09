@@ -24,9 +24,9 @@ const ( //nolint:revive
 	// binary comparisons
 	// (order must match Token)
 	LT
+	LE
 	GT
 	GE
-	LE
 	EQL
 	NEQ
 
@@ -54,26 +54,23 @@ const ( //nolint:revive
 	UMINUS // x UMINUS -x
 	UTILDE // x UTILDE ~x
 	NOT    // x NOT    bool
+	LEN    // x LEN    #x
 
-	NIL       // - NIL Nil
-	TRUE      // - TRUE True
-	FALSE     // - FALSE False
-	MANDATORY // - MANDATORY Mandatory	     [sentinel value for required kwonly args] TODO: used to handle missing values, not needed if no defaults
+	NIL   // - NIL Nil
+	TRUE  // - TRUE True
+	FALSE // - FALSE False
 
-	ITERPUSH     //       iterable ITERPUSH     -    [pushes the iterator stack]
-	ITERPOP      //              - ITERPOP      -    [pops the iterator stack]
-	RETURN       //          value RETURN       -
-	SETINDEX     //        a i new SETINDEX     -
-	INDEX        //            a i INDEX        elem
-	SETMAP       // dict key value SETMAP      -
-	SETDICTUNIQ  // dict key value SETDICTUNIQ  - TODO: may not be necessary (lua does not fail when key is reassigned in same literal)
-	APPEND       //      list elem APPEND       -
-	SLICE        //   x lo hi step SLICE        slice
-	INPLACE_ADD  //            x y INPLACE_ADD  z      where z is x+y or x.extend(y) TODO: strictly useful to reuse x if it is a list, otherwise ADD creates new list
-	INPLACE_PIPE //            x y INPLACE_PIPE z      where z is x|y TODO: strictly useful to reuse x if it is a Dict, otherwise PIPE creates a new Dict
-	MAKEMAP      //              - MAKEMAP     dict
-	RUNDEFER     //              - RUNDEFER     -      next opcode must run deferred blocks
-	DEFEREXIT    //              - DEFEREXIT    -      run next defferred block or if no more deferred block to execute, resume
+	ITERPUSH  //       iterable ITERPUSH     -    [pushes the iterator stack]
+	ITERPOP   //              - ITERPOP      -    [pops the iterator stack]
+	RETURN    //          value RETURN       -
+	SETINDEX  //        a i new SETINDEX     -
+	INDEX     //            a i INDEX        elem
+	SETMAP    //  map key value SETMAP       -
+	APPEND    //      list elem APPEND       -
+	SLICE     //   x lo hi step SLICE        slice
+	MAKEMAP   //              - MAKEMAP      map
+	RUNDEFER  //              - RUNDEFER     -      next opcode must run deferred blocks
+	DEFEREXIT //              - DEFEREXIT    -      run next defferred block or if no more deferred block to execute, resume
 
 	// --- opcodes with an argument must go below this line ---
 
@@ -86,7 +83,7 @@ const ( //nolint:revive
 
 	CONSTANT     //                 - CONSTANT<constant>  value
 	MAKETUPLE    //         x1 ... xn MAKETUPLE<n>        tuple
-	MAKELIST     //         x1 ... xn MAKELIST<n>         list
+	MAKEARRAY    //         x1 ... xn MAKEARRAY<n>        array
 	MAKEFUNC     // defaults+freevars MAKEFUNC<func>      fn
 	LOAD         //  from1..fromN mod LOAD<n>             v1 .. vN
 	SETLOCAL     //             value SETLOCAL<local>     -
@@ -97,8 +94,8 @@ const ( //nolint:revive
 	LOCALCELL    //                 - LOCALCELL<local>    value       (content of LOCAL cell)
 	SETLOCALCELL //             value SETLOCALCELL<local> -           (set content of LOCAL cell)
 	GLOBAL       //                 - GLOBAL<global>      value
-	PREDECLARED  //                 - PREDECLARED<name>   value
-	UNIVERSAL    //                 - UNIVERSAL<name>     value
+	PREDECLARED  //                 - PREDECLARED<name>   value       predeclared = additional bindings made available by the environment, immutable (so unlike globals)
+	UNIVERSAL    //                 - UNIVERSAL<name>     value       universe = part of the language, all programs have access to those
 	ATTR         //                 x ATTR<name>          y           y = x.name
 	SETFIELD     //               x y SETFIELD<name>      -           x.name = y
 	UNPACK       //          iterable UNPACK<n>           vn ... v1

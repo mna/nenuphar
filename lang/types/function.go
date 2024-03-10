@@ -1,5 +1,7 @@
 package types
 
+import "github.com/mna/nenuphar/lang/compiler"
+
 // A Function is a function defined by a function statement or expression. The
 // initialization behavior of a module is also represented by a (top-level)
 // Function.
@@ -17,10 +19,10 @@ var (
 // of compilation. All functions in the same program share a module.
 type module struct {
 	program     *compiler.Program
-	predeclared StringDict // TODO: here or just provided to a Thread (e.g. like Env for Lua)?
-	globals     []Value    // TODO: no globals, only locals to the top-level function?
+	predeclared map[string]Value // TODO: here or just provided to a Thread (e.g. like Env for Lua)?
+	globals     []Value          // TODO: no globals, only locals to the top-level function?
 	constants   []Value
 }
 
-func (fn *Function) String() string { return "<function " + fn.Name() + ">" }
+func (fn *Function) String() string { return "<function " + fn.Funcode.Name + ">" }
 func (fn *Function) Type() string   { return "function" }

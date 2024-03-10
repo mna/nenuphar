@@ -9,12 +9,7 @@ import "github.com/mna/nenuphar/lang/types"
 // cells. The FREE instruction always yields a cell.
 type cell struct{ v types.Value }
 
-func (c *cell) String() string        { return "cell" }
-func (c *cell) Type() string          { return "cell" }
-func (c *cell) Truth() types.Bool     { panic("unreachable") }
-func (c *cell) Hash() (uint32, error) { panic("unreachable") }
-func (c *cell) Freeze() {
-	if c.v != nil {
-		c.v.Freeze()
-	}
-}
+var _ types.Value = (*cell)(nil)
+
+func (c *cell) String() string { return "cell" }
+func (c *cell) Type() string   { return "cell" }

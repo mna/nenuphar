@@ -78,7 +78,10 @@ loop:
 	for {
 		th.steps++
 		if th.steps >= th.maxSteps {
-			th.Cancel("too many steps")
+			th.ctxCancel()
+			// TODO: critical, non-catchable error
+			inFlightErr = fmt.Errorf("thread cancelled: %s", context.Cause(th.ctx))
+			break loop
 		}
 		if th.cancelled.Load() {
 			// TODO: critical, non-catchable error

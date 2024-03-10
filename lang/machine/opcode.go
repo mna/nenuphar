@@ -70,7 +70,7 @@ const ( //nolint:revive
 	SLICE     //   x lo hi step SLICE        slice
 	MAKEMAP   //              - MAKEMAP      map
 	RUNDEFER  //              - RUNDEFER     -      next opcode must run deferred blocks
-	DEFEREXIT //              - DEFEREXIT    -      run next defferred block or if no more deferred block to execute, resume
+	DEFEREXIT //              - DEFEREXIT    -      run next deferred block or if no more deferred block to execute, resume
 
 	// --- opcodes with an argument must go below this line ---
 

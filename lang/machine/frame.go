@@ -17,7 +17,7 @@ type Frame struct {
 func (fr *Frame) Position() ast.Position {
 	switch c := fr.callable.(type) {
 	case *types.Function:
-		return c.funcode.Position(fr.pc)
+		return c.Funcode.Position(fr.pc)
 	case callableWithPosition:
 		// If a built-in Callable defines a Position method, use it.
 		return c.Position()

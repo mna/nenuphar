@@ -3,47 +3,39 @@ package types
 import (
 	"fmt"
 
-	"github.com/mna/nenuphar-wip/syntax"
+	"github.com/mna/nenuphar/lang/token"
 )
 
 // An *Array represents a list of values.
 type Array struct {
 	elems     []Value
-	frozen    bool
-	itercount uint32 // number of active iterators (ignored if frozen)
+	itercount uint32 // number of active iterators
 }
+
+var (
+	_ Value     = (*Array)(nil)
+	_ Indexable = (*Array)(nil)
+	_ Sequence  = (*Array)(nil)
+)
 
 // NewArray returns an array containing the specified elements. Callers should
 // not subsequently modify elems.
 func NewArray(elems []Value) *Array { return &Array{elems: elems} }
 
-func (a *Array) Freeze() {
-	if !a.frozen {
-		a.frozen = true
-		for _, elem := range a.elems {
-			elem.Freeze()
-		}
-	}
-}
-
 // checkMutable reports an error if the array should not be mutated.
 // verb+" array" should describe the operation.
 func (a *Array) checkMutable(verb string) error {
-	if a.frozen {
-		return fmt.Errorf("cannot %s frozen array", verb)
-	}
 	if a.itercount > 0 {
 		return fmt.Errorf("cannot %s array during iteration", verb)
 	}
 	return nil
 }
 
-func (a *Array) String() string        { return toString(a) }
-func (a *Array) Type() string          { return "array" }
-func (a *Array) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: array") }
-func (a *Array) Truth() Bool           { return a.Len() > 0 }
-func (a *Array) Len() int              { return len(a.elems) }
-func (a *Array) Index(i int) Value     { return a.elems[i] }
+func (a *Array) String() string    { return toString(a) }
+func (a *Array) Type() string      { return "array" }
+func (a *Array) Truth() Bool       { return true }
+func (a *Array) Len() int          { return len(a.elems) }
+func (a *Array) Index(i int) Value { return a.elems[i] }
 
 func (a *Array) Slice(start, end, step int) Value {
 	if step == 1 {
@@ -63,23 +55,21 @@ func (a *Array) Attr(name string) (Value, error) { return builtinAttr(a, name, l
 func (a *Array) AttrNames() []string             { return builtinAttrNames(listMethods) }
 
 func (a *Array) Iterate() Iterator {
-	if !a.frozen {
-		a.itercount++
-	}
-	return &listIterator{l: a}
+	a.itercount++
+	return &arrayIterator{a: a}
 }
 
-func (a *Array) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error) {
+func (a *Array) CompareSameType(op token.Token, y_ Value, depth int) (bool, error) {
 	y := y_.(*Array)
 	// It's tempting to check x == y as an optimization here,
 	// but wrong because a list containing NaN is not equal to itself.
 	return sliceCompare(op, a.elems, y.elems, depth)
 }
 
-func sliceCompare(op syntax.Token, x, y []Value, depth int) (bool, error) {
+func sliceCompare(op token.Token, x, y []Value, depth int) (bool, error) {
 	// Fast path: check length.
-	if len(x) != len(y) && (op == syntax.EQL || op == syntax.NEQ) {
-		return op == syntax.NEQ, nil
+	if len(x) != len(y) && (op == token.EQL || op == token.NEQ) {
+		return op == token.NEQ, nil
 	}
 
 	// Find first element that is not equal in both lists.
@@ -88,9 +78,9 @@ func sliceCompare(op syntax.Token, x, y []Value, depth int) (bool, error) {
 			return false, err
 		} else if !eq {
 			switch op {
-			case syntax.EQL:
+			case token.EQL:
 				return false, nil
-			case syntax.NEQ:
+			case token.NEQ:
 				return true, nil
 			default:
 				return CompareDepth(op, x[i], y[i], depth-1)
@@ -101,24 +91,22 @@ func sliceCompare(op syntax.Token, x, y []Value, depth int) (bool, error) {
 	return threeway(op, len(x)-len(y)), nil
 }
 
-type listIterator struct {
-	l *List
+type arrayIterator struct {
+	a *Array
 	i int
 }
 
-func (it *listIterator) Next(p *Value) bool {
-	if it.i < it.l.Len() {
-		*p = it.l.elems[it.i]
+func (it *arrayIterator) Next(p *Value) bool {
+	if it.i < it.a.Len() {
+		*p = it.a.elems[it.i]
 		it.i++
 		return true
 	}
 	return false
 }
 
-func (it *listIterator) Done() {
-	if !it.l.frozen {
-		it.l.itercount--
-	}
+func (it *arrayIterator) Done() {
+	it.a.itercount--
 }
 
 func (a *Array) SetIndex(i int, v Value) error {

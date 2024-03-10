@@ -10,13 +10,6 @@ type Value interface {
 	// Type returns a short string describing the value's type.
 	Type() string
 
-	// Freeze causes the value, and all values transitively reachable from it
-	// through collections and closures, to be marked as frozen. All subsequent
-	// mutations to the data structure through the machine or the runtime API
-	// will fail dynamically, making the data structure immutable and safe for
-	// publishing to other threads running concurrently.
-	Freeze()
-
 	// Truth returns the truth value of an object.
 	Truth() Bool
 }
@@ -26,6 +19,7 @@ type Value interface {
 // than y, or equal to y.
 type Ordered interface {
 	Value
+
 	// Cmp compares two values x and y of the same ordered type. It returns
 	// negative if x < y, positive if x > y, and zero if the values are equal.
 	//
@@ -47,6 +41,7 @@ type Ordered interface {
 // necessarily known in advance of iteration.
 type Iterable interface {
 	Value
+
 	// Iterate returns an Iterator. It must be followed by call to Iterator.Done.
 	Iterate() Iterator
 }
@@ -54,6 +49,8 @@ type Iterable interface {
 // A Sequence is a sequence of values of known length.
 type Sequence interface {
 	Iterable
+
+	// Len returns the number of elements in the sequence.
 	Len() int
 }
 
@@ -61,9 +58,12 @@ type Sequence interface {
 // access. It is not necessarily iterable.
 type Indexable interface {
 	Value
+
 	// Index returns the value at the specified index, which must satisfy 0 <= i
 	// < Len().
 	Index(i int) Value
+
+	// Len returns the number of elements in the sequence.
 	Len() int
 }
 

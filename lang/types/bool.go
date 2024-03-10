@@ -8,8 +8,11 @@ const (
 	True  Bool = true
 )
 
-// Bool is a Value.
-var _ Value = True
+// Bool is an ordered value.
+var (
+	_ Value   = True
+	_ Ordered = True
+)
 
 func (b Bool) String() string {
 	if b {
@@ -19,8 +22,6 @@ func (b Bool) String() string {
 }
 
 func (b Bool) Type() string { return "bool" }
-func (b Bool) Freeze()      {} // immutable
-func (b Bool) Truth() Bool  { return b }
 
 func (b Bool) Cmp(y Value, depth int) (int, error) {
 	b2 := y.(Bool)

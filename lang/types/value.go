@@ -9,9 +9,6 @@ type Value interface {
 
 	// Type returns a short string describing the value's type.
 	Type() string
-
-	// Truth returns the truth value of an object.
-	Truth() Bool
 }
 
 // An Ordered type is a type whose values are ordered:

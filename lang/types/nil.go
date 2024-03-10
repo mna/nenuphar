@@ -11,5 +11,3 @@ var _ Value = Nil
 
 func (NilType) String() string { return "nil" }
 func (NilType) Type() string   { return "nil" }
-func (NilType) Freeze()        {} // immutable
-func (NilType) Truth() Bool    { return False }

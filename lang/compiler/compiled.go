@@ -9,6 +9,7 @@ import (
 // serialized by the Program.Encode method, which must be updated whenever this
 // declaration is changed.
 type Program struct {
+	Filename  string
 	Loads     []Binding     // name (really, string) and position of each load stmt
 	Names     []string      // names of attributes and predeclared variables
 	Constants []interface{} // = string | int64 | float64
@@ -22,10 +23,8 @@ type Program struct {
 // changed.
 type Funcode struct {
 	Prog       *Program
-	Pos        token.Pos // position of def or lambda token
 	Name       string    // name of this function
 	Code       []byte    // the byte code
-	pclinetab  []uint16  // mapping from pc to linenum
 	Locals     []Binding // locals, parameters first
 	Cells      []int     // indices of Locals that require cells
 	Freevars   []Binding // for tracing
@@ -34,6 +33,9 @@ type Funcode struct {
 	MaxStack   int
 	NumParams  int
 	HasVarargs bool
+
+	pos       token.Pos // position of fn token
+	pclinetab []uint16  // mapping from pc to linenum
 
 	// -- transient state --
 
@@ -44,6 +46,78 @@ type Funcode struct {
 type pclinecol struct {
 	pc        uint32
 	line, col int32
+}
+
+// Position returns the source position for program counter pc.
+func (fn *Funcode) Position(pc uint32) token.Position {
+	fn.lntOnce.Do(fn.decodeLNT)
+
+	// Binary search to find last LNT entry not greater than pc.
+	// To avoid dynamic dispatch, this is a specialization of
+	// sort.Search using this predicate:
+	//   !(i < len(fn.lnt)-1 && fn.lnt[i+1].pc <= pc)
+	n := len(fn.lnt)
+	i, j := 0, n
+	for i < j {
+		h := int(uint(i+j) >> 1)
+		if !(h >= n-1 || fn.lnt[h+1].pc > pc) {
+			i = h + 1
+		} else {
+			j = h
+		}
+	}
+
+	var line, col int32
+	if i < n {
+		line = fn.lnt[i].line
+		col = fn.lnt[i].col
+	}
+
+	pos := fn.pos // copy the (annoyingly inaccessible) filename
+	pos.Col = col
+	pos.Line = line
+	return pos
+}
+
+// decodeLNT decodes the line number table and populates fn.lnt.
+// It is called at most once.
+func (fn *Funcode) decodeLNT() {
+	// Conceptually the table contains rows of the form
+	// (pc uint32, line int32, col int32), sorted by pc.
+	// We use a delta encoding, since the differences
+	// between successive pc, line, and column values
+	// are typically small and positive (though line and
+	// especially column differences may be negative).
+	// The delta encoding starts from
+	// {pc: 0, line: fn.Pos.Line, col: fn.Pos.Col}.
+	//
+	// Each entry is packed into one or more 16-bit values:
+	//    Δpc        uint4
+	//    Δline      int5
+	//    Δcol       int6
+	//    incomplete uint1
+	// The top 4 bits are the unsigned delta pc.
+	// The next 5 bits are the signed line number delta.
+	// The next 6 bits are the signed column number delta.
+	// The bottom bit indicates that more rows follow because
+	// one of the deltas was maxed out.
+	// These field widths were chosen from a sample of real programs,
+	// and allow >97% of rows to be encoded in a single uint16.
+
+	fn.lnt = make([]pclinecol, 0, len(fn.pclinetab)) // a minor overapproximation
+	entry := pclinecol{
+		pc:   0,
+		line: fn.pos.Line,
+		col:  fn.pos.Col,
+	}
+	for _, x := range fn.pclinetab {
+		entry.pc += uint32(x) >> 12
+		entry.line += int32((int16(x) << 4) >> (16 - 5)) // sign extend Δline
+		entry.col += int32((int16(x) << 9) >> (16 - 6))  // sign extend Δcol
+		if (x & 1) == 0 {
+			fn.lnt = append(fn.lnt, entry)
+		}
+	}
 }
 
 // A Binding is the name and position of a binding identifier.

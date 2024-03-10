@@ -26,12 +26,12 @@ type Callable interface {
 // and keyword arguments.
 func Call(th *Thread, v types.Value, args types.Tuple, kwargs []types.Tuple) (types.Value, error) {
 	var fn *types.Function
-	var cb types.Callable
+	var cb Callable
 
 	switch v := v.(type) {
 	case *types.Function:
 		fn = v
-	case types.Callable:
+	case Callable:
 		cb = v
 	default:
 		return nil, fmt.Errorf("invalid call of non-callable (%s)", fn.Type())

@@ -1,5 +1,9 @@
 package token
 
+import (
+	"fmt"
+)
+
 const (
 	lineBits = 18
 	colBits  = 32 - lineBits
@@ -38,4 +42,30 @@ func (p Pos) LineCol() (int, int) {
 func (p Pos) Unknown() bool {
 	l, c := p.LineCol()
 	return l == 0 || c == 0
+}
+
+// Position fully describes a location in a file, including its filename.
+type Position struct {
+	Filename string
+	Pos      Pos
+}
+
+// MakePosition returns a position with the specified components.
+func MakePosition(file string, line, col int) Position {
+	return Position{Filename: file, Pos: MakePos(line, col)}
+}
+
+func (p Position) String() string {
+	file := p.Filename
+	if file == "" {
+		file = "<unknown file>"
+	}
+	l, c := p.Pos.LineCol()
+	if l > 0 {
+		if c > 0 {
+			return fmt.Sprintf("%s:%d:%d", file, l, c)
+		}
+		return fmt.Sprintf("%s:%d", file, l)
+	}
+	return file
 }

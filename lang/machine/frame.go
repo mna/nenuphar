@@ -1,7 +1,7 @@
 package machine
 
 import (
-	"github.com/mna/nenuphar/lang/ast"
+	"github.com/mna/nenuphar/lang/token"
 	"github.com/mna/nenuphar/lang/types"
 )
 
@@ -14,18 +14,27 @@ type Frame struct {
 
 // Position returns the source position of the current point of execution in
 // this frame.
-func (fr *Frame) Position() ast.Position {
+func (fr *Frame) Position() token.Position {
 	switch c := fr.callable.(type) {
 	case *types.Function:
-		return c.Funcode.Position(fr.pc)
+		line, col := c.Funcode.Pos(fr.pc).LineCol()
+		return token.MakePosition(c.Funcode.Prog.Filename, line, col)
 	case callableWithPosition:
 		// If a built-in Callable defines a Position method, use it.
 		return c.Position()
+	case callableWithPos:
+		line, col := c.Pos().LineCol()
+		return token.MakePosition("", line, col)
 	}
-	return ast.MakePosition(&builtinFilename, 0, 0)
+	return token.MakePosition("", 0, 0)
 }
 
 type callableWithPosition interface {
-	types.Callable
-	Position() ast.Position
+	Callable
+	Position() token.Position
+}
+
+type callableWithPos interface {
+	Callable
+	Pos() token.Pos
 }

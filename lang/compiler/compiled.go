@@ -1,8 +1,9 @@
 package compiler
 
 import (
-	"go/token"
 	"sync"
+
+	"github.com/mna/nenuphar/lang/token"
 )
 
 // A Program is a source code file compiled in executable form. Programs are
@@ -44,12 +45,12 @@ type Funcode struct {
 }
 
 type pclinecol struct {
-	pc        uint32
-	line, col int32
+	pc  uint32
+	pos token.Pos
 }
 
-// Position returns the source position for program counter pc.
-func (fn *Funcode) Position(pc uint32) token.Position {
+// Pos returns the source position for program counter pc.
+func (fn *Funcode) Pos(pc uint32) token.Pos {
 	fn.lntOnce.Do(fn.decodeLNT)
 
 	// Binary search to find last LNT entry not greater than pc.
@@ -67,16 +68,10 @@ func (fn *Funcode) Position(pc uint32) token.Position {
 		}
 	}
 
-	var line, col int32
 	if i < n {
-		line = fn.lnt[i].line
-		col = fn.lnt[i].col
+		return fn.lnt[i].pos
 	}
-
-	pos := fn.pos // copy the (annoyingly inaccessible) filename
-	pos.Col = col
-	pos.Line = line
-	return pos
+	return token.MakePos(0, 0)
 }
 
 // decodeLNT decodes the line number table and populates fn.lnt.
@@ -105,16 +100,17 @@ func (fn *Funcode) decodeLNT() {
 	// and allow >97% of rows to be encoded in a single uint16.
 
 	fn.lnt = make([]pclinecol, 0, len(fn.pclinetab)) // a minor overapproximation
+	line, col := fn.pos.LineCol()
 	entry := pclinecol{
-		pc:   0,
-		line: fn.pos.Line,
-		col:  fn.pos.Col,
+		pc:  0,
+		pos: fn.pos,
 	}
 	for _, x := range fn.pclinetab {
 		entry.pc += uint32(x) >> 12
-		entry.line += int32((int16(x) << 4) >> (16 - 5)) // sign extend Δline
-		entry.col += int32((int16(x) << 9) >> (16 - 6))  // sign extend Δcol
+		line += int((int16(x) << 4) >> (16 - 5)) // sign extend Δline
+		col += int((int16(x) << 9) >> (16 - 6))  // sign extend Δcol
 		if (x & 1) == 0 {
+			entry.pos = token.MakePos(line, col)
 			fn.lnt = append(fn.lnt, entry)
 		}
 	}

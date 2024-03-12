@@ -24,5 +24,16 @@ type module struct {
 	constants   []Value
 }
 
-func (fn *Function) String() string { return "<function " + fn.Funcode.Name + ">" }
+func (fn *Function) String() string { return "<function " + fn.Name() + ">" }
 func (fn *Function) Type() string   { return "function" }
+func (fn *Function) Name() string {
+	nm := fn.Funcode.Name
+	if nm == "" {
+		if fn.Funcode.Prog.Toplevel == fn.Funcode {
+			nm = "toplevel " + fn.Funcode.Prog.Filename
+		} else {
+			nm = "unknown"
+		}
+	}
+	return nm
+}

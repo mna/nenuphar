@@ -8,7 +8,7 @@ import (
 	"github.com/mna/nenuphar/lang/types"
 )
 
-func Run(th *Thread, fn *types.Function, args types.Tuple, kwargs []types.Tuple) (types.Value, error) {
+func Run(th *Thread, fn *types.Function, args types.Tuple) (types.Value, error) {
 	fcode := fn.Funcode
 	if th.DisableRecursion {
 		// detect recursion

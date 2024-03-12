@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-	"strings"
 
 	"github.com/mna/nenuphar/lang/token"
 	"github.com/mna/nenuphar/lang/types"
@@ -19,12 +18,11 @@ import (
 type Callable interface {
 	types.Value
 	Name() string
-	CallInternal(thread *Thread, args types.Tuple, kwargs []types.Tuple) (types.Value, error)
+	CallInternal(thread *Thread, args types.Tuple) (types.Value, error)
 }
 
-// Call calls the function or Callable value v with the specified positional
-// and keyword arguments.
-func Call(th *Thread, v types.Value, args types.Tuple, kwargs []types.Tuple) (types.Value, error) {
+// Call calls the function or Callable value v with the specified arguments.
+func Call(th *Thread, v types.Value, args types.Tuple) (types.Value, error) {
 	var fn *types.Function
 	var cb Callable
 
@@ -58,7 +56,6 @@ func Call(th *Thread, v types.Value, args types.Tuple, kwargs []types.Tuple) (ty
 	defer func() {
 		// clear out any references
 		*fr = Frame{}
-
 		th.callStack = th.callStack[:len(th.callStack)-1] // pop
 	}()
 
@@ -69,24 +66,16 @@ func Call(th *Thread, v types.Value, args types.Tuple, kwargs []types.Tuple) (ty
 
 	if fn != nil {
 		fr.callable = fn
-		result, err = Run(th, fn)
+		result, err = Run(th, fn, args)
 	} else {
 		fr.callable = cb
-		result, err = cb.CallInternal(th, args, kwargs)
+		result, err = cb.CallInternal(th, args)
 	}
 
 	// Sanity check: nil is not a valid value.
 	if result == nil && err == nil {
-		err = fmt.Errorf("internal error: nil (not None) returned from %s", fn)
+		err = fmt.Errorf("internal error: nil (not Nil) returned from %s", fn)
 	}
-
-	// Always return an EvalError with an accurate frame.
-	if err != nil {
-		if _, ok := err.(*EvalError); !ok {
-			err = th.evalError(err)
-		}
-	}
-
 	return result, err
 }
 
@@ -96,14 +85,14 @@ func Call(th *Thread, v types.Value, args types.Tuple, kwargs []types.Tuple) (ty
 //
 // The depth parameter limits the maximum depth of recursion in cyclic data
 // structures.
-func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) {
+func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) { // TODO: figure out type of depth vs Cmp
 	if depth < 1 {
 		// TODO: critical, non-catchable error
 		return false, fmt.Errorf("comparison exceeded maximum recursion depth")
 	}
 	if sameType(x, y) {
 		if xcomp, ok := x.(types.Ordered); ok {
-			t, err := xcomp.Cmp(y, depth)
+			t, err := xcomp.Cmp(y, int(depth))
 			if err != nil {
 				return false, err
 			}
@@ -179,7 +168,8 @@ func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) 
 }
 
 func sameType(x, y types.Value) bool {
-	// TODO(mna): any better way to do this?
+	// TODO(mna): any better way to do this? Doesn't seem overly costly though,
+	// mostly pointer casting.
 	return reflect.TypeOf(x) == reflect.TypeOf(y)
 }
 
@@ -201,397 +191,4 @@ func threeway(op token.Token, cmp int) bool {
 		return cmp > 0
 	}
 	panic(op)
-}
-
-// Binary applies a strict binary operator (not AND or OR) to its operands. For
-// equality tests or ordered comparisons, use CompareDepth instead.
-func Binary(op token.Token, x, y types.Value) (types.Value, error) {
-	// TODO: revisit when language is more complete to determine if PLUS
-	// applies to strings, etc.
-	switch op {
-	case token.PLUS:
-		switch x := x.(type) {
-		case types.String:
-			if y, ok := y.(types.String); ok {
-				return x + y, nil
-			}
-		case types.Int:
-			switch y := y.(type) {
-			case types.Int:
-				return x + y, nil
-			case types.Float:
-				xf := types.Float(x)
-				return xf + y, nil
-			}
-		case types.Float:
-			switch y := y.(type) {
-			case types.Float:
-				return x + y, nil
-			case types.Int:
-				yf := types.Float(y)
-				return x + yf, nil
-			}
-		case *types.Array:
-			if y, ok := y.(*types.Array); ok {
-				z := make([]types.Value, 0, x.Len()+y.Len())
-				z = append(z, x.elems...)
-				z = append(z, y.elems...)
-				return types.NewList(z), nil
-			}
-		case types.Tuple:
-			if y, ok := y.(types.Tuple); ok {
-				z := make(types.Tuple, 0, len(x)+len(y))
-				z = append(z, x...)
-				z = append(z, y...)
-				return z, nil
-			}
-		}
-
-	case token.MINUS:
-		switch x := x.(type) {
-		case types.Int:
-			switch y := y.(type) {
-			case types.Int:
-				return x - y, nil
-			case types.Float:
-				xf := types.Float(x)
-				return xf - y, nil
-			}
-		case types.Float:
-			switch y := y.(type) {
-			case types.Float:
-				return x - y, nil
-			case types.Int:
-				yf := types.Float(y)
-				return x - yf, nil
-			}
-		case *types.Set: // difference
-			if y, ok := y.(*types.Set); ok {
-				iter := y.Iterate()
-				defer iter.Done()
-				return x.Difference(iter)
-			}
-		}
-
-	case token.STAR:
-		switch x := x.(type) {
-		case types.Int:
-			switch y := y.(type) {
-			case types.Int:
-				return x * y, nil
-			case types.Float:
-				xf := types.Float(x)
-				return xf * y, nil
-			case types.String:
-				return stringRepeat(y, x)
-			case types.Bytes:
-				return bytesRepeat(y, x)
-			case *types.Array:
-				elems, err := tupleRepeat(Tuple(y.elems), x)
-				if err != nil {
-					return nil, err
-				}
-				return NewList(elems), nil
-			case types.Tuple:
-				return tupleRepeat(y, x)
-			}
-		case types.Float:
-			switch y := y.(type) {
-			case types.Float:
-				return x * y, nil
-			case types.Int:
-				yf := types.Float(y)
-				return x * yf, nil
-			}
-		case types.String:
-			if y, ok := y.(types.Int); ok {
-				return stringRepeat(x, y)
-			}
-		case types.Bytes:
-			if y, ok := y.(types.Int); ok {
-				return bytesRepeat(x, y)
-			}
-		case *types.Array:
-			if y, ok := y.(types.Int); ok {
-				elems, err := tupleRepeat(Tuple(x.elems), y)
-				if err != nil {
-					return nil, err
-				}
-				return NewList(elems), nil
-			}
-		case types.Tuple:
-			if y, ok := y.(types.Int); ok {
-				return tupleRepeat(x, y)
-			}
-		}
-
-	case token.SLASH:
-		switch x := x.(type) {
-		case types.Int:
-			xf := types.Float(x)
-			switch y := y.(type) {
-			case types.Int:
-				yf := types.Float(y)
-				if yf == 0.0 {
-					return nil, fmt.Errorf("floating-point division by zero")
-				}
-				return xf / yf, nil
-			case types.Float:
-				if y == 0.0 {
-					return nil, fmt.Errorf("floating-point division by zero")
-				}
-				return xf / y, nil
-			}
-		case types.Float:
-			switch y := y.(type) {
-			case types.Float:
-				if y == 0.0 {
-					return nil, fmt.Errorf("floating-point division by zero")
-				}
-				return x / y, nil
-			case types.Int:
-				yf := types.Float(y)
-				if yf == 0.0 {
-					return nil, fmt.Errorf("floating-point division by zero")
-				}
-				return x / yf, nil
-			}
-		}
-
-	case token.SLASHSLASH:
-		switch x := x.(type) {
-		case types.Int:
-			switch y := y.(type) {
-			case types.Int:
-				if y == 0 {
-					return nil, fmt.Errorf("floored division by zero")
-				}
-				return x / y, nil
-			case types.Float:
-				xf := types.Float(x)
-				if y == 0.0 {
-					return nil, fmt.Errorf("floored division by zero")
-				}
-				return floor(xf / y), nil
-			}
-		case types.Float:
-			switch y := y.(type) {
-			case types.Float:
-				if y == 0.0 {
-					return nil, fmt.Errorf("floored division by zero")
-				}
-				return floor(x / y), nil
-			case types.Int:
-				yf := types.Float(y)
-				if yf == 0.0 {
-					return nil, fmt.Errorf("floored division by zero")
-				}
-				return floor(x / yf), nil
-			}
-		}
-
-	case token.PERCENT:
-		switch x := x.(type) {
-		case types.Int:
-			switch y := y.(type) {
-			case types.Int:
-				if y == 0 {
-					return nil, fmt.Errorf("integer modulo by zero")
-				}
-				return x % y, nil
-			case types.Float:
-				xf := types.Float(x)
-				if y == 0 {
-					return nil, fmt.Errorf("floating-point modulo by zero")
-				}
-				return xf.Mod(y), nil
-			}
-		case types.Float:
-			switch y := y.(type) {
-			case types.Float:
-				if y == 0.0 {
-					return nil, fmt.Errorf("floating-point modulo by zero")
-				}
-				return x.Mod(y), nil
-			case types.Int:
-				if y == 0 {
-					return nil, fmt.Errorf("floating-point modulo by zero")
-				}
-				yf := types.Float(y)
-				return x.Mod(yf), nil
-			}
-		case types.String:
-			return interpolate(string(x), y)
-		}
-
-	case token.NOT_IN:
-		z, err := Binary(token.IN, x, y)
-		if err != nil {
-			return nil, err
-		}
-		return !z.Truth(), nil
-
-	case token.IN:
-		switch y := y.(type) {
-		case *types.Array:
-			for _, elem := range y.elems {
-				if eq, err := Equal(elem, x); err != nil {
-					return nil, err
-				} else if eq {
-					return types.True, nil
-				}
-			}
-			return types.False, nil
-		case types.Tuple:
-			for _, elem := range y {
-				if eq, err := Equal(elem, x); err != nil {
-					return nil, err
-				} else if eq {
-					return types.True, nil
-				}
-			}
-			return types.False, nil
-		case types.Mapping: // e.g. dict
-			// Ignore error from Get as we cannot distinguish true
-			// errors (value cycle, type error) from "key not found".
-			_, found, _ := y.Get(x)
-			return types.Bool(found), nil
-		case *types.Set:
-			ok, err := y.Has(x)
-			return types.Bool(ok), err
-		case types.String:
-			needle, ok := x.(types.String)
-			if !ok {
-				return nil, fmt.Errorf("'in <string>' requires string as left operand, not %s", x.Type())
-			}
-			return types.Bool(strings.Contains(string(y), string(needle))), nil
-		case types.Bytes:
-			switch needle := x.(type) {
-			case types.Bytes:
-				return types.Bool(strings.Contains(string(y), string(needle))), nil
-			case types.Int:
-				var b byte
-				if err := AsInt(needle, &b); err != nil {
-					return nil, fmt.Errorf("int in bytes: %s", err)
-				}
-				return types.Bool(strings.IndexByte(string(y), b) >= 0), nil
-			default:
-				return nil, fmt.Errorf("'in bytes' requires bytes or int as left operand, not %s", x.Type())
-			}
-		case rangeValue:
-			i, err := NumberToInt(x)
-			if err != nil {
-				return nil, fmt.Errorf("'in <range>' requires integer as left operand, not %s", x.Type())
-			}
-			return types.Bool(y.contains(i)), nil
-		}
-
-	case token.PIPE:
-		switch x := x.(type) {
-		case types.Int:
-			if y, ok := y.(types.Int); ok {
-				return x | y, nil
-			}
-
-		case *types.Map: // union
-			if y, ok := y.(*types.Map); ok {
-				return x.Union(y), nil
-			}
-
-		case *types.Set: // union
-			if y, ok := y.(*types.Set); ok {
-				iter := Iterate(y)
-				defer iter.Done()
-				return x.Union(iter)
-			}
-		}
-
-	case token.AMPERSAND:
-		switch x := x.(type) {
-		case types.Int:
-			if y, ok := y.(Int); ok {
-				return x & y, nil
-			}
-		case *types.Set: // intersection
-			if y, ok := y.(*types.Set); ok {
-				iter := y.Iterate()
-				defer iter.Done()
-				return x.Intersection(iter)
-			}
-		}
-
-	case token.CIRCUMFLEX:
-		switch x := x.(type) {
-		case types.Int:
-			if y, ok := y.(types.Int); ok {
-				return x ^ y, nil
-			}
-		case *types.Set: // symmetric difference
-			if y, ok := y.(*types.Set); ok {
-				iter := y.Iterate()
-				defer iter.Done()
-				return x.SymmetricDifference(iter)
-			}
-		}
-
-	case token.LTLT, token.GTGT:
-		if x, ok := x.(types.Int); ok {
-			y, err := AsInt32(y)
-			if err != nil {
-				return nil, err
-			}
-			if y < 0 {
-				return nil, fmt.Errorf("negative shift count: %v", y)
-			}
-			if op == token.LTLT {
-				if y >= 512 {
-					return nil, fmt.Errorf("shift count too large: %v", y)
-				}
-				return x << uint(y), nil
-			}
-			return x >> uint(y), nil
-		}
-
-	default:
-		// unknown operator
-		goto unknown
-	}
-
-	// user-defined types
-	// (nil, nil) => unhandled
-	if x, ok := x.(types.HasBinary); ok {
-		z, err := x.Binary(op, y, types.Left)
-		if z != nil || err != nil {
-			return z, err
-		}
-	}
-	if y, ok := y.(types.HasBinary); ok {
-		z, err := y.Binary(op, x, types.Right)
-		if z != nil || err != nil {
-			return z, err
-		}
-	}
-
-	// unsupported operand types
-unknown:
-	return nil, fmt.Errorf("unknown binary op: %s %s %s", x.Type(), op, y.Type())
-}
-
-// Unary applies a unary operator (+, -, ~, not) to its operand.
-func Unary(op token.Token, x types.Value) (types.Value, error) {
-	// The NOT operator is not customizable.
-	if op == token.NOT {
-		return !x.Truth(), nil
-	}
-
-	// Int, Float, and user-defined types
-	if x, ok := x.(types.HasUnary); ok {
-		// (nil, nil) => unhandled
-		y, err := x.Unary(op)
-		if y != nil || err != nil {
-			return y, err
-		}
-	}
-
-	return nil, fmt.Errorf("unknown unary op: %s %s", op, x.Type())
 }

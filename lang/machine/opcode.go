@@ -101,13 +101,11 @@ const ( //nolint:revive
 	UNPACK       //          iterable UNPACK<n>           vn ... v1
 
 	// n>>8 is #positional args and n&0xff is #named args (pairs).
-	CALL        // fn positional named                CALL<n>        result
-	CALL_VAR    // fn positional named *args          CALL_VAR<n>    result
-	CALL_KW     // fn positional named       **kwargs CALL_KW<n>     result TODO: see if kwargs are required
-	CALL_VAR_KW // fn positional named *args **kwargs CALL_VAR_KW<n> result TODO: see if kwargs are required
+	CALL     // fn positional named                CALL<n>        result
+	CALL_VAR // fn positional named *args          CALL_VAR<n>    result
 
 	OpcodeArgMin = JMP
-	OpcodeMax    = CALL_VAR_KW
+	OpcodeMax    = CALL_VAR
 	opcodeJMPMin = JMP
 	opcodeJMPMax = CATCHJMP
 )
@@ -233,9 +231,7 @@ var stackEffect = [...]int8{
 	APPEND:       -2,
 	ATTR:         0,
 	CALL:         variableStackEffect,
-	CALL_KW:      variableStackEffect,
 	CALL_VAR:     variableStackEffect,
-	CALL_VAR_KW:  variableStackEffect,
 	CATCHJMP:     0,
 	CIRCUMFLEX:   -1,
 	CJMP:         -1,
@@ -253,13 +249,12 @@ var stackEffect = [...]int8{
 	GTGT:         -1,
 	IN:           -1,
 	INDEX:        -1,
-	INPLACE_ADD:  -1,
-	INPLACE_PIPE: -1,
 	ITERJMP:      variableStackEffect,
 	ITERPOP:      0,
 	ITERPUSH:     -1,
 	JMP:          0,
 	LE:           -1,
+	LEN:          0,
 	LOAD:         -1,
 	LOCAL:        +1,
 	LOCALCELL:    +1,
@@ -267,9 +262,8 @@ var stackEffect = [...]int8{
 	LTLT:         -1,
 	MAKEMAP:      +1,
 	MAKEFUNC:     0,
-	MAKELIST:     variableStackEffect,
+	MAKEARRAY:    variableStackEffect,
 	MAKETUPLE:    variableStackEffect,
-	MANDATORY:    +1,
 	MINUS:        -1,
 	NEQ:          -1,
 	NIL:          +1,
@@ -284,7 +278,6 @@ var stackEffect = [...]int8{
 	RUNDEFER:     0,
 	SETLOCALCELL: -1,
 	SETMAP:       -3,
-	SETDICTUNIQ:  -3,
 	SETFIELD:     -2,
 	SETGLOBAL:    -1,
 	SETINDEX:     -3,
@@ -293,11 +286,13 @@ var stackEffect = [...]int8{
 	SLASHSLASH:   -1,
 	SLICE:        -3,
 	STAR:         -1,
+	TILDE:        0,
 	TRUE:         +1,
 	UMINUS:       0,
 	UNIVERSAL:    +1,
 	UNPACK:       variableStackEffect,
 	UPLUS:        0,
+	UTILDE:       0,
 }
 
 func (op Opcode) String() string {

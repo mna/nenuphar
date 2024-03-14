@@ -32,7 +32,7 @@ type Funcode struct {
 	Defers     []Defer   // defer blocks, nested ones must come after the more general ones
 	Catches    []Defer   // catch blocks, nested ones must come after the more general ones
 	MaxStack   int
-	NumParams  int
+	NumParams  int // includes the catchall vararg, if any
 	HasVarargs bool
 
 	pos       token.Pos // position of fn token

@@ -68,7 +68,6 @@ const ( //nolint:revive
 	SETMAP    //  map key value SETMAP       -
 	APPEND    //      list elem APPEND       -
 	SLICE     //   x lo hi step SLICE        slice
-	MAKEMAP   //              - MAKEMAP      map
 	RUNDEFER  //              - RUNDEFER     -      next opcode must run deferred blocks
 	DEFEREXIT //              - DEFEREXIT    -      run next deferred block or if no more deferred block to execute, resume
 
@@ -85,6 +84,7 @@ const ( //nolint:revive
 	MAKETUPLE    //         x1 ... xn MAKETUPLE<n>        tuple
 	MAKEARRAY    //         x1 ... xn MAKEARRAY<n>        array
 	MAKEFUNC     // defaults+freevars MAKEFUNC<func>      fn
+	MAKEMAP      //                   MAKEMAP<n>          map
 	LOAD         //  from1..fromN mod LOAD<n>             v1 .. vN
 	SETLOCAL     //             value SETLOCAL<local>     -
 	SETGLOBAL    //             value SETGLOBAL<global>   -

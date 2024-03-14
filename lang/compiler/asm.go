@@ -20,21 +20,17 @@ import (
 // The assembly format looks like this (indentation and spacing is arbitrary,
 // but order of sections is important):
 //
-// 	program: +opt -opt                   # required, boolean options can be set/unset (e.g. "+recursion")
+// 	program:                             # required
 // 		loads:                             # optional, list of Loads
 // 			name_of_load
 // 		names:														 # optional, list of Names (attr/predeclared/universe)
 //      fail
-// 		globals:                           # optional, list of Globals
-// 			x # 0 - comment can be used to indicate corresponding index
-// 			y # 1
 // 		constants:                         # optional, list of Constants
 // 			string "abc"
 // 			int    1234
 // 			float  1.34
-// 			bytes  "xyz"
 //
-// 	function: NAME <stack> <params> <kwparams> +varargs +kwargs
+// 	function: NAME <stack> <params> +varargs
 //                                       # required at least once for top-level
 //  	locals:                            # optional, list of Locals
 // 			x
@@ -55,7 +51,6 @@ var sections = map[string]bool{
 	"program:":   true,
 	"loads:":     true,
 	"names:":     true,
-	"globals:":   true,
 	"constants:": true,
 	"function:":  true,
 	"locals:":    true,
@@ -78,7 +73,6 @@ func Asm(b []byte) (*Program, error) {
 	fields = asm.next()
 	fields = asm.loads(fields)
 	fields = asm.names(fields)
-	fields = asm.globals(fields)
 	fields = asm.constants(fields)
 
 	// functions
@@ -109,20 +103,18 @@ func (a *asm) function(fields []string) []string {
 		return fields
 	}
 
-	if len(fields) < 5 {
-		a.err = fmt.Errorf("invalid function: want at least 5 fields: 'function: NAME <stack> <params> <kwparams> [+varargs +kwargs]', got %d fields (%s)", len(fields), strings.Join(fields, " "))
+	if len(fields) < 4 {
+		a.err = fmt.Errorf("invalid function: want at least 4 fields: 'function: NAME <stack> <params> <kwparams> [+varargs +kwargs]', got %d fields (%s)", len(fields), strings.Join(fields, " "))
 		// force going forward, otherwise it would still process that line
 		fields = a.next()
 		return fields
 	}
 	fn := Funcode{
-		Prog:            a.p,
-		Name:            fields[1],
-		MaxStack:        int(a.int(fields[2])),
-		NumParams:       int(a.int(fields[3])),
-		NumKwonlyParams: int(a.int(fields[4])),
-		HasVarargs:      a.option(fields[5:], "varargs"),
-		HasKwargs:       a.option(fields[5:], "kwargs"),
+		Prog:       a.p,
+		Name:       fields[1],
+		MaxStack:   int(a.int(fields[2])),
+		NumParams:  int(a.int(fields[3])),
+		HasVarargs: a.option(fields[4:], "varargs"),
 	}
 	a.fn = &fn
 
@@ -356,18 +348,6 @@ func (a *asm) constants(fields []string) []string {
 				return fields
 			}
 			a.p.Constants = append(a.p.Constants, s)
-		case "bytes":
-			qs, err := strconv.QuotedPrefix(strVal[1])
-			if err != nil {
-				a.err = fmt.Errorf("invalid bytes: %q: %w", strVal[1], err)
-				return fields
-			}
-			s, err := strconv.Unquote(qs)
-			if err != nil {
-				a.err = fmt.Errorf("invalid bytes: %q: %w", qs, err)
-				return fields
-			}
-			a.p.Constants = append(a.p.Constants, Bytes(s))
 		default:
 			a.err = fmt.Errorf("invalid constant type: %s", fields[0])
 			return fields
@@ -423,7 +403,6 @@ func (a *asm) program(fields []string) {
 	}
 
 	var p Program
-	p.Recursion = a.option(fields[1:], "recursion")
 	a.p = &p
 }
 

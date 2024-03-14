@@ -192,3 +192,16 @@ func threeway(op token.Token, cmp int) bool {
 	}
 	panic(op)
 }
+
+// Truth returns the truthy value of v, which is True for every value except
+// False and Nil.
+func Truth(v types.Value) types.Bool {
+	switch v := v.(type) {
+	case types.Bool:
+		return v
+	case types.NilType:
+		return types.False
+	default:
+		return types.True
+	}
+}

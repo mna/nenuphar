@@ -162,17 +162,7 @@ loop:
 			pc = arg
 
 		case NOT:
-			v := stack[sp-1]
-			switch v := v.(type) {
-			case types.Bool:
-				stack[sp-1] = !v
-			case types.NilType:
-				// always false, so !false == true
-				stack[sp-1] = types.True
-			default:
-				// always true, so !true == false
-				stack[sp-1] = types.False
-			}
+			stack[sp-1] = !Truth(stack[sp-1])
 
 		case RETURN:
 			// TODO(mna): if we allow RETURN in a defer, does that clear the
@@ -199,6 +189,153 @@ loop:
 		case MAKEMAP:
 			stack[sp] = types.NewMap(int(arg))
 			sp++
+
+		case CJMP:
+			if Truth(stack[sp-1]) {
+				if runDefer {
+					runDefer = false
+					if hasDeferredExecution(int64(fr.pc), int64(arg), fcode.Defers, nil, &pc) {
+						deferredStack = append(deferredStack, int64(arg)) // push
+						break
+					}
+				}
+				pc = arg
+			}
+			sp--
+
+		case CONSTANT:
+			stack[sp] = fn.Module.Constants[arg]
+			sp++
+
+		case MAKETUPLE:
+			n := int(arg)
+			tuple := make(types.Tuple, n)
+			sp -= n
+			copy(tuple, stack[sp:])
+			stack[sp] = tuple
+			sp++
+
+		case MAKEARRAY:
+			n := int(arg)
+			elems := make([]types.Value, n)
+			sp -= n
+			copy(elems, stack[sp:])
+			stack[sp] = types.NewArray(elems)
+			sp++
+
+		case MAKEFUNC:
+			funcode := fn.Module.Program.Functions[arg]
+			freevars := stack[sp-1].(types.Tuple) // ok to panic otherwise, compiler error
+			stack[sp-1] = &types.Function{
+				Funcode:  funcode,
+				Module:   fn.Module,
+				Freevars: freevars,
+			}
+
+		case SETLOCAL:
+			locals[arg] = stack[sp-1]
+			sp--
+
+		case SETLOCALCELL:
+			locals[arg].(*cell).v = stack[sp-1] // ok to panic otherwise, compiler error
+			sp--
+
+		case LOCAL:
+			x := locals[arg]
+			if x == nil {
+				inFlightErr = fmt.Errorf("local variable %s referenced before assignment", fcode.Locals[arg].Name)
+				break loop
+			}
+			stack[sp] = x
+			sp++
+
+		case FREE:
+			stack[sp] = fn.Freevars[arg]
+			sp++
+
+		case LOCALCELL:
+			v := locals[arg].(*cell).v // ok to panic otherwise, compiler error
+			if v == nil {
+				inFlightErr = fmt.Errorf("local variable %s referenced before assignment", fcode.Locals[arg].Name)
+				break loop
+			}
+			stack[sp] = v
+			sp++
+
+		case FREECELL:
+			v := fn.Freevars[arg].(*cell).v // ok to panic otherwise, compiler error
+			if v == nil {
+				inFlightErr = fmt.Errorf("local variable %s referenced before assignment", fcode.Freevars[arg].Name)
+				break loop
+			}
+			stack[sp] = v
+			sp++
+
+		case UNIVERSAL:
+			stack[sp] = Universe[fn.Module.Program.Names[arg]]
+			sp++
+
+		case RUNDEFER:
+			// TODO(opt): for defers, it is known statically what defer should run,
+			// so this opcode could encode as argument the index of the defer to run,
+			// and then DEFEREXIT could do the same for the next one (if there are
+			// many to run). Hmm or actually for DEFEREXIT it is not known
+			// statically, as a defer can be triggered via multiple RUNDEFER. But at
+			// least for RUNDEFER it is known.
+			runDefer = true
+
+		case DEFEREXIT:
+			// read target address but do not pop it yet, depends if there's more
+			// deferred execution to run.
+			returnTo := deferredStack[len(deferredStack)-1] // peek
+
+			// if there's an in-flight error, the next deferred execution could be a
+			// catch (e.g. a defer could've been the first deferred execution when it
+			// was raised, and a catch is still possible). Otherwise, do not consider
+			// them.
+			var catch []compiler.Defer
+			if inFlightErr != nil {
+				catch = fcode.Catches
+			}
+			if hasDeferredExecution(int64(fr.pc), returnTo, fcode.Defers, catch, &pc) {
+				break
+			}
+
+			deferredStack = deferredStack[:len(deferredStack)-1] // pop
+			if returnTo < 0 {
+				break loop
+			}
+			pc = uint32(returnTo)
+
+		case CATCHJMP:
+			// this is the normal exit of a catch block, so it clears the inFlightErr
+			// TODO: put that in the frame so the "error" built-in has access to it?
+			inFlightErr = nil
+
+			// special-case: if jump address is 0 - which is impossible for a
+			// CATCHJMP because it always jumps forward to after the parent block -,
+			// treat it as -1 and set the return value to `none` (i.e. it is
+			// equivalent to a top-level catch in a function, it covers the whole
+			// function and on error acts as if there was no explicit RETURN, which
+			// means an implicit 'return nil' in high-level language syntax.
+			returnTo := int64(arg)
+			if arg == 0 {
+				result = types.Nil
+				returnTo = -1
+			}
+			if hasDeferredExecution(int64(fr.pc), returnTo, fcode.Defers, nil, &pc) {
+				deferredStack = append(deferredStack, returnTo) // push
+				break
+			}
+			if returnTo < 0 {
+				break loop
+			}
+			pc = arg
+
+		default:
+			// TODO: critical, non-catchable error (use a panic?)
+			inFlightErr = fmt.Errorf("unimplemented: %s", op)
+			break loop
 		}
 	}
 

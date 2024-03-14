@@ -83,7 +83,7 @@ const ( //nolint:revive
 	CONSTANT     //                 - CONSTANT<constant>  value
 	MAKETUPLE    //         x1 ... xn MAKETUPLE<n>        tuple
 	MAKEARRAY    //         x1 ... xn MAKEARRAY<n>        array
-	MAKEFUNC     // defaults+freevars MAKEFUNC<func>      fn
+	MAKEFUNC     //  freevars (tuple) MAKEFUNC<func>      fn
 	MAKEMAP      //                   MAKEMAP<n>          map
 	LOAD         //  from1..fromN mod LOAD<n>             v1 .. vN
 	SETLOCAL     //             value SETLOCAL<local>     -

@@ -7,21 +7,21 @@ import "github.com/mna/nenuphar/lang/compiler"
 // Function.
 type Function struct {
 	Funcode  *compiler.Funcode
-	module   *module
-	freevars Tuple
+	Module   *Module
+	Freevars Tuple
 }
 
 var (
 	_ Value = (*Function)(nil)
 )
 
-// A module is the dynamic counterpart to a compiler.Program, which is the unit
+// A Module is the dynamic counterpart to a compiler.Program, which is the unit
 // of compilation. All functions in the same program share a module.
-type module struct {
-	program     *compiler.Program
+type Module struct {
+	Program     *compiler.Program
+	Constants   []Value
 	predeclared map[string]Value // TODO: here or just provided to a Thread (e.g. like Env for Lua)?
 	globals     []Value          // TODO: no globals, only locals to the top-level function?
-	constants   []Value
 }
 
 func (fn *Function) String() string { return "<function " + fn.Name() + ">" }

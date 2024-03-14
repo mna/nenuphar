@@ -1,0 +1,66 @@
+run:
+  timeout: 5m
+
+linters:
+  disable-all: true
+  enable:
+    - bidichk
+    - depguard
+    - errcheck
+    - gci
+    - gofmt
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - prealloc
+    - revive
+    - staticcheck
+    - typecheck
+    - unconvert
+    #- unused TODO: for now during initial development, too noisy
+
+linters-settings:
+  depguard:
+    rules:
+      main:
+        list-mode: strict
+        allow:
+          - $gostd
+          - github.com/mna/nenuphar
+          - github.com/chzyer/readline
+          - github.com/google/go-cmp/cmp
+          - github.com/stretchr/testify
+
+  govet:
+    check-shadowing: true
+
+  revive:
+    ignoreGeneratedHeader: false
+    severity: "warning"
+    confidence: 0.8
+    errorCode: 0
+    warningCode: 0
+
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: increment-decrement
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unreachable-code
+      - name: redefines-builtin-id

@@ -53,7 +53,6 @@ func Run(th *Thread, fn *types.Function, args types.Tuple) (types.Value, error) 
 
 	// TODO: add static check that beneath this point
 	// - there is exactly one return statement
-	// - there is no redefinition of 'inFlightErr'.
 
 	var iterstack []types.Iterator // stack of active iterators
 

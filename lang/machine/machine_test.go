@@ -69,7 +69,7 @@ func TestExecAsm(t *testing.T) {
 					}
 				default:
 					// assert the provided global
-					gval := gmap[global]
+					gval, _, _ := gmap.Get(types.String(global))
 					if assert.NotNil(t, gval, "global %s does not exist", global) {
 						assertValue(t, global, want, gval)
 					}
@@ -91,12 +91,12 @@ func assertValue(t *testing.T, name, want string, got types.Value) bool {
 	if want == "nil" {
 		return assert.Equal(t, types.Nil, got, msg)
 	} else if qs, err := strconv.Unquote(want); err == nil {
-		got, ok := AsString(got)
+		got, ok := machine.AsString(got)
 		if assert.True(t, ok, msg) {
 			return assert.Equal(t, qs, got, msg)
 		}
 	} else if n, err := strconv.ParseInt(want, 10, 64); err == nil {
-		got, err := AsInt(got)
+		got, err := machine.AsInt(got)
 		if assert.NoError(t, err, msg) {
 			return assert.Equal(t, n, int64(got), msg)
 		}

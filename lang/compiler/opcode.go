@@ -63,9 +63,9 @@ const ( //nolint:revive
 	ITERPUSH  //       iterable ITERPUSH     -    [pushes the iterator stack]
 	ITERPOP   //              - ITERPOP      -    [pops the iterator stack]
 	RETURN    //          value RETURN       -
-	SETINDEX  //        a i new SETINDEX     -
-	INDEX     //            a i INDEX        elem
-	SETMAP    //  map key value SETMAP       -
+	SETINDEX  //        a i new SETINDEX     -      where a may be HasSetIndex or HasSetKey
+	INDEX     //            a i INDEX        elem   elem = a[i], a may be Mapping or Indexable
+	SETMAP    //  map key value SETMAP       -      emitted only for map literals (when map is guaranteed to be a map), otherwise SETINDEX
 	APPEND    //      list elem APPEND       -
 	SLICE     //   x lo hi step SLICE        slice
 	RUNDEFER  //              - RUNDEFER     -      next opcode must run deferred blocks

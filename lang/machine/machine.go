@@ -232,6 +232,38 @@ loop:
 				Freevars: freevars,
 			}
 
+		case compiler.SETINDEX:
+			z := stack[sp-1]
+			y := stack[sp-2]
+			x := stack[sp-3]
+			sp -= 3
+			if err := setIndex(x, y, z); err != nil {
+				inFlightErr = err
+				break loop
+			}
+
+		case compiler.INDEX:
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+			z, err := getIndex(x, y)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp] = z
+			sp++
+
+		case compiler.SETMAP:
+			m := stack[sp-3].(*types.Map) // ok to panic otherwise, compiler error
+			k := stack[sp-2]
+			v := stack[sp-1]
+			sp -= 3
+			if err := m.SetKey(k, v); err != nil {
+				inFlightErr = err
+				break loop
+			}
+
 		case compiler.SETLOCAL:
 			locals[arg] = stack[sp-1]
 			sp--

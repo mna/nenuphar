@@ -11,7 +11,9 @@ type Array struct {
 }
 
 var (
-	_ Value = (*Array)(nil)
+	_ Value       = (*Array)(nil)
+	_ Indexable   = (*Array)(nil)
+	_ HasSetIndex = (*Array)(nil)
 )
 
 // NewArray returns an array containing the specified elements. Callers should
@@ -28,5 +30,15 @@ func (a *Array) checkMutable(verb string) error {
 	return nil
 }
 
-func (a *Array) String() string { return "TODO(array)" }
-func (a *Array) Type() string   { return "array" }
+func (a *Array) String() string    { return "TODO(array)" }
+func (a *Array) Type() string      { return "array" }
+func (a *Array) Len() int          { return len(a.elems) }
+func (a *Array) Index(i int) Value { return a.elems[i] }
+func (a *Array) SetIndex(i int, v Value) error {
+	if err := a.checkMutable("assign to element of"); err != nil {
+		return err
+	}
+	// TODO: return catchable error on out of bounds
+	a.elems[i] = v
+	return nil
+}

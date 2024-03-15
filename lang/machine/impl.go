@@ -205,3 +205,88 @@ func Truth(v types.Value) types.Bool {
 		return types.True
 	}
 }
+
+// setIndex implements x[y] = z.
+func setIndex(x, y, z types.Value) error {
+	switch x := x.(type) {
+	case types.HasSetKey:
+		if err := x.SetKey(y, z); err != nil {
+			return err
+		}
+
+	case types.HasSetIndex:
+		n := x.Len()
+		i, err := AsInt(y)
+		if err != nil {
+			return err
+		}
+		origI := i
+		if i < 0 {
+			i += n
+		}
+		if i < 0 || i >= n {
+			return fmt.Errorf("%s index %d out of range [%d:%d]", x.Type(), origI, -n, n-1)
+		}
+		return x.SetIndex(i, z)
+
+	default:
+		return fmt.Errorf("%s value does not support item assignment", x.Type())
+	}
+	return nil
+}
+
+// getIndex implements x[y].
+func getIndex(x, y types.Value) (types.Value, error) {
+	switch x := x.(type) {
+	case types.Mapping:
+		z, found, err := x.Get(y)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			return types.Nil, nil
+		}
+		return z, nil
+
+	case types.Indexable:
+		n := x.Len()
+		i, err := AsInt(y)
+		if err != nil {
+			return nil, fmt.Errorf("%s index: %s", x.Type(), err)
+		}
+		origI := i
+		if i < 0 {
+			i += n
+		}
+		if i < 0 || i >= n {
+			return nil, fmt.Errorf("%s index %d out of range [%d:%d]", x.Type(), origI, -n, n-1)
+		}
+		return x.Index(i), nil
+	}
+	return nil, fmt.Errorf("unsupported index operation %s[%s]", x.Type(), y.Type())
+}
+
+// AsInt enforces the type conversion rules for a value to an integer. Only
+// Int and Float may convert to Int, and Float conversion is valid only if its
+// value can be exactly represented by an integer.
+func AsInt(v types.Value) (int, error) {
+	switch v := v.(type) {
+	case types.Int:
+		return int(v), nil
+	case types.Float:
+		i := int(v)
+		if types.Float(i) == v {
+			return i, nil
+		}
+		return 0, fmt.Errorf("no exact integer representation possible for %s value %v", v.Type(), v)
+	default:
+		return 0, fmt.Errorf("%s cannot be converted to integer", v.Type())
+	}
+}
+
+// AsString enforces the type conversion rules for a value to a string, which
+// is no conversion at all - only String values can be returned as a Go string.
+func AsString(v types.Value) (string, bool) {
+	s, ok := v.(types.String)
+	return string(s), ok
+}

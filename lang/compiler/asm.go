@@ -104,7 +104,7 @@ func (a *asm) function(fields []string) []string {
 	}
 
 	if len(fields) < 4 {
-		a.err = fmt.Errorf("invalid function: want at least 4 fields: 'function: NAME <stack> <params> <kwparams> [+varargs +kwargs]', got %d fields (%s)", len(fields), strings.Join(fields, " "))
+		a.err = fmt.Errorf("invalid function: want at least 4 fields: 'function: NAME <stack> <params> [+varargs]', got %d fields (%s)", len(fields), strings.Join(fields, " "))
 		// force going forward, otherwise it would still process that line
 		fields = a.next()
 		return fields

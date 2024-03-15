@@ -1,6 +1,8 @@
 package machine_test
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,6 +13,7 @@ import (
 	"github.com/mna/nenuphar/lang/compiler"
 	"github.com/mna/nenuphar/lang/machine"
 	"github.com/mna/nenuphar/lang/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,14 +23,14 @@ var rxAssertGlobal = regexp.MustCompile(`(?m)^\s*###\s*([a-zA-Z][a-zA-Z0-9_]*):\
 // Expected results are provided as comments in the asm file in the form of:
 //   - ### fail: <error message>
 //   - ### global_name: <value>
-//   - ### nofail: ok
+//   - ### nofail: <value>
 //
 // Global names are provided and retrieved in a predeclared 'G' map, and are
 // nil by default.
 //
-// It is possible to combine those expected results (only fail: and
-// global_name: make sense, nofail: is the default if neither fail nor nofail
-// is specified).
+// It is possible to combine those expected results, nofail: is the default if
+// neither fail nor nofail is specified. The nofail value is the value returned
+// by the program.
 func TestExecAsm(t *testing.T) {
 	dir := filepath.Join("testdata", "asm")
 	des, err := os.ReadDir(dir)
@@ -48,7 +51,7 @@ func TestExecAsm(t *testing.T) {
 			var thread machine.Thread
 			gmap := types.NewMap(0)
 			thread.Predeclared = map[string]types.Value{"G": gmap}
-			err := thread.RunProgram(cprog)
+			res, err := thread.RunProgram(context.Background(), cprog)
 
 			ms := rxAssertGlobal.FindAllStringSubmatch(string(b), -1)
 			require.NotNil(t, ms, "no assertion provided")
@@ -58,26 +61,17 @@ func TestExecAsm(t *testing.T) {
 				switch global := m[1]; global {
 				case "fail":
 					errAsserted = true
-					require.ErrorContains(t, err, want)
+					assert.ErrorContains(t, err, want)
 				case "nofail":
 					errAsserted = true
-					require.NoError(t, err)
+					if assert.NoError(t, err) {
+						assertValue(t, "", want, res)
+					}
 				default:
 					// assert the provided global
 					gval := gmap[global]
-					require.NotNil(t, gval, "global %s does not exist", global)
-					if want == "nil" {
-						require.Equal(t, types.Nil, gval, "global %s", global)
-					} else if qs, err := strconv.Unquote(want); err == nil {
-						got, ok := AsString(gval)
-						require.True(t, ok, "global %s", global)
-						require.Equal(t, qs, got, "global %s", global)
-					} else if n, err := strconv.ParseInt(want, 10, 64); err == nil {
-						got, err := AsInt(gval)
-						require.NoError(t, err, "global %s", global)
-						require.Equal(t, n, int64(got), "global %s", global)
-					} else {
-						require.Failf(t, "unexpected result", "global %s: want %s, got %v (%[2]T)", global, want, gval)
+					if assert.NotNil(t, gval, "global %s does not exist", global) {
+						assertValue(t, global, want, gval)
 					}
 				}
 			}
@@ -87,4 +81,27 @@ func TestExecAsm(t *testing.T) {
 			}
 		})
 	}
+}
+
+func assertValue(t *testing.T, name, want string, got types.Value) bool {
+	msg := "result"
+	if name != "" {
+		msg = fmt.Sprintf("global %s", name)
+	}
+	if want == "nil" {
+		return assert.Equal(t, types.Nil, got, msg)
+	} else if qs, err := strconv.Unquote(want); err == nil {
+		got, ok := AsString(got)
+		if assert.True(t, ok, msg) {
+			return assert.Equal(t, qs, got, msg)
+		}
+	} else if n, err := strconv.ParseInt(want, 10, 64); err == nil {
+		got, err := AsInt(got)
+		if assert.NoError(t, err, msg) {
+			return assert.Equal(t, n, int64(got), msg)
+		}
+	} else {
+		return assert.Failf(t, "unexpected result", "%s: want %s, got %v (%[2]T)", msg, want, got)
+	}
+	return false
 }

@@ -2,10 +2,12 @@ package machine
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"sync/atomic"
 
+	"github.com/mna/nenuphar/lang/compiler"
 	"github.com/mna/nenuphar/lang/types"
 )
 
@@ -62,6 +64,19 @@ type Thread struct {
 	stdin  io.Reader
 }
 
+func (th *Thread) RunProgram(ctx context.Context, p *compiler.Program) (types.Value, error) {
+	// TODO: would it be acceptable to run more than one program on a thread?
+	if th.ctx != nil {
+		return nil, fmt.Errorf("thread %s is already executing a program", th.Name)
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	th.ctx = ctx
+	th.ctxCancel = cancel
+	topfn := makeToplevelFunction(p)
+	return Call(th, topfn, nil)
+}
+
 func (th *Thread) init() {
 	// one-time initialization of thread
 	if th.MaxSteps <= 0 {
@@ -97,5 +112,32 @@ func (th *Thread) init() {
 			<-th.ctx.Done()
 			th.cancelled.Store(true)
 		}()
+	}
+}
+
+func makeToplevelFunction(p *compiler.Program) *types.Function {
+	// create the value denoted by each program constant
+	constants := make([]types.Value, len(p.Constants))
+	for i, c := range p.Constants {
+		var v types.Value
+		switch c := c.(type) {
+		case int64:
+			v = types.Int(c)
+		case string:
+			v = types.String(c)
+		case float64:
+			v = types.Float(c)
+		default:
+			panic(fmt.Sprintf("unexpected constant %T: %[1]v", c))
+		}
+		constants[i] = v
+	}
+
+	return &types.Function{
+		Funcode: p.Toplevel,
+		Module: &types.Module{
+			Program:   p,
+			Constants: constants,
+		},
 	}
 }

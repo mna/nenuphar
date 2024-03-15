@@ -87,13 +87,11 @@ const ( //nolint:revive
 	MAKEMAP      //                   MAKEMAP<n>          map
 	LOAD         //  from1..fromN mod LOAD<n>             v1 .. vN
 	SETLOCAL     //             value SETLOCAL<local>     -
-	SETGLOBAL    //             value SETGLOBAL<global>   -
 	LOCAL        //                 - LOCAL<local>        value
 	FREE         //                 - FREE<freevar>       cell
 	FREECELL     //                 - FREECELL<freevar>   value       (content of FREE cell)
 	LOCALCELL    //                 - LOCALCELL<local>    value       (content of LOCAL cell)
 	SETLOCALCELL //             value SETLOCALCELL<local> -           (set content of LOCAL cell)
-	GLOBAL       //                 - GLOBAL<global>      value
 	PREDECLARED  //                 - PREDECLARED<name>   value       predeclared = additional bindings made available by the environment, immutable (so unlike globals)
 	UNIVERSAL    //                 - UNIVERSAL<name>     value       universe = part of the language, all programs have access to those
 	ATTR         //                 x ATTR<name>          y           y = x.name
@@ -129,7 +127,6 @@ var opcodeNames = [...]string{
 	FREE:         "free",
 	FREECELL:     "freecell",
 	GE:           "ge",
-	GLOBAL:       "global",
 	GT:           "gt",
 	GTGT:         "gtgt",
 	IN:           "in",
@@ -163,7 +160,6 @@ var opcodeNames = [...]string{
 	RUNDEFER:     "rundefer",
 	SETMAP:       "setmap",
 	SETFIELD:     "setfield",
-	SETGLOBAL:    "setglobal",
 	SETINDEX:     "setindex",
 	SETLOCAL:     "setlocal",
 	SETLOCALCELL: "setlocalcell",
@@ -240,7 +236,6 @@ var stackEffect = [...]int8{
 	FREE:         +1,
 	FREECELL:     +1,
 	GE:           -1,
-	GLOBAL:       +1,
 	GT:           -1,
 	GTGT:         -1,
 	IN:           -1,
@@ -275,7 +270,6 @@ var stackEffect = [...]int8{
 	SETLOCALCELL: -1,
 	SETMAP:       -3,
 	SETFIELD:     -2,
-	SETGLOBAL:    -1,
 	SETINDEX:     -3,
 	SETLOCAL:     -1,
 	SLASH:        -1,

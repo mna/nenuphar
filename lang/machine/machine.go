@@ -271,8 +271,18 @@ loop:
 			stack[sp] = v
 			sp++
 
+		case compiler.PREDECLARED:
+			name := fn.Module.Program.Names[arg]
+			x := th.Predeclared[name]
+			if x == nil {
+				inFlightErr = fmt.Errorf("internal error: predeclared variable %s is uninitialized", name) // TODO: does not exist?
+				break loop
+			}
+			stack[sp] = x
+			sp++
+
 		case compiler.UNIVERSAL:
-			stack[sp] = Universe[fn.Module.Program.Names[arg]]
+			stack[sp] = Universe[fn.Module.Program.Names[arg]] // TODO: check nil and fail if does not exist? panic, compiler error?
 			sp++
 
 		case compiler.RUNDEFER:

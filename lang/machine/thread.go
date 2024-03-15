@@ -3,6 +3,7 @@ package machine
 import (
 	"context"
 	"io"
+	"os"
 	"sync/atomic"
 
 	"github.com/mna/nenuphar/lang/types"
@@ -35,12 +36,18 @@ type Thread struct {
 	MaxCallStackDepth int
 
 	// MaxCompareDepth limits the number of nested comparison depth for compound
-	// types to prevent comparing cyclic values.
+	// types to prevent comparing cyclic values. A value <= 0 means no limit.
 	MaxCompareDepth int
 
 	// Load is an optional function value to call to load modules (called by the
 	// LOAD opcode).
 	Load func(*Thread, string) (types.Value, error)
+
+	// Predeclared is the set of predeclared identifiers and their assigned
+	// values. Predeclared identifiers are like the Universe identifiers in that
+	// they are available to all modules automatically and they cannot be
+	// assigned to.
+	Predeclared map[string]types.Value
 
 	ctx       context.Context
 	ctxCancel func()
@@ -49,6 +56,10 @@ type Thread struct {
 
 	steps, maxSteps uint64
 	maxCompareDepth uint64
+
+	stdout io.Writer
+	stderr io.Writer
+	stdin  io.Reader
 }
 
 func (th *Thread) init() {
@@ -62,6 +73,21 @@ func (th *Thread) init() {
 		th.maxCompareDepth-- // (MaxUint64)
 	} else {
 		th.maxCompareDepth = uint64(th.MaxCompareDepth)
+	}
+	if th.Stdout != nil {
+		th.stdout = th.Stdout
+	} else {
+		th.stdout = os.Stdout
+	}
+	if th.Stderr != nil {
+		th.stderr = th.Stderr
+	} else {
+		th.stderr = os.Stderr
+	}
+	if th.Stdin != nil {
+		th.stdin = th.Stdin
+	} else {
+		th.stdin = os.Stdin
 	}
 	if th.ctx == nil {
 		th.ctx = context.Background()

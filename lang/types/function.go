@@ -18,10 +18,8 @@ var (
 // A Module is the dynamic counterpart to a compiler.Program, which is the unit
 // of compilation. All functions in the same program share a module.
 type Module struct {
-	Program     *compiler.Program
-	Constants   []Value
-	predeclared map[string]Value // TODO: here or just provided to a Thread (e.g. like Env for Lua)?
-	globals     []Value          // TODO: no globals, only locals to the top-level function?
+	Program   *compiler.Program
+	Constants []Value
 }
 
 func (fn *Function) String() string { return "<function " + fn.Name() + ">" }

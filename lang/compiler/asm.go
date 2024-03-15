@@ -356,17 +356,6 @@ func (a *asm) constants(fields []string) []string {
 	return fields
 }
 
-func (a *asm) globals(fields []string) []string {
-	if a.err != nil || len(fields) == 0 || !strings.EqualFold(fields[0], "globals:") {
-		return fields
-	}
-
-	for fields = a.next(); len(fields) > 0 && !sections[fields[0]]; fields = a.next() {
-		a.p.Globals = append(a.p.Globals, Binding{Name: fields[0]})
-	}
-	return fields
-}
-
 func (a *asm) names(fields []string) []string {
 	if a.err != nil || len(fields) == 0 || !strings.EqualFold(fields[0], "names:") {
 		return fields
@@ -491,12 +480,9 @@ func (d *dasm) function(fn *Funcode) {
 		return
 	}
 
-	d.writef("function: %s %d %d %d", fn.Name, fn.MaxStack, fn.NumParams, fn.NumKwonlyParams)
+	d.writef("function: %s %d %d", fn.Name, fn.MaxStack, fn.NumParams)
 	if fn.HasVarargs {
 		d.write(" +varargs")
-	}
-	if fn.HasKwargs {
-		d.write(" +kwargs")
 	}
 	d.write("\n")
 
@@ -621,9 +607,6 @@ func translateDefer(addrToIndex []int, defr *Defer, label, fnName string, i int)
 
 func (d *dasm) program() {
 	d.write("program:")
-	if d.p.Recursion {
-		d.write(" +recursion")
-	}
 	d.write("\n")
 
 	if len(d.p.Loads) > 0 {
@@ -638,20 +621,12 @@ func (d *dasm) program() {
 			d.writef("\t\t%s\t# %03d\n", n, i)
 		}
 	}
-	if len(d.p.Globals) > 0 {
-		d.write("\tglobals:\n")
-		for i, g := range d.p.Globals {
-			d.writef("\t\t%s\t# %03d\n", g.Name, i)
-		}
-	}
 	if len(d.p.Constants) > 0 {
 		d.write("\tconstants:\n")
 		for i, c := range d.p.Constants {
 			switch c := c.(type) {
 			case string:
 				d.writef("\t\tstring\t%q\t# %03d\n", c, i)
-			case Bytes:
-				d.writef("\t\tbytes\t%q\t# %03d\n", c, i)
 			case int64:
 				d.writef("\t\tint\t%d\t# %03d\n", c, i)
 			case float64:

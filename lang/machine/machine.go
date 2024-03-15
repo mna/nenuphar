@@ -91,10 +91,10 @@ loop:
 
 		fr.pc = pc
 
-		op := Opcode(code[pc])
+		op := compiler.Opcode(code[pc])
 		pc++
 		var arg uint32
-		if op >= OpcodeArgMin {
+		if op >= compiler.OpcodeArgMin {
 			// TODO(opt): profile this, perhaps compiling big endian would be less
 			// work to decode?
 			for s := uint(0); ; s += 7 {
@@ -108,26 +108,26 @@ loop:
 		}
 
 		switch op {
-		case NOP:
+		case compiler.NOP:
 			// nop
 
-		case DUP:
+		case compiler.DUP:
 			stack[sp] = stack[sp-1]
 			sp++
 
-		case DUP2:
+		case compiler.DUP2:
 			stack[sp] = stack[sp-2]
 			stack[sp+1] = stack[sp-1]
 			sp += 2
 
-		case POP:
+		case compiler.POP:
 			sp--
 
-		case EXCH:
+		case compiler.EXCH:
 			stack[sp-2], stack[sp-1] = stack[sp-1], stack[sp-2]
 
-		case EQL, NEQ, GT, LT, LE, GE:
-			op := token.Token(op-EQL) + token.EQL
+		case compiler.EQL, compiler.NEQ, compiler.GT, compiler.LT, compiler.LE, compiler.GE:
+			op := token.Token(op-compiler.EQL) + token.EQL
 			y := stack[sp-1]
 			x := stack[sp-2]
 			sp -= 2
@@ -139,19 +139,19 @@ loop:
 			stack[sp] = types.Bool(ok)
 			sp++
 
-		case NIL:
+		case compiler.NIL:
 			stack[sp] = types.Nil
 			sp++
 
-		case TRUE:
+		case compiler.TRUE:
 			stack[sp] = types.True
 			sp++
 
-		case FALSE:
+		case compiler.FALSE:
 			stack[sp] = types.False
 			sp++
 
-		case JMP:
+		case compiler.JMP:
 			if runDefer {
 				runDefer = false
 				if hasDeferredExecution(int64(fr.pc), int64(arg), fcode.Defers, nil, &pc) {
@@ -161,10 +161,10 @@ loop:
 			}
 			pc = arg
 
-		case NOT:
+		case compiler.NOT:
 			stack[sp-1] = !Truth(stack[sp-1])
 
-		case RETURN:
+		case compiler.RETURN:
 			// TODO(mna): if we allow RETURN in a defer, does that clear the
 			// inFlightErr? I think we should only allow it in a catch, so that
 			// RETURN always clears inFlightErr (and CATCHJMP is not needed when a
@@ -186,11 +186,11 @@ loop:
 			}
 			break loop
 
-		case MAKEMAP:
+		case compiler.MAKEMAP:
 			stack[sp] = types.NewMap(int(arg))
 			sp++
 
-		case CJMP:
+		case compiler.CJMP:
 			if Truth(stack[sp-1]) {
 				if runDefer {
 					runDefer = false
@@ -203,11 +203,11 @@ loop:
 			}
 			sp--
 
-		case CONSTANT:
+		case compiler.CONSTANT:
 			stack[sp] = fn.Module.Constants[arg]
 			sp++
 
-		case MAKETUPLE:
+		case compiler.MAKETUPLE:
 			n := int(arg)
 			tuple := make(types.Tuple, n)
 			sp -= n
@@ -215,7 +215,7 @@ loop:
 			stack[sp] = tuple
 			sp++
 
-		case MAKEARRAY:
+		case compiler.MAKEARRAY:
 			n := int(arg)
 			elems := make([]types.Value, n)
 			sp -= n
@@ -223,7 +223,7 @@ loop:
 			stack[sp] = types.NewArray(elems)
 			sp++
 
-		case MAKEFUNC:
+		case compiler.MAKEFUNC:
 			funcode := fn.Module.Program.Functions[arg]
 			freevars := stack[sp-1].(types.Tuple) // ok to panic otherwise, compiler error
 			stack[sp-1] = &types.Function{
@@ -232,15 +232,15 @@ loop:
 				Freevars: freevars,
 			}
 
-		case SETLOCAL:
+		case compiler.SETLOCAL:
 			locals[arg] = stack[sp-1]
 			sp--
 
-		case SETLOCALCELL:
+		case compiler.SETLOCALCELL:
 			locals[arg].(*cell).v = stack[sp-1] // ok to panic otherwise, compiler error
 			sp--
 
-		case LOCAL:
+		case compiler.LOCAL:
 			x := locals[arg]
 			if x == nil {
 				inFlightErr = fmt.Errorf("local variable %s referenced before assignment", fcode.Locals[arg].Name)
@@ -249,11 +249,11 @@ loop:
 			stack[sp] = x
 			sp++
 
-		case FREE:
+		case compiler.FREE:
 			stack[sp] = fn.Freevars[arg]
 			sp++
 
-		case LOCALCELL:
+		case compiler.LOCALCELL:
 			v := locals[arg].(*cell).v // ok to panic otherwise, compiler error
 			if v == nil {
 				inFlightErr = fmt.Errorf("local variable %s referenced before assignment", fcode.Locals[arg].Name)
@@ -262,7 +262,7 @@ loop:
 			stack[sp] = v
 			sp++
 
-		case FREECELL:
+		case compiler.FREECELL:
 			v := fn.Freevars[arg].(*cell).v // ok to panic otherwise, compiler error
 			if v == nil {
 				inFlightErr = fmt.Errorf("local variable %s referenced before assignment", fcode.Freevars[arg].Name)
@@ -271,11 +271,11 @@ loop:
 			stack[sp] = v
 			sp++
 
-		case UNIVERSAL:
+		case compiler.UNIVERSAL:
 			stack[sp] = Universe[fn.Module.Program.Names[arg]]
 			sp++
 
-		case RUNDEFER:
+		case compiler.RUNDEFER:
 			// TODO(opt): for defers, it is known statically what defer should run,
 			// so this opcode could encode as argument the index of the defer to run,
 			// and then DEFEREXIT could do the same for the next one (if there are
@@ -284,7 +284,7 @@ loop:
 			// least for RUNDEFER it is known.
 			runDefer = true
 
-		case DEFEREXIT:
+		case compiler.DEFEREXIT:
 			// read target address but do not pop it yet, depends if there's more
 			// deferred execution to run.
 			returnTo := deferredStack[len(deferredStack)-1] // peek
@@ -307,7 +307,7 @@ loop:
 			}
 			pc = uint32(returnTo)
 
-		case CATCHJMP:
+		case compiler.CATCHJMP:
 			// this is the normal exit of a catch block, so it clears the inFlightErr
 			// TODO: put that in the frame so the "error" built-in has access to it?
 			inFlightErr = nil

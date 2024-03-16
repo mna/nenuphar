@@ -128,13 +128,11 @@ type HasSetKey interface {
 	SetKey(k, v Value) error
 }
 
-// A HasBinary value may be used as either operand of these binary operators:
-// +   -   *   /   //   %   in   not in   |   &   ^   <<   >>
-//
-// The Side argument indicates whether the receiver is the left or right
-// operand. An implementation may decline to handle an operation by returning
-// (nil, nil). For this reason, clients should always call the standalone
-// Binary API function rather than calling the method directly.
+// A HasBinary value may be used as either operand of the binary operators. The
+// Side argument indicates whether the receiver is the left or right operand.
+// An implementation may decline to handle an operation by returning (nil,
+// nil). For this reason, clients should always call the standalone Binary API
+// function rather than calling the method directly.
 type HasBinary interface {
 	Value
 	Binary(op token.Token, y Value, side Side) (Value, error)
@@ -147,15 +145,21 @@ const (
 	Right Side = true
 )
 
-// A HasUnary value may be used as the operand of these unary operators:
-// +   -   ~
-//
-// An implementation may decline to handle an operation by returning (nil,
-// nil). For this reason, clients should always call the standalone Unary API
+// A HasUnary value may be used as the operand of the unary operators. An
+// implementation may decline to handle an operation by returning (nil, nil).
+// For this reason, clients should always call the standalone Unary API
 // function rather than calling the method directly.
 type HasUnary interface {
 	Value
 	Unary(op token.Token) (Value, error)
+}
+
+// HasMetamap can be implemented by values that support customization of
+// behavior via metamethods.
+type HasMetamap interface {
+	Value
+	Metamap() *Map
+	SetMetamap(*Map)
 }
 
 // A HasAttrs value has fields or methods that may be read by a dot expression

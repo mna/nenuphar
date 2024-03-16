@@ -739,7 +739,7 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		goto unknown
 	}
 
-	// user-defined types
+	// user-defined types with direct binary operators support
 	// (nil, nil) => unhandled
 	if l, ok := l.(types.HasBinary); ok {
 		res, err := l.Binary(op, r, types.Left)
@@ -751,6 +751,25 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		res, err := r.Binary(op, l, types.Right)
 		if res != nil || err != nil {
 			return res, err
+		}
+	}
+
+	// user-defined types with metatable support
+	// (nil, nil) => no metamethod found
+	if l, ok := l.(types.HasMetamap); ok {
+		if meta := l.Metamap(); meta != nil {
+			//res, err := CallMetamethod(meta, op, l, r, types.Left) // TODO: translate op to metamethod name
+			//if res != nil || err != nil {
+			//	return res, err
+			//}
+		}
+	}
+	if r, ok := r.(types.HasMetamap); ok {
+		if meta := r.Metamap(); meta != nil {
+			//res, err := CallMetamethod(meta, op, l, r, types.Right) // TODO: translate op to metamethod name
+			//if res != nil || err != nil {
+			//	return res, err
+			//}
 		}
 	}
 

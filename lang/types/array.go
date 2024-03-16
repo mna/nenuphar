@@ -38,7 +38,8 @@ func (a *Array) SetIndex(i int, v Value) error {
 	if err := a.checkMutable("assign to element of"); err != nil {
 		return err
 	}
-	// TODO: return catchable error on out of bounds
+	// TODO: return catchable error on out of bounds, but I think this is done in
+	// the machine
 	a.elems[i] = v
 	return nil
 }

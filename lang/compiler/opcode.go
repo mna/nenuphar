@@ -30,22 +30,19 @@ const ( //nolint:revive
 	EQL
 	NEQ
 
-	// binary arithmetic
-	// (order must match Token)
+	// binary arithmetic (order must match token.Token)
 	PLUS
 	MINUS
 	STAR
 	SLASH
 	SLASHSLASH
-	CIRCUMFLEX
 	PERCENT
+	CIRCUMFLEX
 	AMPERSAND
-	TILDE
 	PIPE
-	GTGT
+	TILDE
 	LTLT
-
-	IN
+	GTGT
 
 	// unary operators
 	//   "try" and "must" compile to a block with a catch, and sets the value
@@ -129,7 +126,6 @@ var opcodeNames = [...]string{
 	GE:           "ge",
 	GT:           "gt",
 	GTGT:         "gtgt",
-	IN:           "in",
 	INDEX:        "index",
 	ITERJMP:      "iterjmp",
 	ITERPOP:      "iterpop",
@@ -238,7 +234,6 @@ var stackEffect = [...]int8{
 	GE:           -1,
 	GT:           -1,
 	GTGT:         -1,
-	IN:           -1,
 	INDEX:        -1,
 	ITERJMP:      variableStackEffect,
 	ITERPOP:      0,

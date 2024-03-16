@@ -16,18 +16,21 @@ const (
 	BYTES  // b"foo", etc
 
 	// Punctuation
-	PLUS          // +
-	MINUS         // -
-	STAR          // *
-	SLASH         // /
-	SLASHSLASH    // //
-	PERCENT       // %
-	AMPERSAND     // &
-	PIPE          // |
-	CIRCUMFLEX    // ^
-	LTLT          // <<
-	GTGT          // >>
-	TILDE         // ~
+
+	// operators - order must match compiler.Opcode
+	PLUS       // +
+	MINUS      // -
+	STAR       // *
+	SLASH      // /
+	SLASHSLASH // //
+	PERCENT    // %
+	CIRCUMFLEX // ^
+	AMPERSAND  // &
+	PIPE       // |
+	TILDE      // ~
+	LTLT       // <<
+	GTGT       // >>
+
 	DOT           // .
 	COMMA         // ,
 	EQ            // =

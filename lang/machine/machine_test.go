@@ -96,7 +96,7 @@ func assertValue(t *testing.T, name, want string, got types.Value) bool {
 			return assert.Equal(t, qs, got, msg)
 		}
 	} else if n, err := strconv.ParseInt(want, 10, 64); err == nil {
-		got, err := machine.AsInt(got)
+		got, err := machine.AsExactInt(got)
 		if assert.NoError(t, err, msg) {
 			return assert.Equal(t, n, int64(got), msg)
 		}

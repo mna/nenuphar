@@ -119,7 +119,6 @@ func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) 
 			if y != y {
 				cmp = -1 // y is NaN
 			} else if !math.IsInf(float64(y), 0) {
-				// TODO(mna): a bit naive for now
 				if xf := float64(x); xf == float64(y) {
 					cmp = 0
 				} else if xf < float64(y) {
@@ -134,13 +133,13 @@ func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) 
 			}
 			return threeway(op, cmp), nil
 		}
+
 	case types.Float:
 		if y, ok := y.(types.Int); ok {
 			var cmp int
 			if x != x {
 				cmp = +1 // x is NaN
 			} else if !math.IsInf(float64(x), 0) {
-				// TODO(mna): a bit naive for now
 				if yf := float64(y); float64(x) == yf {
 					cmp = 0
 				} else if yf < float64(x) {
@@ -216,7 +215,7 @@ func setIndex(x, y, z types.Value) error {
 
 	case types.HasSetIndex:
 		n := x.Len()
-		i, err := AsInt(y)
+		i, err := AsExactInt(y)
 		if err != nil {
 			return err
 		}
@@ -250,7 +249,7 @@ func getIndex(x, y types.Value) (types.Value, error) {
 
 	case types.Indexable:
 		n := x.Len()
-		i, err := AsInt(y)
+		i, err := AsExactInt(y)
 		if err != nil {
 			return nil, fmt.Errorf("%s index: %s", x.Type(), err)
 		}
@@ -266,22 +265,30 @@ func getIndex(x, y types.Value) (types.Value, error) {
 	return nil, fmt.Errorf("unsupported index operation %s[%s]", x.Type(), y.Type())
 }
 
-// AsInt enforces the type conversion rules for a value to an integer. Only
-// Int and Float may convert to Int, and Float conversion is valid only if its
-// value can be exactly represented by an integer.
-func AsInt(v types.Value) (int, error) {
+// AsExactInt enforces the type conversion rules for a value to an integer.
+// Only Int and Float may convert to Int, and Float conversion is valid only if
+// its value can be exactly represented by an integer.
+func AsExactInt(v types.Value) (int, error) {
 	switch v := v.(type) {
 	case types.Int:
 		return int(v), nil
 	case types.Float:
-		i := int(v)
-		if types.Float(i) == v {
-			return i, nil
+		i, err := floatToInt(v)
+		if err != nil {
+			return 0, err
 		}
-		return 0, fmt.Errorf("no exact integer representation possible for %s value %v", v.Type(), v)
+		return int(i), nil
 	default:
 		return 0, fmt.Errorf("%s cannot be converted to integer", v.Type())
 	}
+}
+
+func floatToInt(f types.Float) (types.Int, error) {
+	i := types.Int(f)
+	if types.Float(i) == f {
+		return i, nil
+	}
+	return 0, fmt.Errorf("no exact integer representation possible for %s value %v", f.Type(), f)
 }
 
 // AsString enforces the type conversion rules for a value to a string, which
@@ -294,6 +301,7 @@ func AsString(v types.Value) (string, bool) {
 // Binary applies a strict binary operator (not AND or OR) to its operands. For
 // equality tests or ordered comparisons, use Compare instead.
 func Binary(op token.Token, l, r types.Value) (types.Value, error) {
+	// first try to perform the binary operations supported as built-ins.
 	switch op {
 	case token.PLUS:
 		// + concatenation: only works on strings, no implicit conversion
@@ -486,135 +494,246 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 			}
 		}
 
-		/*
-			case syntax.NOT_IN:
-				z, err := Binary(syntax.IN, x, y)
+	case token.CIRCUMFLEX:
+		// ^ arithmetic exponentiation: the operation is performed by converting
+		// the operands to floats and the result is always a float, as returned by
+		// Go's math.Pow.
+		switch l := l.(type) {
+		case types.Int:
+			lf := types.Float(l)
+			switch r := r.(type) {
+			case types.Int:
+				rf := types.Float(r)
+				return types.Float(math.Pow(float64(lf), float64(rf))), nil
+			case types.Float:
+				return types.Float(math.Pow(float64(lf), float64(r))), nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Float:
+				return types.Float(math.Pow(float64(l), float64(r))), nil
+			case types.Int:
+				rf := types.Float(r)
+				return types.Float(math.Pow(float64(l), float64(rf))), nil
+			}
+		}
+
+	case token.AMPERSAND:
+		// & bitwise AND: the operation is performed by converting its operands to
+		// integers and operating on all bits of those integers. The result is an
+		// integer. The operation fails if a float is not representable as an
+		// integer.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				return l & r, nil
+			case types.Float:
+				ri, err := floatToInt(r)
 				if err != nil {
 					return nil, err
 				}
-				return !z.Truth(), nil
-
-			case syntax.IN:
-				switch y := y.(type) {
-				case *List:
-					for _, elem := range y.elems {
-						if eq, err := Equal(elem, x); err != nil {
-							return nil, err
-						} else if eq {
-							return True, nil
-						}
-					}
-					return False, nil
-				case Tuple:
-					for _, elem := range y {
-						if eq, err := Equal(elem, x); err != nil {
-							return nil, err
-						} else if eq {
-							return True, nil
-						}
-					}
-					return False, nil
-				case Mapping: // e.g. dict
-					// Ignore error from Get as we cannot distinguish true
-					// errors (value cycle, type error) from "key not found".
-					_, found, _ := y.Get(x)
-					return Bool(found), nil
-				case *Set:
-					ok, err := y.Has(x)
-					return Bool(ok), err
-				case String:
-					needle, ok := x.(String)
-					if !ok {
-						return nil, fmt.Errorf("'in <string>' requires string as left operand, not %s", x.Type())
-					}
-					return Bool(strings.Contains(string(y), string(needle))), nil
-				case Bytes:
-					switch needle := x.(type) {
-					case Bytes:
-						return Bool(strings.Contains(string(y), string(needle))), nil
-					case Int:
-						var b byte
-						if err := AsInt(needle, &b); err != nil {
-							return nil, fmt.Errorf("int in bytes: %s", err)
-						}
-						return Bool(strings.IndexByte(string(y), b) >= 0), nil
-					default:
-						return nil, fmt.Errorf("'in bytes' requires bytes or int as left operand, not %s", x.Type())
-					}
-				case rangeValue:
-					i, err := NumberToInt(x)
-					if err != nil {
-						return nil, fmt.Errorf("'in <range>' requires integer as left operand, not %s", x.Type())
-					}
-					return Bool(y.contains(i)), nil
+				return l & ri, nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Int:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
 				}
-
-			case syntax.PIPE:
-				switch x := x.(type) {
-				case Int:
-					if y, ok := y.(Int); ok {
-						return x | y, nil
-					}
-
-				case *Dict: // union
-					if y, ok := y.(*Dict); ok {
-						return x.Union(y), nil
-					}
-
-				case *Set: // union
-					if y, ok := y.(*Set); ok {
-						iter := Iterate(y)
-						defer iter.Done()
-						return x.Union(iter)
-					}
+				return li & r, nil
+			case types.Float:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
 				}
-
-			case syntax.AMP:
-				switch x := x.(type) {
-				case Int:
-					if y, ok := y.(Int); ok {
-						return x & y, nil
-					}
-				case *Set: // intersection
-					if y, ok := y.(*Set); ok {
-						iter := y.Iterate()
-						defer iter.Done()
-						return x.Intersection(iter)
-					}
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
 				}
+				return li & ri, nil
+			}
+		}
 
-			case syntax.CIRCUMFLEX:
-				switch x := x.(type) {
-				case Int:
-					if y, ok := y.(Int); ok {
-						return x ^ y, nil
-					}
-				case *Set: // symmetric difference
-					if y, ok := y.(*Set); ok {
-						iter := y.Iterate()
-						defer iter.Done()
-						return x.SymmetricDifference(iter)
-					}
+	case token.PIPE:
+		// | bitwise OR: the operation is performed by converting its operands to
+		// integers and operating on all bits of those integers. The result is an
+		// integer. The operation fails if a float is not representable as an
+		// integer.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				return l | r, nil
+			case types.Float:
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
 				}
+				return l | ri, nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Int:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
+				}
+				return li | r, nil
+			case types.Float:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
+				}
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
+				}
+				return li | ri, nil
+			}
+		}
 
-			case syntax.LTLT, syntax.GTGT:
-				if x, ok := x.(Int); ok {
-					y, err := AsInt32(y)
-					if err != nil {
-						return nil, err
-					}
-					if y < 0 {
-						return nil, fmt.Errorf("negative shift count: %v", y)
-					}
-					if op == syntax.LTLT {
-						if y >= 512 {
-							return nil, fmt.Errorf("shift count too large: %v", y)
-						}
-						return x << uint(y), nil
-					}
-					return x >> uint(y), nil
+	case token.TILDE:
+		// ~ bitwise exclusive OR: the operation is performed by converting its
+		// operands to integers and operating on all bits of those integers. The
+		// result is an integer. The operation fails if a float is not
+		// representable as an integer.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				return l ^ r, nil
+			case types.Float:
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
 				}
-		*/
+				return l ^ ri, nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Int:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
+				}
+				return li ^ r, nil
+			case types.Float:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
+				}
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
+				}
+				return li ^ ri, nil
+			}
+		}
+
+	case token.LTLT:
+		// << bitwise left shift: the operation is performed by converting its
+		// operands to integers and operating on all bits of those integers. The
+		// result is an integer. The operation fails if a float is not
+		// representable as an integer. It fills the vacant bits with zeros.
+		// Negative displacements shift to the other direction.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				if r < 0 {
+					return types.Int(uint(l) >> -r), nil
+				}
+				return l << r, nil
+			case types.Float:
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
+				}
+				if ri < 0 {
+					return types.Int(uint(l) >> -ri), nil
+				}
+				return l << ri, nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Int:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
+				}
+				if r < 0 {
+					return types.Int(uint(li) >> -r), nil
+				}
+				return li << r, nil
+			case types.Float:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
+				}
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
+				}
+				if ri < 0 {
+					return types.Int(uint(li) >> -ri), nil
+				}
+				return li << ri, nil
+			}
+		}
+
+	case token.GTGT:
+		// >> bitwise right shift: the operation is performed by converting its
+		// operands to integers and operating on all bits of those integers. The
+		// result is an integer. The operation fails if a float is not
+		// representable as an integer. It fills the vacant bits with zeros.
+		// Negative displacements shift to the other direction.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				if r < 0 {
+					return l << -r, nil
+				}
+				return types.Int(uint(l) >> r), nil
+			case types.Float:
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
+				}
+				if ri < 0 {
+					return l << -ri, nil
+				}
+				return types.Int(uint(l) >> ri), nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Int:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
+				}
+				if r < 0 {
+					return li << -r, nil
+				}
+				return types.Int(uint(li) >> r), nil
+			case types.Float:
+				li, err := floatToInt(l)
+				if err != nil {
+					return nil, err
+				}
+				ri, err := floatToInt(r)
+				if err != nil {
+					return nil, err
+				}
+				if ri < 0 {
+					return li << -ri, nil
+				}
+				return types.Int(uint(li) >> ri), nil
+			}
+		}
+
 	default:
 		// unknown operator
 		goto unknown
@@ -635,9 +754,8 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		}
 	}
 
-	// unsupported operator
 unknown:
-	return nil, fmt.Errorf("unknown binary op: %s %s %s", l.Type(), op, r.Type())
+	return nil, fmt.Errorf("unsupported binary op: %s %s %s", l.Type(), op, r.Type())
 }
 
 func floorDiv(l, r types.Int) types.Int {

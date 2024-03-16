@@ -139,6 +139,23 @@ loop:
 			stack[sp] = types.Bool(ok)
 			sp++
 
+		case compiler.PLUS, compiler.MINUS, compiler.STAR, compiler.SLASH,
+			compiler.SLASHSLASH, compiler.PERCENT, compiler.CIRCUMFLEX,
+			compiler.AMPERSAND, compiler.PIPE, compiler.TILDE,
+			compiler.LTLT, compiler.GTGT:
+
+			binop := token.Token(op-compiler.PLUS) + token.PLUS
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+			z, err := Binary(binop, x, y)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp] = z
+			sp++
+
 		case compiler.NIL:
 			stack[sp] = types.Nil
 			sp++

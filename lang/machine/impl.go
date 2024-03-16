@@ -290,3 +290,368 @@ func AsString(v types.Value) (string, bool) {
 	s, ok := v.(types.String)
 	return string(s), ok
 }
+
+// Binary applies a strict binary operator (not AND or OR) to its operands. For
+// equality tests or ordered comparisons, use Compare instead.
+func Binary(op token.Token, l, r types.Value) (types.Value, error) {
+	switch op {
+	case token.PLUS:
+		// + concatenation: only works on strings, no implicit conversion
+		//
+		// + arithmetic addition: if both operands are integers, the operation is
+		// performed over integers and the result is an integer. Otherwise, if both
+		// operands are numbers, then they are converted to floats, the operation
+		// is performed following Go's rules for floating-point arithmetic (IEEE
+		// 754), and the result is a float.
+		switch l := l.(type) {
+		case types.String:
+			if r, ok := r.(types.String); ok {
+				return l + r, nil
+			}
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				return l + r, nil
+			case types.Float:
+				lf := types.Float(l)
+				return lf + r, nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Float:
+				return l + r, nil
+			case types.Int:
+				rf := types.Float(r)
+				return l + rf, nil
+			}
+		}
+
+	case token.MINUS:
+		// - arithmetic subtraction: if both operands are integers, the operation is
+		// performed over integers and the result is an integer. Otherwise, if both
+		// operands are numbers, then they are converted to floats, the operation
+		// is performed following Go's rules for floating-point arithmetic (IEEE
+		// 754), and the result is a float.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				return l - r, nil
+			case types.Float:
+				lf := types.Float(l)
+				return lf - r, nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Float:
+				return l - r, nil
+			case types.Int:
+				rf := types.Float(r)
+				return l - rf, nil
+			}
+		}
+
+		/*
+			case syntax.STAR:
+				switch x := x.(type) {
+				case Int:
+					switch y := y.(type) {
+					case Int:
+						return x * y, nil
+					case Float:
+						xf := Float(x)
+						return xf * y, nil
+					case String:
+						return stringRepeat(y, x)
+					case Bytes:
+						return bytesRepeat(y, x)
+					case *List:
+						elems, err := tupleRepeat(Tuple(y.elems), x)
+						if err != nil {
+							return nil, err
+						}
+						return NewList(elems), nil
+					case Tuple:
+						return tupleRepeat(y, x)
+					}
+				case Float:
+					switch y := y.(type) {
+					case Float:
+						return x * y, nil
+					case Int:
+						yf := Float(y)
+						return x * yf, nil
+					}
+				case String:
+					if y, ok := y.(Int); ok {
+						return stringRepeat(x, y)
+					}
+				case Bytes:
+					if y, ok := y.(Int); ok {
+						return bytesRepeat(x, y)
+					}
+				case *List:
+					if y, ok := y.(Int); ok {
+						elems, err := tupleRepeat(Tuple(x.elems), y)
+						if err != nil {
+							return nil, err
+						}
+						return NewList(elems), nil
+					}
+				case Tuple:
+					if y, ok := y.(Int); ok {
+						return tupleRepeat(x, y)
+					}
+				}
+
+			case syntax.SLASH:
+				switch x := x.(type) {
+				case Int:
+					xf := Float(x)
+					switch y := y.(type) {
+					case Int:
+						yf := Float(y)
+						if yf == 0.0 {
+							return nil, fmt.Errorf("floating-point division by zero")
+						}
+						return xf / yf, nil
+					case Float:
+						if y == 0.0 {
+							return nil, fmt.Errorf("floating-point division by zero")
+						}
+						return xf / y, nil
+					}
+				case Float:
+					switch y := y.(type) {
+					case Float:
+						if y == 0.0 {
+							return nil, fmt.Errorf("floating-point division by zero")
+						}
+						return x / y, nil
+					case Int:
+						yf := Float(y)
+						if yf == 0.0 {
+							return nil, fmt.Errorf("floating-point division by zero")
+						}
+						return x / yf, nil
+					}
+				}
+
+			case syntax.SLASHSLASH:
+				switch x := x.(type) {
+				case Int:
+					switch y := y.(type) {
+					case Int:
+						if y == 0 {
+							return nil, fmt.Errorf("floored division by zero")
+						}
+						return x / y, nil
+					case Float:
+						xf := Float(x)
+						if y == 0.0 {
+							return nil, fmt.Errorf("floored division by zero")
+						}
+						return floor(xf / y), nil
+					}
+				case Float:
+					switch y := y.(type) {
+					case Float:
+						if y == 0.0 {
+							return nil, fmt.Errorf("floored division by zero")
+						}
+						return floor(x / y), nil
+					case Int:
+						yf := Float(y)
+						if yf == 0.0 {
+							return nil, fmt.Errorf("floored division by zero")
+						}
+						return floor(x / yf), nil
+					}
+				}
+
+			case syntax.PERCENT:
+				switch x := x.(type) {
+				case Int:
+					switch y := y.(type) {
+					case Int:
+						if y == 0 {
+							return nil, fmt.Errorf("integer modulo by zero")
+						}
+						return x % y, nil
+					case Float:
+						xf := Float(x)
+						if y == 0 {
+							return nil, fmt.Errorf("floating-point modulo by zero")
+						}
+						return xf.Mod(y), nil
+					}
+				case Float:
+					switch y := y.(type) {
+					case Float:
+						if y == 0.0 {
+							return nil, fmt.Errorf("floating-point modulo by zero")
+						}
+						return x.Mod(y), nil
+					case Int:
+						if y == 0 {
+							return nil, fmt.Errorf("floating-point modulo by zero")
+						}
+						yf := Float(y)
+						return x.Mod(yf), nil
+					}
+				case String:
+					return interpolate(string(x), y)
+				}
+
+			case syntax.NOT_IN:
+				z, err := Binary(syntax.IN, x, y)
+				if err != nil {
+					return nil, err
+				}
+				return !z.Truth(), nil
+
+			case syntax.IN:
+				switch y := y.(type) {
+				case *List:
+					for _, elem := range y.elems {
+						if eq, err := Equal(elem, x); err != nil {
+							return nil, err
+						} else if eq {
+							return True, nil
+						}
+					}
+					return False, nil
+				case Tuple:
+					for _, elem := range y {
+						if eq, err := Equal(elem, x); err != nil {
+							return nil, err
+						} else if eq {
+							return True, nil
+						}
+					}
+					return False, nil
+				case Mapping: // e.g. dict
+					// Ignore error from Get as we cannot distinguish true
+					// errors (value cycle, type error) from "key not found".
+					_, found, _ := y.Get(x)
+					return Bool(found), nil
+				case *Set:
+					ok, err := y.Has(x)
+					return Bool(ok), err
+				case String:
+					needle, ok := x.(String)
+					if !ok {
+						return nil, fmt.Errorf("'in <string>' requires string as left operand, not %s", x.Type())
+					}
+					return Bool(strings.Contains(string(y), string(needle))), nil
+				case Bytes:
+					switch needle := x.(type) {
+					case Bytes:
+						return Bool(strings.Contains(string(y), string(needle))), nil
+					case Int:
+						var b byte
+						if err := AsInt(needle, &b); err != nil {
+							return nil, fmt.Errorf("int in bytes: %s", err)
+						}
+						return Bool(strings.IndexByte(string(y), b) >= 0), nil
+					default:
+						return nil, fmt.Errorf("'in bytes' requires bytes or int as left operand, not %s", x.Type())
+					}
+				case rangeValue:
+					i, err := NumberToInt(x)
+					if err != nil {
+						return nil, fmt.Errorf("'in <range>' requires integer as left operand, not %s", x.Type())
+					}
+					return Bool(y.contains(i)), nil
+				}
+
+			case syntax.PIPE:
+				switch x := x.(type) {
+				case Int:
+					if y, ok := y.(Int); ok {
+						return x | y, nil
+					}
+
+				case *Dict: // union
+					if y, ok := y.(*Dict); ok {
+						return x.Union(y), nil
+					}
+
+				case *Set: // union
+					if y, ok := y.(*Set); ok {
+						iter := Iterate(y)
+						defer iter.Done()
+						return x.Union(iter)
+					}
+				}
+
+			case syntax.AMP:
+				switch x := x.(type) {
+				case Int:
+					if y, ok := y.(Int); ok {
+						return x & y, nil
+					}
+				case *Set: // intersection
+					if y, ok := y.(*Set); ok {
+						iter := y.Iterate()
+						defer iter.Done()
+						return x.Intersection(iter)
+					}
+				}
+
+			case syntax.CIRCUMFLEX:
+				switch x := x.(type) {
+				case Int:
+					if y, ok := y.(Int); ok {
+						return x ^ y, nil
+					}
+				case *Set: // symmetric difference
+					if y, ok := y.(*Set); ok {
+						iter := y.Iterate()
+						defer iter.Done()
+						return x.SymmetricDifference(iter)
+					}
+				}
+
+			case syntax.LTLT, syntax.GTGT:
+				if x, ok := x.(Int); ok {
+					y, err := AsInt32(y)
+					if err != nil {
+						return nil, err
+					}
+					if y < 0 {
+						return nil, fmt.Errorf("negative shift count: %v", y)
+					}
+					if op == syntax.LTLT {
+						if y >= 512 {
+							return nil, fmt.Errorf("shift count too large: %v", y)
+						}
+						return x << uint(y), nil
+					}
+					return x >> uint(y), nil
+				}
+		*/
+	default:
+		// unknown operator
+		goto unknown
+	}
+
+	// user-defined types
+	// (nil, nil) => unhandled
+	if l, ok := l.(types.HasBinary); ok {
+		res, err := l.Binary(op, r, types.Left)
+		if res != nil || err != nil {
+			return res, err
+		}
+	}
+	if r, ok := r.(types.HasBinary); ok {
+		res, err := r.Binary(op, l, types.Right)
+		if res != nil || err != nil {
+			return res, err
+		}
+	}
+
+	// unsupported operator
+unknown:
+	return nil, fmt.Errorf("unknown binary op: %s %s %s", l.Type(), op, r.Type())
+}

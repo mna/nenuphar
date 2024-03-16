@@ -7,4 +7,3 @@ function: top 1 0
 		NOP
 		NIL
 		RETURN
-

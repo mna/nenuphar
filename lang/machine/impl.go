@@ -351,158 +351,142 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 			}
 		}
 
+	case token.STAR:
+		// * arithmetic multiplication: if both operands are integers, the
+		// operation is performed over integers and the result is an integer.
+		// Otherwise, if both operands are numbers, then they are converted to
+		// floats, the operation is performed following Go's rules for
+		// floating-point arithmetic (IEEE 754), and the result is a float.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				return l * r, nil
+			case types.Float:
+				lf := types.Float(l)
+				return lf * r, nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Float:
+				return l * r, nil
+			case types.Int:
+				rf := types.Float(r)
+				return l * rf, nil
+			}
+		}
+
+	case token.SLASH:
+		// / float division: the operation is performed by converting the operands
+		// to floats and the result is always a float.
+		switch l := l.(type) {
+		case types.Int:
+			lf := types.Float(l)
+			switch r := r.(type) {
+			case types.Int:
+				rf := types.Float(r)
+				if rf == 0.0 {
+					return nil, fmt.Errorf("floating-point division by zero")
+				}
+				return lf / rf, nil
+			case types.Float:
+				if r == 0.0 {
+					return nil, fmt.Errorf("floating-point division by zero")
+				}
+				return lf / r, nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Float:
+				if r == 0.0 {
+					return nil, fmt.Errorf("floating-point division by zero")
+				}
+				return l / r, nil
+			case types.Int:
+				rf := types.Float(r)
+				if rf == 0.0 {
+					return nil, fmt.Errorf("floating-point division by zero")
+				}
+				return l / rf, nil
+			}
+		}
+
+	case token.SLASHSLASH:
+		// // floor division: returns the greatest integer value less than or equal
+		// to the result. If both operands are integers, the operation is performed
+		// over integers and the result is an integer. Otherwise, if both operands
+		// are numbers, then they are converted to floats, the operation is
+		// performed following Go's rules for floating-point arithmetic (IEEE 754)
+		// and the result is obtained using Go's math.Floor.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				if r == 0 {
+					return nil, fmt.Errorf("floored division by zero")
+				}
+				return floorDiv(l, r), nil
+			case types.Float:
+				lf := types.Float(l)
+				if r == 0.0 {
+					return nil, fmt.Errorf("floored division by zero")
+				}
+				return types.Float(math.Floor(float64(lf) / float64(r))), nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Float:
+				if r == 0.0 {
+					return nil, fmt.Errorf("floored division by zero")
+				}
+				return types.Float(math.Floor(float64(l) / float64(r))), nil
+			case types.Int:
+				rf := types.Float(r)
+				if rf == 0.0 {
+					return nil, fmt.Errorf("floored division by zero")
+				}
+				return types.Float(math.Floor(float64(l) / float64(rf))), nil
+			}
+		}
+
+	case token.PERCENT: // TODO: test and compare with Lua/Python for correctness
+		// % modulo division: returns the remainder of a division that rounds the
+		// quotient towards minus infinity (floor division). If both operands are
+		// integers, the operation is performed over integers and the result is an
+		// integer. Otherwise, if both operands are numbers, then they are
+		// converted to floats.
+		switch l := l.(type) {
+		case types.Int:
+			switch r := r.(type) {
+			case types.Int:
+				if r == 0 {
+					return nil, fmt.Errorf("integer modulo by zero")
+				}
+				return modInt(l, r), nil
+			case types.Float:
+				lf := types.Float(l)
+				if r == 0 {
+					return nil, fmt.Errorf("floating-point modulo by zero")
+				}
+				return modFloat(lf, r), nil
+			}
+		case types.Float:
+			switch r := r.(type) {
+			case types.Float:
+				if r == 0.0 {
+					return nil, fmt.Errorf("floating-point modulo by zero")
+				}
+				return modFloat(l, r), nil
+			case types.Int:
+				if r == 0 {
+					return nil, fmt.Errorf("floating-point modulo by zero")
+				}
+				rf := types.Float(r)
+				return modFloat(l, rf), nil
+			}
+		}
+
 		/*
-			case syntax.STAR:
-				switch x := x.(type) {
-				case Int:
-					switch y := y.(type) {
-					case Int:
-						return x * y, nil
-					case Float:
-						xf := Float(x)
-						return xf * y, nil
-					case String:
-						return stringRepeat(y, x)
-					case Bytes:
-						return bytesRepeat(y, x)
-					case *List:
-						elems, err := tupleRepeat(Tuple(y.elems), x)
-						if err != nil {
-							return nil, err
-						}
-						return NewList(elems), nil
-					case Tuple:
-						return tupleRepeat(y, x)
-					}
-				case Float:
-					switch y := y.(type) {
-					case Float:
-						return x * y, nil
-					case Int:
-						yf := Float(y)
-						return x * yf, nil
-					}
-				case String:
-					if y, ok := y.(Int); ok {
-						return stringRepeat(x, y)
-					}
-				case Bytes:
-					if y, ok := y.(Int); ok {
-						return bytesRepeat(x, y)
-					}
-				case *List:
-					if y, ok := y.(Int); ok {
-						elems, err := tupleRepeat(Tuple(x.elems), y)
-						if err != nil {
-							return nil, err
-						}
-						return NewList(elems), nil
-					}
-				case Tuple:
-					if y, ok := y.(Int); ok {
-						return tupleRepeat(x, y)
-					}
-				}
-
-			case syntax.SLASH:
-				switch x := x.(type) {
-				case Int:
-					xf := Float(x)
-					switch y := y.(type) {
-					case Int:
-						yf := Float(y)
-						if yf == 0.0 {
-							return nil, fmt.Errorf("floating-point division by zero")
-						}
-						return xf / yf, nil
-					case Float:
-						if y == 0.0 {
-							return nil, fmt.Errorf("floating-point division by zero")
-						}
-						return xf / y, nil
-					}
-				case Float:
-					switch y := y.(type) {
-					case Float:
-						if y == 0.0 {
-							return nil, fmt.Errorf("floating-point division by zero")
-						}
-						return x / y, nil
-					case Int:
-						yf := Float(y)
-						if yf == 0.0 {
-							return nil, fmt.Errorf("floating-point division by zero")
-						}
-						return x / yf, nil
-					}
-				}
-
-			case syntax.SLASHSLASH:
-				switch x := x.(type) {
-				case Int:
-					switch y := y.(type) {
-					case Int:
-						if y == 0 {
-							return nil, fmt.Errorf("floored division by zero")
-						}
-						return x / y, nil
-					case Float:
-						xf := Float(x)
-						if y == 0.0 {
-							return nil, fmt.Errorf("floored division by zero")
-						}
-						return floor(xf / y), nil
-					}
-				case Float:
-					switch y := y.(type) {
-					case Float:
-						if y == 0.0 {
-							return nil, fmt.Errorf("floored division by zero")
-						}
-						return floor(x / y), nil
-					case Int:
-						yf := Float(y)
-						if yf == 0.0 {
-							return nil, fmt.Errorf("floored division by zero")
-						}
-						return floor(x / yf), nil
-					}
-				}
-
-			case syntax.PERCENT:
-				switch x := x.(type) {
-				case Int:
-					switch y := y.(type) {
-					case Int:
-						if y == 0 {
-							return nil, fmt.Errorf("integer modulo by zero")
-						}
-						return x % y, nil
-					case Float:
-						xf := Float(x)
-						if y == 0 {
-							return nil, fmt.Errorf("floating-point modulo by zero")
-						}
-						return xf.Mod(y), nil
-					}
-				case Float:
-					switch y := y.(type) {
-					case Float:
-						if y == 0.0 {
-							return nil, fmt.Errorf("floating-point modulo by zero")
-						}
-						return x.Mod(y), nil
-					case Int:
-						if y == 0 {
-							return nil, fmt.Errorf("floating-point modulo by zero")
-						}
-						yf := Float(y)
-						return x.Mod(yf), nil
-					}
-				case String:
-					return interpolate(string(x), y)
-				}
-
 			case syntax.NOT_IN:
 				z, err := Binary(syntax.IN, x, y)
 				if err != nil {
@@ -654,4 +638,27 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 	// unsupported operator
 unknown:
 	return nil, fmt.Errorf("unknown binary op: %s %s %s", l.Type(), op, r.Type())
+}
+
+func floorDiv(l, r types.Int) types.Int {
+	if r < 0 {
+		l, r = -l, -r
+	}
+	m := l % r
+	if m < 0 {
+		m += r
+	}
+	return (l - m) / r
+}
+
+func modInt(l, r types.Int) types.Int {
+	return (l%r + r) % r
+}
+
+func modFloat(l, r types.Float) types.Float {
+	v := types.Float(math.Mod(float64(l), float64(r)))
+	if v < 0 {
+		v += r
+	}
+	return v
 }

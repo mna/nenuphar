@@ -30,6 +30,7 @@ const (
 	TILDE      // ~
 	LTLT       // <<
 	GTGT       // >>
+	POUND      // #
 
 	DOT           // .
 	COMMA         // ,
@@ -70,11 +71,8 @@ const (
 	ELSE
 	FOR
 	IF
-	IN
-	LAMBDA
 	LOAD
 	NOT
-	NOT_IN // synthesized by parser from NOT IN
 	OR
 	PASS
 	RETURN
@@ -112,6 +110,7 @@ var tokenNames = [...]string{
 	CIRCUMFLEX:    "^",
 	LTLT:          "<<",
 	GTGT:          ">>",
+	POUND:         "#",
 	TILDE:         "~",
 	DOT:           ".",
 	COMMA:         ",",
@@ -150,11 +149,8 @@ var tokenNames = [...]string{
 	ELSE:          "else",
 	FOR:           "for",
 	IF:            "if",
-	IN:            "in",
-	LAMBDA:        "lambda",
 	LOAD:          "load",
 	NOT:           "not",
-	NOT_IN:        "not in",
 	OR:            "or",
 	PASS:          "pass",
 	RETURN:        "return",

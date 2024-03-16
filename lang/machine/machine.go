@@ -156,6 +156,26 @@ loop:
 			stack[sp] = z
 			sp++
 
+		case compiler.UPLUS, compiler.UMINUS, compiler.UTILDE, compiler.POUND:
+			var unop token.Token
+			switch op {
+			case compiler.UTILDE:
+				// tilde token is out of order
+				unop = token.TILDE
+			case compiler.POUND:
+				// pound token is out of order
+				unop = token.POUND
+			default:
+				unop = token.Token(op-compiler.UPLUS) + token.PLUS
+			}
+			x := stack[sp-1]
+			y, err := Unary(unop, x)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp-1] = y
+
 		case compiler.NIL:
 			stack[sp] = types.Nil
 			sp++

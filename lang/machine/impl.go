@@ -780,3 +780,70 @@ func modFloat(l, r types.Float) types.Float {
 	}
 	return v
 }
+
+// Unary applies a unary operator (only +, -, ~, # and "not" as the others -
+// "try" and "must" - are compiled to catch statements) to its operand.
+func Unary(op token.Token, x types.Value) (types.Value, error) {
+	// The NOT operator is not customizable.
+	if op == token.NOT {
+		return !Truth(x), nil
+	}
+
+	switch op {
+	case token.PLUS:
+		// + unary addition: returns the integer or float unchanged.
+		switch x := x.(type) {
+		case types.Int:
+			return +x, nil
+		case types.Float:
+			return +x, nil
+		}
+
+	case token.MINUS:
+		// - unary subtraction: switches the sign of the integer or float,
+		// returning the same type.
+		switch x := x.(type) {
+		case types.Int:
+			return -x, nil
+		case types.Float:
+			return -x, nil
+		}
+
+	case token.TILDE:
+		// ~ unary bitwise NOT: converts the operand to int and switches all bits,
+		// as if the integer was unsigned. The result is an integer. The operation
+		// fails if the float is not representable as an integer.
+		switch x := x.(type) {
+		case types.Int:
+			return types.Int(^uint(x)), nil
+		case types.Float:
+			xi, err := floatToInt(x)
+			if err != nil {
+				return nil, err
+			}
+			return types.Int(^uint(xi)), nil
+		}
+
+	case token.POUND:
+		// # len operator: the length of a string is its number of bytes, as an
+		// integer.
+		switch x := x.(type) {
+		case types.String:
+			return types.Int(len(x)), nil
+		}
+
+	default:
+		goto unknown
+	}
+
+	if x, ok := x.(types.HasUnary); ok {
+		// (nil, nil) => unhandled
+		y, err := x.Unary(op)
+		if y != nil || err != nil {
+			return y, err
+		}
+	}
+
+unknown:
+	return nil, fmt.Errorf("unsupported unary op: %s %s", op, x.Type())
+}

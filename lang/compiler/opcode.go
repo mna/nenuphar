@@ -50,8 +50,8 @@ const ( //nolint:revive
 	UPLUS  // x UPLUS  x
 	UMINUS // x UMINUS -x
 	UTILDE // x UTILDE ~x
+	POUND  // x POUND  #x
 	NOT    // x NOT    bool
-	LEN    // x LEN    #x
 
 	NIL   // - NIL Nil
 	TRUE  // - TRUE True
@@ -132,7 +132,6 @@ var opcodeNames = [...]string{
 	ITERPUSH:     "iterpush",
 	JMP:          "jmp",
 	LE:           "le",
-	LEN:          "len",
 	LOAD:         "load",
 	LOCAL:        "local",
 	LOCALCELL:    "localcell",
@@ -151,6 +150,7 @@ var opcodeNames = [...]string{
 	PIPE:         "pipe",
 	PLUS:         "plus",
 	POP:          "pop",
+	POUND:        "pound",
 	PREDECLARED:  "predeclared",
 	RETURN:       "return",
 	RUNDEFER:     "rundefer",
@@ -240,7 +240,7 @@ var stackEffect = [...]int8{
 	ITERPUSH:     -1,
 	JMP:          0,
 	LE:           -1,
-	LEN:          0,
+	POUND:        0,
 	LOAD:         -1,
 	LOCAL:        +1,
 	LOCALCELL:    +1,

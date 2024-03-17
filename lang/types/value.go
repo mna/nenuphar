@@ -19,18 +19,9 @@ type Ordered interface {
 
 	// Cmp compares two values x and y of the same ordered type. It returns
 	// negative if x < y, positive if x > y, and zero if the values are equal.
-	//
-	// Implementations that recursively compare subcomponents of the value should
-	// use the CompareDepth function, not Cmp, to avoid infinite recursion on
-	// cyclic structures.
-	//
-	// The depth parameter is used to bound comparisons of cyclic data
-	// structures.  Implementations should decrement depth before calling
-	// CompareDepth and should return an error if depth < 1.
-	//
-	// Client code should not call this method.  Instead, use the standalone
-	// Compare or Equals functions, which are defined for all pairs of operands.
-	Cmp(y Value, depth int) (int, error)
+	// Client code should not call this method. Instead, use the standalone
+	// Compare function, which is defined for all pairs of operands.
+	Cmp(y Value) (int, error)
 }
 
 // An Iterable abstracts a sequence of values. An iterable value may be

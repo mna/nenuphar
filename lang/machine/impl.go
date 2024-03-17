@@ -79,24 +79,53 @@ func Call(th *Thread, v types.Value, args types.Tuple) (types.Value, error) {
 	return result, err
 }
 
-// CompareDepth compares two values. The comparison operation must be one of
-// EQL, NEQ, LT, LE, GT, or GE. CompareDepth returns an error if an ordered
-// comparison was requested for a pair of values that do not support it.
+// Compare compares two values for the specified relational operator. The
+// comparison operation must be one of EQL, NEQ, LT, LE, GT, or GE. Compare
+// returns an error if an ordered comparison was requested for a pair of values
+// that do not support it.
 //
-// The depth parameter limits the maximum depth of recursion in cyclic data
-// structures.
-func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) { // TODO: figure out type of depth vs Cmp
-	if depth < 1 {
-		// TODO: critical, non-catchable error
-		return false, fmt.Errorf("comparison exceeded maximum recursion depth")
-	}
+// Equality first compares the type of its operands. For values of same type,
+// the values of the operands are compared. Strings are equal if they have the
+// same byte content. Numbers are equal if they denote the same mathematical
+// value, NaN values are greater than any other. Other values of the same type
+// are compared by identity.
+//
+// The ordered operators work as follows. For numbers, if one value is a float
+// then the other is converted to a float if necessary and they are compared
+// according to their mathematical values, . Otherwise, if both arguments are
+// strings, then their values are compared lexicographically. Boolean true is
+// after false. Other types must implement the Ordered interface or rely on
+// metamethods for comparison.
+//
+// Metamethods can be used to customize comparison for a value that supports
+// it. The != operator is the negation of equality and cannot be customized.
+func Compare(op token.Token, x, y types.Value) (bool, error) {
 	if sameType(x, y) {
 		if xcomp, ok := x.(types.Ordered); ok {
-			t, err := xcomp.Cmp(y, int(depth))
+			t, err := xcomp.Cmp(y)
 			if err != nil {
 				return false, err
 			}
 			return threeway(op, t), nil
+		}
+
+		if x, ok := x.(types.HasMetamap); ok {
+			if meta := x.Metamap(); meta != nil {
+				// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?
+				//res, err := CallMetamethod(meta, op, x, y, types.Left) // TODO: translate op to metamethod name
+				//if res != nil || err != nil {
+				//	return res, err
+				//}
+			}
+		}
+		if y, ok := y.(types.HasMetamap); ok {
+			if meta := y.Metamap(); meta != nil {
+				// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?
+				//res, err := CallMetamethod(meta, op, x, y, types.Right) // TODO: translate op to metamethod name
+				//if res != nil || err != nil {
+				//	return res, err
+				//}
+			}
 		}
 
 		// use identity comparison
@@ -106,7 +135,6 @@ func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) 
 		case token.NEQ:
 			return x != y, nil
 		}
-		// TODO: implement more like Binary/Unary, check metamap
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
 	}
 
@@ -157,7 +185,24 @@ func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) 
 		}
 	}
 
-	// TODO: implement more like Binary/Unary, check metamap
+	if x, ok := x.(types.HasMetamap); ok {
+		if meta := x.Metamap(); meta != nil {
+			// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?
+			//res, err := CallMetamethod(meta, op, x, y, types.Left) // TODO: translate op to metamethod name
+			//if res != nil || err != nil {
+			//	return res, err
+			//}
+		}
+	}
+	if y, ok := y.(types.HasMetamap); ok {
+		if meta := y.Metamap(); meta != nil {
+			// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?
+			//res, err := CallMetamethod(meta, op, x, y, types.Right) // TODO: translate op to metamethod name
+			//if res != nil || err != nil {
+			//	return res, err
+			//}
+		}
+	}
 
 	// All other values of different types compare unequal.
 	switch op {
@@ -170,8 +215,6 @@ func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) 
 }
 
 func sameType(x, y types.Value) bool {
-	// TODO(mna): any better way to do this? Doesn't seem overly costly though,
-	// mostly pointer casting.
 	return reflect.TypeOf(x) == reflect.TypeOf(y)
 }
 

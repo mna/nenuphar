@@ -19,7 +19,7 @@ func (i Int) String() string {
 func (i Int) Type() string { return "int" }
 
 // Cmp implements comparison of two Int values.
-func (i Int) Cmp(v Value, depth int) (int, error) {
+func (i Int) Cmp(v Value) (int, error) {
 	j := v.(Int)
 	if i > j {
 		return +1, nil

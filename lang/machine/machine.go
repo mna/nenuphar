@@ -131,7 +131,7 @@ loop:
 			y := stack[sp-1]
 			x := stack[sp-2]
 			sp -= 2
-			ok, err := CompareDepth(op, x, y, th.maxCompareDepth)
+			ok, err := Compare(op, x, y)
 			if err != nil {
 				inFlightErr = err
 				break loop

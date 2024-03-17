@@ -32,6 +32,15 @@ const (
 	GTGT       // >>
 	POUND      // #
 
+	// relational operators - order must match compiler.Opcode
+	EQL // ==
+	NEQ // !=
+	LT  // <
+	GT  // >
+	GE  // >=
+	LE  // <=
+
+	// punctuation
 	DOT           // .
 	COMMA         // ,
 	EQ            // =
@@ -43,12 +52,6 @@ const (
 	RBRACK        // ]
 	LBRACE        // {
 	RBRACE        // }
-	LT            // <
-	GT            // >
-	GE            // >=
-	LE            // <=
-	EQL           // ==
-	NEQ           // !=
 	PLUS_EQ       // +=    (keep order consistent with PLUS..GTGT)
 	MINUS_EQ      // -=
 	STAR_EQ       // *=

@@ -23,7 +23,7 @@ func (b Bool) String() string {
 
 func (b Bool) Type() string { return "bool" }
 
-func (b Bool) Cmp(y Value, depth int) (int, error) {
+func (b Bool) Cmp(y Value) (int, error) {
 	b2 := y.(Bool)
 	return b2i(bool(b)) - b2i(bool(b2)), nil
 }

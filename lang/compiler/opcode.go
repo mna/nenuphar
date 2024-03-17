@@ -21,14 +21,13 @@ const ( //nolint:revive
 	POP  //   x POP -
 	EXCH // x y EXCH y x
 
-	// binary comparisons
-	// (order must match Token)
-	LT
-	LE
-	GT
-	GE
+	// binary comparisons (order must match token.Token)
 	EQL
 	NEQ
+	LT
+	GT
+	GE
+	LE
 
 	// binary arithmetic (order must match token.Token)
 	PLUS

@@ -19,7 +19,7 @@ func (f Float) String() string {
 func (f Float) Type() string { return "float" }
 
 // Cmp implements comparison of two Float values.
-func (f Float) Cmp(v Value, depth int) (int, error) {
+func (f Float) Cmp(v Value) (int, error) {
 	g := v.(Float)
 	return floatCmp(f, g), nil
 }

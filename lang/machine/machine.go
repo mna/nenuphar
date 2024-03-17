@@ -241,7 +241,6 @@ loop:
 			result = stack[sp-1]
 			sp--
 			inFlightErr = nil
-			fmt.Println(">>> RETURN ", result)
 			if runDefer {
 				runDefer = false
 				// a RETURN "to" address is never covered by a deferred block (it jumps
@@ -274,7 +273,6 @@ loop:
 			sp--
 
 		case compiler.CONSTANT:
-			fmt.Println(">>> CONSTANT ", sp, arg)
 			stack[sp] = fn.Module.Constants[arg]
 			sp++
 

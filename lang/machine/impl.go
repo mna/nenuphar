@@ -106,6 +106,7 @@ func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) 
 		case token.NEQ:
 			return x != y, nil
 		}
+		// TODO: implement more like Binary/Unary, check metamap
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
 	}
 
@@ -155,6 +156,8 @@ func CompareDepth(op token.Token, x, y types.Value, depth uint64) (bool, error) 
 			return threeway(op, cmp), nil
 		}
 	}
+
+	// TODO: implement more like Binary/Unary, check metamap
 
 	// All other values of different types compare unequal.
 	switch op {

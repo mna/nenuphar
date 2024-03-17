@@ -324,7 +324,7 @@ loop:
 			sp++
 
 		case compiler.SETMAP:
-			m := stack[sp-3].(*types.Map) // ok to panic otherwise, compiler error
+			m := stack[sp-3].(*types.Map) // ok to panic otherwise, compiler error (this is emitted only in map literals)
 			k := stack[sp-2]
 			v := stack[sp-1]
 			sp -= 3

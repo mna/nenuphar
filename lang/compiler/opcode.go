@@ -56,14 +56,12 @@ const ( //nolint:revive
 	TRUE  // - TRUE True
 	FALSE // - FALSE False
 
-	ITERPUSH  //       iterable ITERPUSH     -    [pushes the iterator stack]
-	ITERPOP   //              - ITERPOP      -    [pops the iterator stack]
+	ITERPUSH  //       iterable ITERPUSH     -    [pushes the iterator stack] TODO: add to machine
+	ITERPOP   //              - ITERPOP      -    [pops the iterator stack] TODO: add to machine
 	RETURN    //          value RETURN       -
 	SETINDEX  //        a i new SETINDEX     -      where a may be HasSetIndex or HasSetKey
 	INDEX     //            a i INDEX        elem   elem = a[i], a may be Mapping or Indexable
 	SETMAP    //  map key value SETMAP       -      emitted only for map literals (when map is guaranteed to be a map), otherwise SETINDEX
-	APPEND    //      list elem APPEND       -
-	SLICE     //   x lo hi step SLICE        slice
 	RUNDEFER  //              - RUNDEFER     -      next opcode must run deferred blocks
 	DEFEREXIT //              - DEFEREXIT    -      run next deferred block or if no more deferred block to execute, resume
 
@@ -72,7 +70,7 @@ const ( //nolint:revive
 	// control flow
 	JMP     //            - JMP<addr>     -
 	CJMP    //         cond CJMP<addr>    -
-	ITERJMP //            - ITERJMP<addr> elem   (and fall through) [acts on topmost iterator]
+	ITERJMP //            - ITERJMP<addr> elem   (and fall through) [acts on topmost iterator] TODO: add to machine
 	//----> // or:        - ITERJMP<addr> -      (and jump)
 	CATCHJMP //           - CATCHJMP<addr> -     (jump to addr on catch block exit)
 
@@ -81,7 +79,7 @@ const ( //nolint:revive
 	MAKEARRAY    //         x1 ... xn MAKEARRAY<n>        array
 	MAKEFUNC     //  freevars (tuple) MAKEFUNC<func>      fn
 	MAKEMAP      //                   MAKEMAP<n>          map
-	LOAD         //  from1..fromN mod LOAD<n>             v1 .. vN
+	LOAD         //  from1..fromN mod LOAD<n>             v1 .. vN TODO: add to machine
 	SETLOCAL     //             value SETLOCAL<local>     -
 	LOCAL        //                 - LOCAL<local>        value
 	FREE         //                 - FREE<freevar>       cell
@@ -90,9 +88,9 @@ const ( //nolint:revive
 	SETLOCALCELL //             value SETLOCALCELL<local> -           (set content of LOCAL cell)
 	PREDECLARED  //                 - PREDECLARED<name>   value       predeclared = additional bindings made available by the environment, immutable (so unlike globals)
 	UNIVERSAL    //                 - UNIVERSAL<name>     value       universe = part of the language, all programs have access to those
-	ATTR         //                 x ATTR<name>          y           y = x.name
-	SETFIELD     //               x y SETFIELD<name>      -           x.name = y
-	UNPACK       //          iterable UNPACK<n>           vn ... v1
+	ATTR         //                 x ATTR<name>          y           y = x.name TODO: add to machine
+	SETFIELD     //               x y SETFIELD<name>      -           x.name = y TODO: add to machine
+	UNPACK       //          iterable UNPACK<n>           vn ... v1 TODO: add to machine
 
 	// n is #args excluding vararg.
 	CALL     // fn positional                CALL<n>        result
@@ -106,7 +104,6 @@ const ( //nolint:revive
 
 var opcodeNames = [...]string{
 	AMPERSAND:    "ampersand",
-	APPEND:       "append",
 	ATTR:         "attr",
 	CALL:         "call",
 	CALL_VAR:     "call_var",
@@ -160,7 +157,6 @@ var opcodeNames = [...]string{
 	SETLOCALCELL: "setlocalcell",
 	SLASH:        "slash",
 	SLASHSLASH:   "slashslash",
-	SLICE:        "slice",
 	STAR:         "star",
 	TILDE:        "tilde",
 	TRUE:         "true",
@@ -214,7 +210,6 @@ const variableStackEffect = 0x7f
 // each kind of instruction. For some instructions this requires computation.
 var stackEffect = [...]int8{
 	AMPERSAND:    -1,
-	APPEND:       -2,
 	ATTR:         0,
 	CALL:         variableStackEffect,
 	CALL_VAR:     variableStackEffect,
@@ -268,7 +263,6 @@ var stackEffect = [...]int8{
 	SETLOCAL:     -1,
 	SLASH:        -1,
 	SLASHSLASH:   -1,
-	SLICE:        -3,
 	STAR:         -1,
 	TILDE:        0,
 	TRUE:         +1,

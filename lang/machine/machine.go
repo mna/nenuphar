@@ -301,6 +301,29 @@ loop:
 				Freevars: freevars,
 			}
 
+		case compiler.LOAD:
+			m := stack[sp-1]
+			sp--
+
+			if th.Load == nil {
+				inFlightErr = fmt.Errorf("load not implemented by this application")
+				break loop
+			}
+
+			s, ok := m.(types.String)
+			if !ok {
+				inFlightErr = fmt.Errorf("attempt to load non-string module: %s", m.Type())
+				break loop
+			}
+
+			v, err := th.Load(th, string(s))
+			if err != nil {
+				inFlightErr = fmt.Errorf("cannot load %s: %w", s, err)
+				break loop
+			}
+			stack[sp] = v
+			sp++
+
 		case compiler.SETINDEX:
 			z := stack[sp-1]
 			y := stack[sp-2]
@@ -322,6 +345,26 @@ loop:
 			}
 			stack[sp] = z
 			sp++
+
+		case compiler.ATTR:
+			x := stack[sp-1]
+			name := fn.Module.Program.Names[arg]
+			y, err := getAttr(x, name)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp-1] = y
+
+		case compiler.SETFIELD:
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+			name := fn.Module.Program.Names[arg]
+			if err := setField(x, name, y); err != nil {
+				inFlightErr = err
+				break loop
+			}
 
 		case compiler.SETMAP:
 			m := stack[sp-3].(*types.Map) // ok to panic otherwise, compiler error (this is emitted only in map literals)

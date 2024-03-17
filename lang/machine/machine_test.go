@@ -25,8 +25,9 @@ var rxAssertGlobal = regexp.MustCompile(`(?m)^\s*###\s*([a-zA-Z][a-zA-Z0-9_]*):\
 //   - ### global_name: <value>
 //   - ### nofail: <value>
 //
-// Global names are provided and retrieved in a predeclared 'G' map, and are
-// nil by default.
+// Values can be 'nil', a number, a quoted string or 'true' and 'false'. Global
+// names are provided and retrieved in a predeclared 'G' map, and are nil by
+// default.
 //
 // It is possible to combine those expected results, nofail: is the default if
 // neither fail nor nofail is specified. The nofail value is the value returned
@@ -90,6 +91,12 @@ func assertValue(t *testing.T, name, want string, got types.Value) bool {
 	}
 	if want == "nil" {
 		return assert.Equal(t, types.Nil, got, msg)
+	} else if want == "true" || want == "false" {
+		wantVal := types.True
+		if want != "true" {
+			wantVal = types.False
+		}
+		return assert.Equal(t, wantVal, got, msg)
 	} else if qs, err := strconv.Unquote(want); err == nil {
 		got, ok := machine.AsString(got)
 		if assert.True(t, ok, msg) {

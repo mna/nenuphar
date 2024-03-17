@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -253,6 +254,7 @@ func Truth(v types.Value) types.Bool {
 
 // setIndex implements x[y] = z.
 func setIndex(x, y, z types.Value) error {
+	// TODO: add support for metamap, see how Lua does it.
 	switch x := x.(type) {
 	case types.HasSetKey:
 		if err := x.SetKey(y, z); err != nil {
@@ -275,25 +277,29 @@ func setIndex(x, y, z types.Value) error {
 		return x.SetIndex(i, z)
 
 	default:
-		return fmt.Errorf("%s value does not support item assignment", x.Type())
+		return fmt.Errorf("%s value does not support indexed assignment", x.Type())
 	}
 	return nil
 }
 
 // getIndex implements x[y].
 func getIndex(x, y types.Value) (types.Value, error) {
+	fail := true
+
 	switch x := x.(type) {
 	case types.Mapping:
 		z, found, err := x.Get(y)
 		if err != nil {
 			return nil, err
 		}
-		if !found {
-			return types.Nil, nil
+		if found {
+			return z, nil
 		}
-		return z, nil
+		// continue in case a metamethod is possible
+		fail = false
 
 	case types.Indexable:
+		// TODO: support metamethod to index a non-integer field for Indexable? I think not.
 		n := x.Len()
 		i, err := AsExactInt(y)
 		if err != nil {
@@ -308,7 +314,66 @@ func getIndex(x, y types.Value) (types.Value, error) {
 		}
 		return x.Index(i), nil
 	}
+
+	if x, ok := x.(types.HasMetamap); ok {
+		if meta := x.Metamap(); meta != nil {
+			//res, err := CallMetamethod(meta, op, x, y) // TODO: translate op to metamethod name
+			//if res != nil || err != nil {
+			//	return res, err
+			//}
+		}
+	}
+	if !fail {
+		return types.Nil, nil
+	}
 	return nil, fmt.Errorf("unsupported index operation %s[%s]", x.Type(), y.Type())
+}
+
+// getAttr implements x.dot.
+func getAttr(x types.Value, name string) (types.Value, error) {
+	hasAttr, ok := x.(types.HasAttrs)
+	if !ok {
+		// fallback to getIndex, which will use metamap if available.
+		return getIndex(x, types.String(name))
+	}
+
+	var errmsg string
+	v, err := hasAttr.Attr(name)
+	if err == nil {
+		if v != nil {
+			return v, nil // success
+		}
+		// (nil, nil) => generic error
+		errmsg = fmt.Sprintf("%s has no .%s field or method", x.Type(), name)
+	} else if nsa, ok := err.(types.NoSuchAttrError); ok {
+		errmsg = string(nsa)
+	} else {
+		return nil, err // return error as is
+	}
+
+	//// TODO: add spelling hint
+	//if n := spell.Nearest(name, hasAttr.AttrNames()); n != "" {
+	//	errmsg = fmt.Sprintf("%s (did you mean .%s?)", errmsg, n)
+	//}
+
+	return nil, errors.New(errmsg)
+}
+
+// setField implements x.name = y.
+func setField(x types.Value, name string, y types.Value) error {
+	if x, ok := x.(types.HasSetField); ok {
+		err := x.SetField(name, y)
+		if _, ok := err.(types.NoSuchAttrError); ok {
+			//// TODO: No such field: check spelling.
+			//if n := spell.Nearest(name, x.AttrNames()); n != "" {
+			//	err = fmt.Errorf("%s (did you mean .%s?)", err, n)
+			//}
+		}
+		return err
+	}
+
+	// fallback to setIndex
+	return setIndex(x, types.String(name), y)
 }
 
 // AsExactInt enforces the type conversion rules for a value to an integer.

@@ -64,6 +64,7 @@ const ( //nolint:revive
 	SETMAP    //  map key value SETMAP       -      emitted only for map literals (when map is guaranteed to be a map), otherwise SETINDEX
 	RUNDEFER  //              - RUNDEFER     -      next opcode must run deferred blocks
 	DEFEREXIT //              - DEFEREXIT    -      run next deferred block or if no more deferred block to execute, resume
+	LOAD      //            mod LOAD         modval
 
 	// --- opcodes with an argument must go below this line ---
 
@@ -79,7 +80,6 @@ const ( //nolint:revive
 	MAKEARRAY    //         x1 ... xn MAKEARRAY<n>        array
 	MAKEFUNC     //  freevars (tuple) MAKEFUNC<func>      fn
 	MAKEMAP      //                   MAKEMAP<n>          map
-	LOAD         //  from1..fromN mod LOAD<n>             v1 .. vN TODO: add to machine
 	SETLOCAL     //             value SETLOCAL<local>     -
 	LOCAL        //                 - LOCAL<local>        value
 	FREE         //                 - FREE<freevar>       cell
@@ -88,8 +88,8 @@ const ( //nolint:revive
 	SETLOCALCELL //             value SETLOCALCELL<local> -           (set content of LOCAL cell)
 	PREDECLARED  //                 - PREDECLARED<name>   value       predeclared = additional bindings made available by the environment, immutable (so unlike globals)
 	UNIVERSAL    //                 - UNIVERSAL<name>     value       universe = part of the language, all programs have access to those
-	ATTR         //                 x ATTR<name>          y           y = x.name TODO: add to machine
-	SETFIELD     //               x y SETFIELD<name>      -           x.name = y TODO: add to machine
+	ATTR         //                 x ATTR<name>          y           y = x.name, fallbacks to x["name"]
+	SETFIELD     //               x y SETFIELD<name>      -           x.name = y, fallbacks to x["name"] = y
 	UNPACK       //          iterable UNPACK<n>           vn ... v1 TODO: add to machine
 
 	// n is #args excluding vararg.
@@ -235,7 +235,7 @@ var stackEffect = [...]int8{
 	JMP:          0,
 	LE:           -1,
 	POUND:        0,
-	LOAD:         -1,
+	LOAD:         0,
 	LOCAL:        +1,
 	LOCALCELL:    +1,
 	LT:           -1,

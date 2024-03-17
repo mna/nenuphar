@@ -95,9 +95,9 @@ const ( //nolint:revive
 	SETFIELD     //               x y SETFIELD<name>      -           x.name = y
 	UNPACK       //          iterable UNPACK<n>           vn ... v1
 
-	// n>>8 is #positional args and n&0xff is #named args (pairs).
-	CALL     // fn positional named                CALL<n>        result
-	CALL_VAR // fn positional named *args          CALL_VAR<n>    result
+	// n is #args excluding vararg.
+	CALL     // fn positional                CALL<n>        result
+	CALL_VAR // fn positional *args          CALL_VAR<n>    result
 
 	OpcodeArgMin = JMP
 	OpcodeMax    = CALL_VAR

@@ -198,6 +198,38 @@ loop:
 			}
 			pc = arg
 
+		case compiler.CALL, compiler.CALL_VAR:
+			var args types.Value
+			if op == compiler.CALL_VAR {
+				args = stack[sp-1]
+				sp--
+			}
+
+			var positional types.Tuple
+			if arg > 0 {
+				positional = stack[sp-int(arg) : sp]
+				sp -= int(arg)
+
+				// Copy positional arguments into a new array, unless the callee is
+				// another Function, in which case it can be trusted not to mutate
+				// them.
+				if _, ok := stack[sp-1].(*types.Function); !ok || args != nil {
+					positional = append(types.Tuple(nil), positional...)
+				}
+			}
+			if args != nil {
+				// TODO: implement vararg parameter passing
+			}
+
+			function := stack[sp-1]
+
+			z, err := Call(th, function, positional)
+			if err != nil {
+				inFlightErr = err
+				break loop
+			}
+			stack[sp-1] = z
+
 		case compiler.NOT:
 			stack[sp-1] = !Truth(stack[sp-1])
 
@@ -412,9 +444,7 @@ loop:
 			pc = arg
 
 		default:
-			// TODO: critical, non-catchable error (use a panic?)
-			inFlightErr = fmt.Errorf("unimplemented: %s", op)
-			break loop
+			panic(fmt.Sprintf("unimplemented: %s", op))
 		}
 	}
 

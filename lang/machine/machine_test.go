@@ -61,10 +61,10 @@ func TestExecAsm(t *testing.T) {
 				switch global := m[1]; global {
 				case "fail":
 					errAsserted = true
-					assert.ErrorContains(t, err, want)
+					assert.ErrorContains(t, err, want, "result: %v", res)
 				case "nofail":
 					errAsserted = true
-					if assert.NoError(t, err) {
+					if assert.NoError(t, err, "result: %v", res) {
 						assertValue(t, "", want, res)
 					}
 				default:

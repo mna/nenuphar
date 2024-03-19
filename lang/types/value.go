@@ -55,18 +55,6 @@ type Indexable interface {
 	Len() int
 }
 
-// A Sliceable is a sequence that can be cut into pieces with the slice
-// operator (x[i:j:step]). All native indexable objects are sliceable. This is
-// a separate interface to make this optional for user-implemented values.
-type Sliceable interface {
-	Indexable
-	// For positive strides (step > 0), 0 <= start <= end <= n.
-	// For negative strides (step < 0), -1 <= end <= start < n.
-	// The caller must ensure that the start and end indices are valid and that
-	// step is non-zero.
-	Slice(start, end, step int) Value
-}
-
 // A HasSetIndex is an Indexable value whose elements may be assigned (x[i] =
 // y). The implementation should not add Len to a negative index as the
 // evaluator does this before the call.

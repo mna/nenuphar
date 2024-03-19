@@ -14,6 +14,7 @@ var (
 	_ Value       = (*Array)(nil)
 	_ Indexable   = (*Array)(nil)
 	_ HasSetIndex = (*Array)(nil)
+	_ Iterable    = (*Array)(nil)
 )
 
 // NewArray returns an array containing the specified elements. Callers should
@@ -34,12 +35,34 @@ func (a *Array) String() string    { return "TODO(array)" }
 func (a *Array) Type() string      { return "array" }
 func (a *Array) Len() int          { return len(a.elems) }
 func (a *Array) Index(i int) Value { return a.elems[i] }
+
+func (a *Array) Iterate() Iterator {
+	a.itercount++
+	return &arrayIterator{a: a}
+}
+
 func (a *Array) SetIndex(i int, v Value) error {
 	if err := a.checkMutable("assign to element of"); err != nil {
 		return err
 	}
-	// TODO: return catchable error on out of bounds, but I think this is done in
-	// the machine
 	a.elems[i] = v
 	return nil
+}
+
+type arrayIterator struct {
+	a *Array
+	i int
+}
+
+func (it *arrayIterator) Next(p *Value) bool {
+	if it.i < it.a.Len() {
+		*p = it.a.elems[it.i]
+		it.i++
+		return true
+	}
+	return false
+}
+
+func (it *arrayIterator) Done() {
+	it.a.itercount--
 }

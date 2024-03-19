@@ -29,7 +29,6 @@ type Ordered interface {
 // necessarily known in advance of iteration.
 type Iterable interface {
 	Value
-
 	// Iterate returns an Iterator. It must be followed by call to Iterator.Done.
 	Iterate() Iterator
 }
@@ -37,7 +36,6 @@ type Iterable interface {
 // A Sequence is a sequence of values of known length.
 type Sequence interface {
 	Iterable
-
 	// Len returns the number of elements in the sequence.
 	Len() int
 }
@@ -46,11 +44,9 @@ type Sequence interface {
 // access. It is not necessarily iterable.
 type Indexable interface {
 	Value
-
 	// Index returns the value at the specified index, which must satisfy 0 <= i
 	// < Len().
 	Index(i int) Value
-
 	// Len returns the number of elements in the sequence.
 	Len() int
 }
@@ -92,12 +88,6 @@ type Mapping interface {
 	// behavior of "v in mapping". The 'in' operator reports the 'found'
 	// component, ignoring errors.
 	Get(Value) (v Value, found bool, err error)
-}
-
-// An IterableMapping is a mapping that supports enumeration.
-type IterableMapping interface {
-	Mapping
-	Iterate() Iterator // see Iterable interface
 }
 
 // A HasSetKey supports map update using x[k]=v syntax.

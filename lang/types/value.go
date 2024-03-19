@@ -11,9 +11,9 @@ type Value interface {
 	Type() string
 }
 
-// An Ordered type is a type whose values are ordered:
-// if x and y are of the same Ordered type, then x must be less than y, greater
-// than y, or equal to y.
+// An Ordered type is a type whose values are ordered: if x and y are of the
+// same Ordered type, then x must be less than y, greater than y, or equal to
+// y.
 type Ordered interface {
 	Value
 

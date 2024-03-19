@@ -54,6 +54,7 @@ func Run(th *Thread, fn *types.Function, args types.Tuple) (types.Value, error) 
 	// TODO: add static check that beneath this point
 	// - there is exactly one return statement
 
+	// TODO: store static size of iterstack based on loops?
 	var iterstack []types.Iterator // stack of active iterators
 
 	// Use defer so that application panics can pass through interpreter without
@@ -229,6 +230,36 @@ loop:
 				break loop
 			}
 			stack[sp-1] = z
+
+		case compiler.ITERPUSH:
+			x := stack[sp-1]
+			sp--
+			iter := Iterate(x)
+			if iter == nil {
+				inFlightErr = fmt.Errorf("%s value is not iterable", x.Type())
+				break loop
+			}
+			iterstack = append(iterstack, iter)
+
+		case compiler.ITERJMP:
+			iter := iterstack[len(iterstack)-1]
+			if iter.Next(&stack[sp]) {
+				sp++
+			} else {
+				if runDefer {
+					runDefer = false
+					if hasDeferredExecution(int64(fr.pc), int64(arg), fcode.Defers, nil, &pc) {
+						deferredStack = append(deferredStack, int64(arg)) // push
+						break
+					}
+				}
+				pc = arg
+			}
+
+		case compiler.ITERPOP:
+			n := len(iterstack) - 1
+			iterstack[n].Done()
+			iterstack = iterstack[:n]
 
 		case compiler.NOT:
 			stack[sp-1] = !Truth(stack[sp-1])

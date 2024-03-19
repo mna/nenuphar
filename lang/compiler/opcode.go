@@ -56,8 +56,8 @@ const ( //nolint:revive
 	TRUE  // - TRUE True
 	FALSE // - FALSE False
 
-	ITERPUSH  //       iterable ITERPUSH     -    [pushes the iterator stack] TODO: add to machine
-	ITERPOP   //              - ITERPOP      -    [pops the iterator stack] TODO: add to machine
+	ITERPUSH  //       iterable ITERPUSH     -    [pushes the iterator stack]
+	ITERPOP   //              - ITERPOP      -    [pops the iterator stack]
 	RETURN    //          value RETURN       -
 	SETINDEX  //        a i new SETINDEX     -      where a may be HasSetIndex or HasSetKey
 	INDEX     //            a i INDEX        elem   elem = a[i], a may be Mapping or Indexable
@@ -71,7 +71,7 @@ const ( //nolint:revive
 	// control flow
 	JMP     //            - JMP<addr>     -
 	CJMP    //         cond CJMP<addr>    -
-	ITERJMP //            - ITERJMP<addr> elem   (and fall through) [acts on topmost iterator] TODO: add to machine
+	ITERJMP //            - ITERJMP<addr> elem   (and fall through) [acts on topmost iterator]
 	//----> // or:        - ITERJMP<addr> -      (and jump)
 	CATCHJMP //           - CATCHJMP<addr> -     (jump to addr on catch block exit)
 

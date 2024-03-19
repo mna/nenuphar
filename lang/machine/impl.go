@@ -977,3 +977,13 @@ func Unary(op token.Token, x types.Value) (types.Value, error) {
 unknown:
 	return nil, fmt.Errorf("unsupported unary op: %s %s", op, x.Type())
 }
+
+func Iterate(x types.Value) types.Iterator {
+	if x, ok := x.(types.Iterable); ok {
+		return x.Iterate()
+	}
+	// TODO: would be nice to support a metamethod e.g. __iter so that it can be
+	// customized in user code. Would require a thunk to provide the Iterator
+	// interface.
+	return nil
+}

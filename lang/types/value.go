@@ -98,7 +98,6 @@ type Mapping interface {
 type IterableMapping interface {
 	Mapping
 	Iterate() Iterator // see Iterable interface
-	Items() []Tuple    // TODO: is it required? Can be done via Iterate? a new slice containing all key/value pairs
 }
 
 // A HasSetKey supports map update using x[k]=v syntax.

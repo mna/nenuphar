@@ -22,7 +22,7 @@ func NewMap(size int) *Map {
 	return &Map{m: m}
 }
 
-func (m *Map) String() string { return "TODO(map)" }
+func (m *Map) String() string { return fmt.Sprintf("map(%p)", m) }
 func (m *Map) Type() string   { return "map" }
 func (m *Map) Get(k Value) (Value, bool, error) {
 	v, ok := m.m[k]

@@ -1,6 +1,10 @@
 package types
 
-import "github.com/mna/nenuphar/lang/compiler"
+import (
+	"fmt"
+
+	"github.com/mna/nenuphar/lang/compiler"
+)
 
 // A Function is a function defined by a function statement or expression. The
 // initialization behavior of a module is also represented by a (top-level)
@@ -22,7 +26,7 @@ type Module struct {
 	Constants []Value
 }
 
-func (fn *Function) String() string { return "<function " + fn.Name() + ">" }
+func (fn *Function) String() string { return fmt.Sprintf("function(%p %s)", fn, fn.Name()) }
 func (fn *Function) Type() string   { return "function" }
 func (fn *Function) Name() string {
 	nm := fn.Funcode.Name

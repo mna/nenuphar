@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 // A Tuple represents an immutable list of values. Iteration over a Tuple
 // yields each of the tuple's values in order.
 type Tuple []Value // TODO: this means a Tuple can't be a Map's key...
@@ -9,7 +11,7 @@ var (
 	_ Iterable = Tuple(nil)
 )
 
-func (t Tuple) String() string    { return "TODO(tuple)" }
+func (t Tuple) String() string    { return fmt.Sprintf("tuple(%p)", t) }
 func (t Tuple) Type() string      { return "tuple" }
 func (t Tuple) Iterate() Iterator { return &tupleIterator{elems: t} }
 

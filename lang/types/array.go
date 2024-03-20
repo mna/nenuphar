@@ -32,7 +32,7 @@ func (a *Array) checkMutable(verb string) error {
 	return nil
 }
 
-func (a *Array) String() string    { return "TODO(array)" }
+func (a *Array) String() string    { return fmt.Sprintf("array(%p)", a) }
 func (a *Array) Type() string      { return "array" }
 func (a *Array) Len() int          { return len(a.elems) }
 func (a *Array) Index(i int) Value { return a.elems[i] }

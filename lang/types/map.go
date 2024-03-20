@@ -7,16 +7,13 @@ import "fmt"
 type Map struct {
 	m         map[Value]Value
 	itercount uint32 // number of active iterators
-	// TODO: keep itercount? While Go's map can be modified during iteration,
-	// that would not play well with the custom iterators needed by the machine.
-	// And how will those iterators work without access to Go's internal map
-	// iteration?
 }
 
 var (
 	_ Value     = (*Map)(nil)
 	_ Mapping   = (*Map)(nil)
 	_ HasSetKey = (*Map)(nil)
+	_ Iterable  = (*Map)(nil)
 )
 
 // NewMap returns a map with initial capacity for at least size items.
@@ -38,6 +35,11 @@ func (m *Map) SetKey(k, v Value) error {
 
 	m.m[k] = v
 	return nil
+}
+
+func (m *Map) Iterate() Iterator {
+	// TODO: use https://github.com/dolthub/swiss/blob/v0.2.1/map.go#L214 and modify to return iterator?
+	panic("unimplemented")
 }
 
 // checkMutable reports an error if the map should not be mutated. verb+" map"

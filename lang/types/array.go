@@ -4,7 +4,8 @@ import (
 	"fmt"
 )
 
-// An *Array represents a list of values.
+// An *Array represents a list of values. Iteration over an array yields each
+// of the array's values in order.
 type Array struct {
 	elems     []Value
 	itercount uint32 // number of active iterators

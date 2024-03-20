@@ -1,6 +1,7 @@
 package types
 
-// A Tuple represents an immutable list of values.
+// A Tuple represents an immutable list of values. Iteration over a Tuple
+// yields each of the tuple's values in order.
 type Tuple []Value // TODO: this means a Tuple can't be a Map's key...
 
 var (

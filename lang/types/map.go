@@ -1,12 +1,15 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/dolthub/swiss"
+)
 
 // A Map represents a map or dictionary. If you know the exact final number of
 // entries, it is more efficient to call NewMap.
 type Map struct {
-	m         map[Value]Value
-	itercount uint32 // number of active iterators
+	m *swiss.Map[Value, Value]
 }
 
 var (
@@ -18,35 +21,37 @@ var (
 
 // NewMap returns a map with initial capacity for at least size items.
 func NewMap(size int) *Map {
-	m := make(map[Value]Value, size)
+	m := swiss.NewMap[Value, Value](uint32(size))
 	return &Map{m: m}
 }
 
 func (m *Map) String() string { return fmt.Sprintf("map(%p)", m) }
 func (m *Map) Type() string   { return "map" }
 func (m *Map) Get(k Value) (Value, bool, error) {
-	v, ok := m.m[k]
+	v, ok := m.m.Get(k)
 	return v, ok, nil
 }
 func (m *Map) SetKey(k, v Value) error {
-	if err := m.checkMutable("insert into"); err != nil {
-		return err
-	}
-
-	m.m[k] = v
+	m.m.Put(k, v)
 	return nil
 }
 
 func (m *Map) Iterate() Iterator {
-	// TODO: use https://github.com/dolthub/swiss/blob/v0.2.1/map.go#L214 and modify to return iterator?
 	panic("unimplemented")
 }
 
-// checkMutable reports an error if the map should not be mutated. verb+" map"
-// should describe the operation.
-func (m *Map) checkMutable(verb string) error {
-	if m.itercount > 0 {
-		return fmt.Errorf("cannot %s map during iteration", verb)
-	}
-	return nil
+type mapIterator struct {
+	it *swiss.Iterator[Value, Value]
 }
+
+func (it *mapIterator) Next(p *Value) bool {
+	if !it.it.Next() {
+		return false
+	}
+
+	k, v := it.it.Pair()
+	*p = Tuple{k, v}
+	return true
+}
+
+func (it *mapIterator) Done() {}

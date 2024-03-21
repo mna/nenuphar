@@ -170,12 +170,14 @@ loop:
 				unop = token.Token(op-compiler.UPLUS) + token.PLUS
 			}
 			x := stack[sp-1]
+			sp--
 			y, err := Unary(unop, x)
 			if err != nil {
 				inFlightErr = err
 				break loop
 			}
-			stack[sp-1] = y
+			stack[sp] = y
+			sp++
 
 		case compiler.NIL:
 			stack[sp] = types.Nil
@@ -200,9 +202,9 @@ loop:
 			pc = arg
 
 		case compiler.CALL, compiler.CALL_VAR:
-			var args types.Value
+			var varArgs types.Value
 			if op == compiler.CALL_VAR {
-				args = stack[sp-1]
+				varArgs = stack[sp-1]
 				sp--
 			}
 
@@ -214,22 +216,24 @@ loop:
 				// Copy positional arguments into a new array, unless the callee is
 				// another Function, in which case it can be trusted not to mutate
 				// them.
-				if _, ok := stack[sp-1].(*types.Function); !ok || args != nil {
+				if _, ok := stack[sp-1].(*types.Function); !ok || varArgs != nil {
 					positional = append(types.Tuple(nil), positional...)
 				}
 			}
-			if args != nil {
+			if varArgs != nil {
 				// TODO: implement vararg parameter passing
 			}
 
 			function := stack[sp-1]
+			sp--
 
 			z, err := Call(th, function, positional)
 			if err != nil {
 				inFlightErr = err
 				break loop
 			}
-			stack[sp-1] = z
+			stack[sp] = z
+			sp++
 
 		case compiler.ITERPUSH:
 			x := stack[sp-1]
@@ -379,13 +383,15 @@ loop:
 
 		case compiler.ATTR:
 			x := stack[sp-1]
+			sp--
 			name := fn.Module.Program.Names[arg]
 			y, err := getAttr(x, name)
 			if err != nil {
 				inFlightErr = err
 				break loop
 			}
-			stack[sp-1] = y
+			stack[sp] = y
+			sp++
 
 		case compiler.SETFIELD:
 			y := stack[sp-1]

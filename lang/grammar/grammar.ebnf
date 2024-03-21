@@ -54,13 +54,12 @@ ExprStmt     = FuncCall .
 ExprList     = Expr { "," Expr } .
 Expr         = (SimpleExpr | unop Expr) { binop Expr } .
 SimpleExpr   = float | int | string | "null" | "true" | "false" |
-               Map | Array | Set | Tuple | FuncExpr |
+               Map | Array | Tuple | FuncExpr |
                ClassExpr | SuffixedExpr .
 
 Map          = "{" [Field {"," Field} [","]] "}" .
 Field        = (name | string | "[" Expr "]") ":" Expr .
 Array        = "[" [Expr {"," Expr} [","]] "]" .
-Set          = "set" Array .
 Tuple        = "tup" Array .
 FuncExpr     = "fn" Signature Body .
 ClassExpr    = "class" InheritClause ClassBody .

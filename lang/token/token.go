@@ -12,8 +12,7 @@ const (
 	IDENT  // x
 	INT    // 123
 	FLOAT  // 1.23e45
-	STRING // "foo" or 'foo' or '''foo''' or r'foo' or r"foo"
-	BYTES  // b"foo", etc
+	STRING // "foo" or 'foo' or [[foo]]
 
 	// Punctuation
 
@@ -41,17 +40,18 @@ const (
 	LE  // <=
 
 	// punctuation
+	SEMICOLON // ;
+	COMMA     // ,
+	LBRACE    // {
+	RBRACE    // }
+	LBRACK    // [
+	RBRACK    // ]
+	LPAREN    // (
+	RPAREN    // )
+	COLON     // :
+
 	DOT           // .
-	COMMA         // ,
 	EQ            // =
-	SEMI          // ;
-	COLON         // :
-	LPAREN        // (
-	RPAREN        // )
-	LBRACK        // [
-	RBRACK        // ]
-	LBRACE        // {
-	RBRACE        // }
 	PLUS_EQ       // +=    (keep order consistent with PLUS..GTGT)
 	MINUS_EQ      // -=
 	STAR_EQ       // *=
@@ -118,7 +118,7 @@ var tokenNames = [...]string{
 	DOT:           ".",
 	COMMA:         ",",
 	EQ:            "=",
-	SEMI:          ";",
+	SEMICOLON:     ";",
 	COLON:         ":",
 	LPAREN:        "(",
 	RPAREN:        ")",

@@ -226,7 +226,11 @@ loop:
 			function := stack[sp-1]
 			sp--
 
-			z, err := Call(th, function, NewTuple(positional))
+			argsTup := NilaryTuple
+			if len(positional) > 0 {
+				argsTup = NewTuple(positional)
+			}
+			z, err := Call(th, function, argsTup)
 			if err != nil {
 				inFlightErr = err
 				break loop

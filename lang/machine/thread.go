@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 
 	"github.com/mna/nenuphar/lang/compiler"
-	"github.com/mna/nenuphar/lang/types"
 )
 
 type Thread struct {
@@ -39,13 +38,13 @@ type Thread struct {
 
 	// Load is an optional function value to call to load modules (called by the
 	// LOAD opcode).
-	Load func(*Thread, string) (types.Value, error)
+	Load func(*Thread, string) (Value, error)
 
 	// Predeclared is the set of predeclared identifiers and their assigned
 	// values. Predeclared identifiers are like the Universe identifiers in that
 	// they are available to all modules automatically and they cannot be
 	// assigned to.
-	Predeclared map[string]types.Value
+	Predeclared map[string]Value
 
 	ctx       context.Context
 	ctxCancel func()
@@ -59,7 +58,7 @@ type Thread struct {
 	stdin  io.Reader
 }
 
-func (th *Thread) RunProgram(ctx context.Context, p *compiler.Program) (types.Value, error) {
+func (th *Thread) RunProgram(ctx context.Context, p *compiler.Program) (Value, error) {
 	// TODO: would it be acceptable to run more than one program on a thread?
 	if th.ctx != nil {
 		return nil, fmt.Errorf("thread %s is already executing a program", th.Name)
@@ -105,27 +104,27 @@ func (th *Thread) init() {
 	}
 }
 
-func makeToplevelFunction(p *compiler.Program) *types.Function {
+func makeToplevelFunction(p *compiler.Program) *Function {
 	// create the value denoted by each program constant
-	constants := make([]types.Value, len(p.Constants))
+	constants := make([]Value, len(p.Constants))
 	for i, c := range p.Constants {
-		var v types.Value
+		var v Value
 		switch c := c.(type) {
 		case int64:
-			v = types.Int(c)
+			v = Int(c)
 		case string:
-			v = types.String(c)
+			v = String(c)
 		case float64:
-			v = types.Float(c)
+			v = Float(c)
 		default:
 			panic(fmt.Sprintf("unexpected constant %T: %[1]v", c))
 		}
 		constants[i] = v
 	}
 
-	return &types.Function{
+	return &Function{
 		Funcode: p.Toplevel,
-		Module: &types.Module{
+		Module: &Module{
 			Program:   p,
 			Constants: constants,
 		},

@@ -1,4 +1,4 @@
-package types
+package machine
 
 import (
 	"fmt"
@@ -12,11 +12,12 @@ import (
 type Function struct {
 	Funcode  *compiler.Funcode
 	Module   *Module
-	Freevars Tuple
+	Freevars *Tuple
 }
 
 var (
-	_ Value = (*Function)(nil)
+	_ Value    = (*Function)(nil)
+	_ Callable = (*Function)(nil)
 )
 
 // A Module is the dynamic counterpart to a compiler.Program, which is the unit
@@ -28,6 +29,9 @@ type Module struct {
 
 func (fn *Function) String() string { return fmt.Sprintf("function(%p %s)", fn, fn.Name()) }
 func (fn *Function) Type() string   { return "function" }
+func (fn *Function) CallInternal(th *Thread, args *Tuple) (Value, error) {
+	return run(th, fn, args)
+}
 func (fn *Function) Name() string {
 	nm := fn.Funcode.Name
 	if nm == "" {

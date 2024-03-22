@@ -1,4 +1,4 @@
-package types
+package machine
 
 // NilType is the type of nil. Its only legal value is Nil. (We represent it as
 // a number, not struct{}, so that Nil may be constant.)

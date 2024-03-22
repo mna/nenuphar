@@ -1,4 +1,4 @@
-package types
+package machine
 
 import (
 	"fmt"
@@ -50,7 +50,7 @@ func (it *mapIterator) Next(p *Value) bool {
 	}
 
 	k, v := it.it.Pair()
-	*p = Tuple{k, v}
+	*p = NewTuple([]Value{k, v})
 	return true
 }
 

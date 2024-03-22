@@ -7,33 +7,32 @@ import (
 	"reflect"
 
 	"github.com/mna/nenuphar/lang/token"
-	"github.com/mna/nenuphar/lang/types"
 )
 
 // Some machine opcodes are more complex and/or need to be exposed via a
 // low-level interface to be available for higher-level APIs. Those functions
 // belong in this file.
 
-// A Callable value f may be the operand of a function call, f(x). Clients
-// should use the Call function, never the CallInternal method.
-type Callable interface {
-	types.Value
-	Name() string
-	CallInternal(thread *Thread, args types.Tuple) (types.Value, error)
-}
-
 // Call calls the function or Callable value v with the specified arguments.
-func Call(th *Thread, v types.Value, args types.Tuple) (types.Value, error) {
-	var fn *types.Function
-	var cb Callable
+func Call(th *Thread, v Value, args *Tuple) (Value, error) {
+	if args == nil {
+		args = NilaryTuple
+	}
 
+	var cb Callable
 	switch v := v.(type) {
-	case *types.Function:
-		fn = v
 	case Callable:
 		cb = v
+	case HasMetamap:
+		if meta := v.Metamap(); meta != nil {
+			//res, err := CallMetamethod(meta, op, v, args) // TODO: translate op to metamethod name
+			//if res != nil || err != nil {
+			//	return res, err
+			//}
+		}
+		return nil, fmt.Errorf("invalid call of non-callable (%s)", v.Type())
 	default:
-		return nil, fmt.Errorf("invalid call of non-callable (%s)", fn.Type())
+		return nil, fmt.Errorf("invalid call of non-callable (%s)", v.Type())
 	}
 
 	// Allocate and push a new frame. As an optimization, use slack portion of
@@ -49,7 +48,6 @@ func Call(th *Thread, v types.Value, args types.Tuple) (types.Value, error) {
 	if th.callStack == nil {
 		th.init()
 	}
-
 	th.callStack = append(th.callStack, fr) // push
 
 	// Use defer to ensure that panics from built-ins pass through the
@@ -60,22 +58,12 @@ func Call(th *Thread, v types.Value, args types.Tuple) (types.Value, error) {
 		th.callStack = th.callStack[:len(th.callStack)-1] // pop
 	}()
 
-	var (
-		result types.Value
-		err    error
-	)
-
-	if fn != nil {
-		fr.callable = fn
-		result, err = Run(th, fn, args)
-	} else {
-		fr.callable = cb
-		result, err = cb.CallInternal(th, args)
-	}
+	fr.callable = cb
+	result, err := cb.CallInternal(th, args)
 
 	// Sanity check: nil is not a valid value.
 	if result == nil && err == nil {
-		err = fmt.Errorf("internal error: nil (not Nil) returned from %s", fn)
+		err = fmt.Errorf("internal error: nil (not Nil) returned from %s", v)
 	}
 	return result, err
 }
@@ -100,9 +88,9 @@ func Call(th *Thread, v types.Value, args types.Tuple) (types.Value, error) {
 //
 // Metamethods can be used to customize comparison for a value that supports
 // it. The != operator is the negation of equality and cannot be customized.
-func Compare(op token.Token, x, y types.Value) (bool, error) {
+func Compare(op token.Token, x, y Value) (bool, error) {
 	if sameType(x, y) {
-		if xcomp, ok := x.(types.Ordered); ok {
+		if xcomp, ok := x.(Ordered); ok {
 			t, err := xcomp.Cmp(y)
 			if err != nil {
 				return false, err
@@ -111,7 +99,7 @@ func Compare(op token.Token, x, y types.Value) (bool, error) {
 		}
 
 		if op == token.EQL || op == token.NEQ {
-			if xeq, ok := x.(types.HasEqual); ok {
+			if xeq, ok := x.(HasEqual); ok {
 				eq, err := xeq.Equals(y)
 				if err != nil {
 					return false, err
@@ -123,19 +111,19 @@ func Compare(op token.Token, x, y types.Value) (bool, error) {
 			}
 		}
 
-		if x, ok := x.(types.HasMetamap); ok {
+		if x, ok := x.(HasMetamap); ok {
 			if meta := x.Metamap(); meta != nil {
 				// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?
-				//res, err := CallMetamethod(meta, op, x, y, types.Left) // TODO: translate op to metamethod name
+				//res, err := CallMetamethod(meta, op, x, y, Left) // TODO: translate op to metamethod name
 				//if res != nil || err != nil {
 				//	return res, err
 				//}
 			}
 		}
-		if y, ok := y.(types.HasMetamap); ok {
+		if y, ok := y.(HasMetamap); ok {
 			if meta := y.Metamap(); meta != nil {
 				// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?
-				//res, err := CallMetamethod(meta, op, x, y, types.Right) // TODO: translate op to metamethod name
+				//res, err := CallMetamethod(meta, op, x, y, Right) // TODO: translate op to metamethod name
 				//if res != nil || err != nil {
 				//	return res, err
 				//}
@@ -156,8 +144,8 @@ func Compare(op token.Token, x, y types.Value) (bool, error) {
 
 	// int/float ordered comparisons
 	switch x := x.(type) {
-	case types.Int:
-		if y, ok := y.(types.Float); ok {
+	case Int:
+		if y, ok := y.(Float); ok {
 			var cmp int
 			if y != y {
 				cmp = -1 // y is NaN
@@ -177,8 +165,8 @@ func Compare(op token.Token, x, y types.Value) (bool, error) {
 			return threeway(op, cmp), nil
 		}
 
-	case types.Float:
-		if y, ok := y.(types.Int); ok {
+	case Float:
+		if y, ok := y.(Int); ok {
 			var cmp int
 			if x != x {
 				cmp = +1 // x is NaN
@@ -199,19 +187,19 @@ func Compare(op token.Token, x, y types.Value) (bool, error) {
 		}
 	}
 
-	if x, ok := x.(types.HasMetamap); ok {
+	if x, ok := x.(HasMetamap); ok {
 		if meta := x.Metamap(); meta != nil {
 			// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?
-			//res, err := CallMetamethod(meta, op, x, y, types.Left) // TODO: translate op to metamethod name
+			//res, err := CallMetamethod(meta, op, x, y, Left) // TODO: translate op to metamethod name
 			//if res != nil || err != nil {
 			//	return res, err
 			//}
 		}
 	}
-	if y, ok := y.(types.HasMetamap); ok {
+	if y, ok := y.(HasMetamap); ok {
 		if meta := y.Metamap(); meta != nil {
 			// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?
-			//res, err := CallMetamethod(meta, op, x, y, types.Right) // TODO: translate op to metamethod name
+			//res, err := CallMetamethod(meta, op, x, y, Right) // TODO: translate op to metamethod name
 			//if res != nil || err != nil {
 			//	return res, err
 			//}
@@ -228,7 +216,7 @@ func Compare(op token.Token, x, y types.Value) (bool, error) {
 	return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
 }
 
-func sameType(x, y types.Value) bool {
+func sameType(x, y Value) bool {
 	return reflect.TypeOf(x) == reflect.TypeOf(y)
 }
 
@@ -254,27 +242,27 @@ func threeway(op token.Token, cmp int) bool {
 
 // Truth returns the truthy value of v, which is True for every value except
 // False and Nil.
-func Truth(v types.Value) types.Bool {
+func Truth(v Value) Bool {
 	switch v := v.(type) {
-	case types.Bool:
+	case Bool:
 		return v
-	case types.NilType:
-		return types.False
+	case NilType:
+		return False
 	default:
-		return types.True
+		return True
 	}
 }
 
 // setIndex implements x[y] = z.
-func setIndex(x, y, z types.Value) error {
+func setIndex(x, y, z Value) error {
 	// TODO: add support for metamap, see how Lua does it.
 	switch x := x.(type) {
-	case types.HasSetKey:
+	case HasSetKey:
 		if err := x.SetKey(y, z); err != nil {
 			return err
 		}
 
-	case types.HasSetIndex:
+	case HasSetIndex:
 		n := x.Len()
 		i, err := AsExactInt(y)
 		if err != nil {
@@ -296,11 +284,11 @@ func setIndex(x, y, z types.Value) error {
 }
 
 // getIndex implements x[y].
-func getIndex(x, y types.Value) (types.Value, error) {
+func getIndex(x, y Value) (Value, error) {
 	fail := true
 
 	switch x := x.(type) {
-	case types.Mapping:
+	case Mapping:
 		z, found, err := x.Get(y)
 		if err != nil {
 			return nil, err
@@ -311,7 +299,7 @@ func getIndex(x, y types.Value) (types.Value, error) {
 		// continue in case a metamethod is possible
 		fail = false
 
-	case types.Indexable:
+	case Indexable:
 		// TODO: support metamethod to index a non-integer field for Indexable? I think not.
 		n := x.Len()
 		i, err := AsExactInt(y)
@@ -328,7 +316,7 @@ func getIndex(x, y types.Value) (types.Value, error) {
 		return x.Index(i), nil
 	}
 
-	if x, ok := x.(types.HasMetamap); ok {
+	if x, ok := x.(HasMetamap); ok {
 		if meta := x.Metamap(); meta != nil {
 			//res, err := CallMetamethod(meta, op, x, y) // TODO: translate op to metamethod name
 			//if res != nil || err != nil {
@@ -337,17 +325,17 @@ func getIndex(x, y types.Value) (types.Value, error) {
 		}
 	}
 	if !fail {
-		return types.Nil, nil
+		return Nil, nil
 	}
 	return nil, fmt.Errorf("unsupported index operation %s[%s]", x.Type(), y.Type())
 }
 
 // getAttr implements x.dot.
-func getAttr(x types.Value, name string) (types.Value, error) {
-	hasAttr, ok := x.(types.HasAttrs)
+func getAttr(x Value, name string) (Value, error) {
+	hasAttr, ok := x.(HasAttrs)
 	if !ok {
 		// fallback to getIndex, which will use metamap if available.
-		return getIndex(x, types.String(name))
+		return getIndex(x, String(name))
 	}
 
 	var errmsg string
@@ -358,7 +346,7 @@ func getAttr(x types.Value, name string) (types.Value, error) {
 		}
 		// (nil, nil) => generic error
 		errmsg = fmt.Sprintf("%s has no .%s field or method", x.Type(), name)
-	} else if nsa, ok := err.(types.NoSuchAttrError); ok {
+	} else if nsa, ok := err.(NoSuchAttrError); ok {
 		errmsg = string(nsa)
 	} else {
 		return nil, err // return error as is
@@ -373,10 +361,10 @@ func getAttr(x types.Value, name string) (types.Value, error) {
 }
 
 // setField implements x.name = y.
-func setField(x types.Value, name string, y types.Value) error {
-	if x, ok := x.(types.HasSetField); ok {
+func setField(x Value, name string, y Value) error {
+	if x, ok := x.(HasSetField); ok {
 		err := x.SetField(name, y)
-		if _, ok := err.(types.NoSuchAttrError); ok {
+		if _, ok := err.(NoSuchAttrError); ok {
 			//// TODO: No such field: check spelling.
 			//if n := spell.Nearest(name, x.AttrNames()); n != "" {
 			//	err = fmt.Errorf("%s (did you mean .%s?)", err, n)
@@ -386,17 +374,17 @@ func setField(x types.Value, name string, y types.Value) error {
 	}
 
 	// fallback to setIndex
-	return setIndex(x, types.String(name), y)
+	return setIndex(x, String(name), y)
 }
 
 // AsExactInt enforces the type conversion rules for a value to an integer.
 // Only Int and Float may convert to Int, and Float conversion is valid only if
 // its value can be exactly represented by an integer.
-func AsExactInt(v types.Value) (int, error) {
+func AsExactInt(v Value) (int, error) {
 	switch v := v.(type) {
-	case types.Int:
+	case Int:
 		return int(v), nil
-	case types.Float:
+	case Float:
 		i, err := floatToInt(v)
 		if err != nil {
 			return 0, err
@@ -407,9 +395,9 @@ func AsExactInt(v types.Value) (int, error) {
 	}
 }
 
-func floatToInt(f types.Float) (types.Int, error) {
-	i := types.Int(f)
-	if types.Float(i) == f {
+func floatToInt(f Float) (Int, error) {
+	i := Int(f)
+	if Float(i) == f {
 		return i, nil
 	}
 	return 0, fmt.Errorf("no exact integer representation possible for %s value %v", f.Type(), f)
@@ -417,14 +405,14 @@ func floatToInt(f types.Float) (types.Int, error) {
 
 // AsString enforces the type conversion rules for a value to a string, which
 // is no conversion at all - only String values can be returned as a Go string.
-func AsString(v types.Value) (string, bool) {
-	s, ok := v.(types.String)
+func AsString(v Value) (string, bool) {
+	s, ok := v.(String)
 	return string(s), ok
 }
 
 // Binary applies a strict binary operator (not AND or OR) to its operands. For
 // equality tests or ordered comparisons, use Compare instead.
-func Binary(op token.Token, l, r types.Value) (types.Value, error) {
+func Binary(op token.Token, l, r Value) (Value, error) {
 	// first try to perform the binary operations supported as built-ins.
 	switch op {
 	case token.PLUS:
@@ -436,24 +424,24 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// is performed following Go's rules for floating-point arithmetic (IEEE
 		// 754), and the result is a float.
 		switch l := l.(type) {
-		case types.String:
-			if r, ok := r.(types.String); ok {
+		case String:
+			if r, ok := r.(String); ok {
 				return l + r, nil
 			}
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				return l + r, nil
-			case types.Float:
-				lf := types.Float(l)
+			case Float:
+				lf := Float(l)
 				return lf + r, nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Float:
+			case Float:
 				return l + r, nil
-			case types.Int:
-				rf := types.Float(r)
+			case Int:
+				rf := Float(r)
 				return l + rf, nil
 			}
 		}
@@ -465,20 +453,20 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// is performed following Go's rules for floating-point arithmetic (IEEE
 		// 754), and the result is a float.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				return l - r, nil
-			case types.Float:
-				lf := types.Float(l)
+			case Float:
+				lf := Float(l)
 				return lf - r, nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Float:
+			case Float:
 				return l - r, nil
-			case types.Int:
-				rf := types.Float(r)
+			case Int:
+				rf := Float(r)
 				return l - rf, nil
 			}
 		}
@@ -490,20 +478,20 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// floats, the operation is performed following Go's rules for
 		// floating-point arithmetic (IEEE 754), and the result is a float.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				return l * r, nil
-			case types.Float:
-				lf := types.Float(l)
+			case Float:
+				lf := Float(l)
 				return lf * r, nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Float:
+			case Float:
 				return l * r, nil
-			case types.Int:
-				rf := types.Float(r)
+			case Int:
+				rf := Float(r)
 				return l * rf, nil
 			}
 		}
@@ -512,30 +500,30 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// / float division: the operation is performed by converting the operands
 		// to floats and the result is always a float.
 		switch l := l.(type) {
-		case types.Int:
-			lf := types.Float(l)
+		case Int:
+			lf := Float(l)
 			switch r := r.(type) {
-			case types.Int:
-				rf := types.Float(r)
+			case Int:
+				rf := Float(r)
 				if rf == 0.0 {
 					return nil, fmt.Errorf("floating-point division by zero")
 				}
 				return lf / rf, nil
-			case types.Float:
+			case Float:
 				if r == 0.0 {
 					return nil, fmt.Errorf("floating-point division by zero")
 				}
 				return lf / r, nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Float:
+			case Float:
 				if r == 0.0 {
 					return nil, fmt.Errorf("floating-point division by zero")
 				}
 				return l / r, nil
-			case types.Int:
-				rf := types.Float(r)
+			case Int:
+				rf := Float(r)
 				if rf == 0.0 {
 					return nil, fmt.Errorf("floating-point division by zero")
 				}
@@ -551,33 +539,33 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// performed following Go's rules for floating-point arithmetic (IEEE 754)
 		// and the result is obtained using Go's math.Floor.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				if r == 0 {
 					return nil, fmt.Errorf("floored division by zero")
 				}
 				return floorDiv(l, r), nil
-			case types.Float:
-				lf := types.Float(l)
+			case Float:
+				lf := Float(l)
 				if r == 0.0 {
 					return nil, fmt.Errorf("floored division by zero")
 				}
-				return types.Float(math.Floor(float64(lf) / float64(r))), nil
+				return Float(math.Floor(float64(lf) / float64(r))), nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Float:
+			case Float:
 				if r == 0.0 {
 					return nil, fmt.Errorf("floored division by zero")
 				}
-				return types.Float(math.Floor(float64(l) / float64(r))), nil
-			case types.Int:
-				rf := types.Float(r)
+				return Float(math.Floor(float64(l) / float64(r))), nil
+			case Int:
+				rf := Float(r)
 				if rf == 0.0 {
 					return nil, fmt.Errorf("floored division by zero")
 				}
-				return types.Float(math.Floor(float64(l) / float64(rf))), nil
+				return Float(math.Floor(float64(l) / float64(rf))), nil
 			}
 		}
 
@@ -588,32 +576,32 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// integer. Otherwise, if both operands are numbers, then they are
 		// converted to floats.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				if r == 0 {
 					return nil, fmt.Errorf("integer modulo by zero")
 				}
 				return modInt(l, r), nil
-			case types.Float:
-				lf := types.Float(l)
+			case Float:
+				lf := Float(l)
 				if r == 0 {
 					return nil, fmt.Errorf("floating-point modulo by zero")
 				}
 				return modFloat(lf, r), nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Float:
+			case Float:
 				if r == 0.0 {
 					return nil, fmt.Errorf("floating-point modulo by zero")
 				}
 				return modFloat(l, r), nil
-			case types.Int:
+			case Int:
 				if r == 0 {
 					return nil, fmt.Errorf("floating-point modulo by zero")
 				}
-				rf := types.Float(r)
+				rf := Float(r)
 				return modFloat(l, rf), nil
 			}
 		}
@@ -623,22 +611,22 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// the operands to floats and the result is always a float, as returned by
 		// Go's math.Pow.
 		switch l := l.(type) {
-		case types.Int:
-			lf := types.Float(l)
+		case Int:
+			lf := Float(l)
 			switch r := r.(type) {
-			case types.Int:
-				rf := types.Float(r)
-				return types.Float(math.Pow(float64(lf), float64(rf))), nil
-			case types.Float:
-				return types.Float(math.Pow(float64(lf), float64(r))), nil
+			case Int:
+				rf := Float(r)
+				return Float(math.Pow(float64(lf), float64(rf))), nil
+			case Float:
+				return Float(math.Pow(float64(lf), float64(r))), nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Float:
-				return types.Float(math.Pow(float64(l), float64(r))), nil
-			case types.Int:
-				rf := types.Float(r)
-				return types.Float(math.Pow(float64(l), float64(rf))), nil
+			case Float:
+				return Float(math.Pow(float64(l), float64(r))), nil
+			case Int:
+				rf := Float(r)
+				return Float(math.Pow(float64(l), float64(rf))), nil
 			}
 		}
 
@@ -648,26 +636,26 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// integer. The operation fails if a float is not representable as an
 		// integer.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				return l & r, nil
-			case types.Float:
+			case Float:
 				ri, err := floatToInt(r)
 				if err != nil {
 					return nil, err
 				}
 				return l & ri, nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
 				}
 				return li & r, nil
-			case types.Float:
+			case Float:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
@@ -686,26 +674,26 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// integer. The operation fails if a float is not representable as an
 		// integer.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				return l | r, nil
-			case types.Float:
+			case Float:
 				ri, err := floatToInt(r)
 				if err != nil {
 					return nil, err
 				}
 				return l | ri, nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
 				}
 				return li | r, nil
-			case types.Float:
+			case Float:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
@@ -724,26 +712,26 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// result is an integer. The operation fails if a float is not
 		// representable as an integer.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				return l ^ r, nil
-			case types.Float:
+			case Float:
 				ri, err := floatToInt(r)
 				if err != nil {
 					return nil, err
 				}
 				return l ^ ri, nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
 				}
 				return li ^ r, nil
-			case types.Float:
+			case Float:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
@@ -763,35 +751,35 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// representable as an integer. It fills the vacant bits with zeros.
 		// Negative displacements shift to the other direction.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				if r < 0 {
-					return types.Int(uint(l) >> -r), nil
+					return Int(uint(l) >> -r), nil
 				}
 				return l << r, nil
-			case types.Float:
+			case Float:
 				ri, err := floatToInt(r)
 				if err != nil {
 					return nil, err
 				}
 				if ri < 0 {
-					return types.Int(uint(l) >> -ri), nil
+					return Int(uint(l) >> -ri), nil
 				}
 				return l << ri, nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
 				}
 				if r < 0 {
-					return types.Int(uint(li) >> -r), nil
+					return Int(uint(li) >> -r), nil
 				}
 				return li << r, nil
-			case types.Float:
+			case Float:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
@@ -801,7 +789,7 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 					return nil, err
 				}
 				if ri < 0 {
-					return types.Int(uint(li) >> -ri), nil
+					return Int(uint(li) >> -ri), nil
 				}
 				return li << ri, nil
 			}
@@ -814,14 +802,14 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 		// representable as an integer. It fills the vacant bits with zeros.
 		// Negative displacements shift to the other direction.
 		switch l := l.(type) {
-		case types.Int:
+		case Int:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				if r < 0 {
 					return l << -r, nil
 				}
-				return types.Int(uint(l) >> r), nil
-			case types.Float:
+				return Int(uint(l) >> r), nil
+			case Float:
 				ri, err := floatToInt(r)
 				if err != nil {
 					return nil, err
@@ -829,11 +817,11 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 				if ri < 0 {
 					return l << -ri, nil
 				}
-				return types.Int(uint(l) >> ri), nil
+				return Int(uint(l) >> ri), nil
 			}
-		case types.Float:
+		case Float:
 			switch r := r.(type) {
-			case types.Int:
+			case Int:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
@@ -841,8 +829,8 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 				if r < 0 {
 					return li << -r, nil
 				}
-				return types.Int(uint(li) >> r), nil
-			case types.Float:
+				return Int(uint(li) >> r), nil
+			case Float:
 				li, err := floatToInt(l)
 				if err != nil {
 					return nil, err
@@ -854,7 +842,7 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 				if ri < 0 {
 					return li << -ri, nil
 				}
-				return types.Int(uint(li) >> ri), nil
+				return Int(uint(li) >> ri), nil
 			}
 		}
 
@@ -865,14 +853,14 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 
 	// user-defined types with direct binary operators support
 	// (nil, nil) => unhandled
-	if l, ok := l.(types.HasBinary); ok {
-		res, err := l.Binary(op, r, types.Left)
+	if l, ok := l.(HasBinary); ok {
+		res, err := l.Binary(op, r, Left)
 		if res != nil || err != nil {
 			return res, err
 		}
 	}
-	if r, ok := r.(types.HasBinary); ok {
-		res, err := r.Binary(op, l, types.Right)
+	if r, ok := r.(HasBinary); ok {
+		res, err := r.Binary(op, l, Right)
 		if res != nil || err != nil {
 			return res, err
 		}
@@ -880,17 +868,17 @@ func Binary(op token.Token, l, r types.Value) (types.Value, error) {
 
 	// user-defined types with metatable support
 	// (nil, nil) => no metamethod found
-	if l, ok := l.(types.HasMetamap); ok {
+	if l, ok := l.(HasMetamap); ok {
 		if meta := l.Metamap(); meta != nil {
-			//res, err := CallMetamethod(meta, op, l, r, types.Left) // TODO: translate op to metamethod name
+			//res, err := CallMetamethod(meta, op, l, r, Left) // TODO: translate op to metamethod name
 			//if res != nil || err != nil {
 			//	return res, err
 			//}
 		}
 	}
-	if r, ok := r.(types.HasMetamap); ok {
+	if r, ok := r.(HasMetamap); ok {
 		if meta := r.Metamap(); meta != nil {
-			//res, err := CallMetamethod(meta, op, l, r, types.Right) // TODO: translate op to metamethod name
+			//res, err := CallMetamethod(meta, op, l, r, Right) // TODO: translate op to metamethod name
 			//if res != nil || err != nil {
 			//	return res, err
 			//}
@@ -901,7 +889,7 @@ unknown:
 	return nil, fmt.Errorf("unsupported binary op: %s %s %s", l.Type(), op, r.Type())
 }
 
-func floorDiv(l, r types.Int) types.Int {
+func floorDiv(l, r Int) Int {
 	if r < 0 {
 		l, r = -l, -r
 	}
@@ -912,12 +900,12 @@ func floorDiv(l, r types.Int) types.Int {
 	return (l - m) / r
 }
 
-func modInt(l, r types.Int) types.Int {
+func modInt(l, r Int) Int {
 	return (l%r + r) % r
 }
 
-func modFloat(l, r types.Float) types.Float {
-	v := types.Float(math.Mod(float64(l), float64(r)))
+func modFloat(l, r Float) Float {
+	v := Float(math.Mod(float64(l), float64(r)))
 	if v < 0 {
 		v += r
 	}
@@ -926,7 +914,7 @@ func modFloat(l, r types.Float) types.Float {
 
 // Unary applies a unary operator (only +, -, ~, # and "not" as the others -
 // "try" and "must" - are compiled to catch statements) to its operand.
-func Unary(op token.Token, x types.Value) (types.Value, error) {
+func Unary(op token.Token, x Value) (Value, error) {
 	// The NOT operator is not customizable.
 	if op == token.NOT {
 		return !Truth(x), nil
@@ -936,9 +924,9 @@ func Unary(op token.Token, x types.Value) (types.Value, error) {
 	case token.PLUS:
 		// + unary addition: returns the integer or float unchanged.
 		switch x := x.(type) {
-		case types.Int:
+		case Int:
 			return +x, nil
-		case types.Float:
+		case Float:
 			return +x, nil
 		}
 
@@ -946,9 +934,9 @@ func Unary(op token.Token, x types.Value) (types.Value, error) {
 		// - unary subtraction: switches the sign of the integer or float,
 		// returning the same type.
 		switch x := x.(type) {
-		case types.Int:
+		case Int:
 			return -x, nil
-		case types.Float:
+		case Float:
 			return -x, nil
 		}
 
@@ -957,29 +945,31 @@ func Unary(op token.Token, x types.Value) (types.Value, error) {
 		// as if the integer was unsigned. The result is an integer. The operation
 		// fails if the float is not representable as an integer.
 		switch x := x.(type) {
-		case types.Int:
-			return types.Int(^uint(x)), nil
-		case types.Float:
+		case Int:
+			return Int(^uint(x)), nil
+		case Float:
 			xi, err := floatToInt(x)
 			if err != nil {
 				return nil, err
 			}
-			return types.Int(^uint(xi)), nil
+			return Int(^uint(xi)), nil
 		}
 
 	case token.POUND:
 		// # len operator: the length of a string is its number of bytes, as an
 		// integer.
 		switch x := x.(type) {
-		case types.String:
-			return types.Int(len(x)), nil
+		case String:
+			return Int(len(x)), nil
 		}
 
 	default:
 		goto unknown
 	}
 
-	if x, ok := x.(types.HasUnary); ok {
+	// TODO: for POUND, if Sequence or Indexable, return that Len.
+
+	if x, ok := x.(HasUnary); ok {
 		// (nil, nil) => unhandled
 		y, err := x.Unary(op)
 		if y != nil || err != nil {
@@ -987,12 +977,23 @@ func Unary(op token.Token, x types.Value) (types.Value, error) {
 		}
 	}
 
+	// user-defined types with metatable support
+	// (nil, nil) => no metamethod found
+	if x, ok := x.(HasMetamap); ok {
+		if meta := x.Metamap(); meta != nil {
+			//res, err := CallMetamethod(meta, op, x) // TODO: translate op to metamethod name
+			//if res != nil || err != nil {
+			//	return res, err
+			//}
+		}
+	}
+
 unknown:
 	return nil, fmt.Errorf("unsupported unary op: %s %s", op, x.Type())
 }
 
-func Iterate(x types.Value) types.Iterator {
-	if x, ok := x.(types.Iterable); ok {
+func Iterate(x Value) Iterator {
+	if x, ok := x.(Iterable); ok {
 		return x.Iterate()
 	}
 	// TODO: would be nice to support a metamethod e.g. __iter so that it can be

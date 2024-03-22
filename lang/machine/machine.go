@@ -6,17 +6,16 @@ import (
 
 	"github.com/mna/nenuphar/lang/compiler"
 	"github.com/mna/nenuphar/lang/token"
-	"github.com/mna/nenuphar/lang/types"
 )
 
-func Run(th *Thread, fn *types.Function, args types.Tuple) (types.Value, error) {
+func run(th *Thread, fn *Function, args *Tuple) (Value, error) {
 	fcode := fn.Funcode
 	if th.DisableRecursion {
 		// detect recursion
 		for _, fr := range th.callStack[:len(th.callStack)-1] {
 			// We look for the same function code, not function value, otherwise the
 			// user could defeat the check by writing the Y combinator.
-			if frfn, ok := fr.callable.(*types.Function); ok && frfn.Funcode == fcode {
+			if frfn, ok := fr.callable.(*Function); ok && frfn.Funcode == fcode {
 				return nil, fmt.Errorf("function %s called recursively", fn.Name())
 			}
 		}
@@ -28,7 +27,7 @@ func Run(th *Thread, fn *types.Function, args types.Tuple) (types.Value, error) 
 	// create the locals and operand stack
 	nlocals := len(fcode.Locals)
 	nspace := nlocals + fcode.MaxStack
-	space := make([]types.Value, nspace)
+	space := make([]Value, nspace)
 	locals := space[:nlocals:nlocals] // local variables, starting with parameters
 	stack := space[nlocals:]          // operand stack
 
@@ -55,7 +54,7 @@ func Run(th *Thread, fn *types.Function, args types.Tuple) (types.Value, error) 
 	// - there is exactly one return statement
 
 	// TODO: store static size of iterstack based on loops?
-	var iterstack []types.Iterator // stack of active iterators
+	var iterstack []Iterator // stack of active iterators
 
 	// Use defer so that application panics can pass through interpreter without
 	// leaving thread in a bad state.
@@ -68,7 +67,7 @@ func Run(th *Thread, fn *types.Function, args types.Tuple) (types.Value, error) 
 
 	var (
 		pc          uint32
-		result      types.Value
+		result      Value
 		runDefer    bool
 		inFlightErr error
 	)
@@ -137,7 +136,7 @@ loop:
 				inFlightErr = err
 				break loop
 			}
-			stack[sp] = types.Bool(ok)
+			stack[sp] = Bool(ok)
 			sp++
 
 		case compiler.PLUS, compiler.MINUS, compiler.STAR, compiler.SLASH,
@@ -180,15 +179,15 @@ loop:
 			sp++
 
 		case compiler.NIL:
-			stack[sp] = types.Nil
+			stack[sp] = Nil
 			sp++
 
 		case compiler.TRUE:
-			stack[sp] = types.True
+			stack[sp] = True
 			sp++
 
 		case compiler.FALSE:
-			stack[sp] = types.False
+			stack[sp] = False
 			sp++
 
 		case compiler.JMP:
@@ -202,13 +201,13 @@ loop:
 			pc = arg
 
 		case compiler.CALL, compiler.CALL_VAR:
-			var varArgs types.Value
+			var varArgs Value
 			if op == compiler.CALL_VAR {
 				varArgs = stack[sp-1]
 				sp--
 			}
 
-			var positional types.Tuple
+			var positional []Value
 			if arg > 0 {
 				positional = stack[sp-int(arg) : sp]
 				sp -= int(arg)
@@ -216,8 +215,8 @@ loop:
 				// Copy positional arguments into a new array, unless the callee is
 				// another Function, in which case it can be trusted not to mutate
 				// them.
-				if _, ok := stack[sp-1].(*types.Function); !ok || varArgs != nil {
-					positional = append(types.Tuple(nil), positional...)
+				if _, ok := stack[sp-1].(*Function); !ok || varArgs != nil {
+					positional = append([]Value(nil), positional...)
 				}
 			}
 			if varArgs != nil {
@@ -227,7 +226,7 @@ loop:
 			function := stack[sp-1]
 			sp--
 
-			z, err := Call(th, function, positional)
+			z, err := Call(th, function, NewTuple(positional))
 			if err != nil {
 				inFlightErr = err
 				break loop
@@ -291,7 +290,7 @@ loop:
 			break loop
 
 		case compiler.MAKEMAP:
-			stack[sp] = types.NewMap(int(arg))
+			stack[sp] = NewMap(int(arg))
 			sp++
 
 		case compiler.CJMP:
@@ -313,24 +312,24 @@ loop:
 
 		case compiler.MAKETUPLE:
 			n := int(arg)
-			tuple := make(types.Tuple, n)
+			elems := make([]Value, n)
 			sp -= n
-			copy(tuple, stack[sp:])
-			stack[sp] = tuple
+			copy(elems, stack[sp:])
+			stack[sp] = NewTuple(elems)
 			sp++
 
 		case compiler.MAKEARRAY:
 			n := int(arg)
-			elems := make([]types.Value, n)
+			elems := make([]Value, n)
 			sp -= n
 			copy(elems, stack[sp:])
-			stack[sp] = types.NewArray(elems)
+			stack[sp] = NewArray(elems)
 			sp++
 
 		case compiler.MAKEFUNC:
 			funcode := fn.Module.Program.Functions[arg]
-			freevars := stack[sp-1].(types.Tuple) // ok to panic otherwise, compiler error
-			stack[sp-1] = &types.Function{
+			freevars := stack[sp-1].(*Tuple) // ok to panic otherwise, compiler error
+			stack[sp-1] = &Function{
 				Funcode:  funcode,
 				Module:   fn.Module,
 				Freevars: freevars,
@@ -345,7 +344,7 @@ loop:
 				break loop
 			}
 
-			s, ok := m.(types.String)
+			s, ok := m.(String)
 			if !ok {
 				inFlightErr = fmt.Errorf("attempt to load non-string module: %s", m.Type())
 				break loop
@@ -404,7 +403,7 @@ loop:
 			}
 
 		case compiler.SETMAP:
-			m := stack[sp-3].(*types.Map) // ok to panic otherwise, compiler error (this is emitted only in map literals)
+			m := stack[sp-3].(*Map) // ok to panic otherwise, compiler error (this is emitted only in map literals)
 			k := stack[sp-2]
 			v := stack[sp-1]
 			sp -= 3
@@ -431,7 +430,7 @@ loop:
 			sp++
 
 		case compiler.FREE:
-			stack[sp] = fn.Freevars[arg]
+			stack[sp] = fn.Freevars.Index(int(arg))
 			sp++
 
 		case compiler.LOCALCELL:
@@ -444,7 +443,7 @@ loop:
 			sp++
 
 		case compiler.FREECELL:
-			v := fn.Freevars[arg].(*cell).v // ok to panic otherwise, compiler error
+			v := fn.Freevars.Index(int(arg)).(*cell).v // ok to panic otherwise, compiler error
 			if v == nil {
 				inFlightErr = fmt.Errorf("local variable %s referenced before assignment", fcode.Freevars[arg].Name)
 				break loop
@@ -511,7 +510,7 @@ loop:
 			// means an implicit 'return nil' in high-level language syntax.
 			returnTo := int64(arg)
 			if arg == 0 {
-				result = types.Nil
+				result = Nil
 				returnTo = -1
 			}
 			if hasDeferredExecution(int64(fr.pc), returnTo, fcode.Defers, nil, &pc) {
@@ -541,7 +540,7 @@ loop:
 
 // setArgs sets the values of the formal parameters of function fn in
 // based on the actual parameter values in args and kwargs.
-func setArgs(locals []types.Value, fn *types.Function, args types.Tuple) error {
+func setArgs(locals []Value, fn *Function, args *Tuple) error {
 
 	// Arguments are processed as follows:
 	// - positional arguments are bound to locals
@@ -550,33 +549,34 @@ func setArgs(locals []types.Value, fn *types.Function, args types.Tuple) error {
 
 	// nparams is the number of parameters
 	nparams := fn.Funcode.NumParams
+	nargs := args.Len()
 
 	// nullary function?
 	if nparams == 0 {
-		if nactual := len(args); nactual > 0 {
-			return fmt.Errorf("function %s accepts no arguments (%d given)", fn.Name(), nactual)
+		if nargs > 0 {
+			return fmt.Errorf("function %s accepts no arguments (%d given)", fn.Name(), nargs)
 		}
 		return nil
 	}
 
 	if fn.Funcode.HasVarargs {
 		nparams--
-	} else if len(args) > nparams {
-		return fmt.Errorf("function %s accepts at most %d arguments (%d given)", fn.Name(), nparams, len(args))
+	} else if nargs > nparams {
+		return fmt.Errorf("function %s accepts at most %d arguments (%d given)", fn.Name(), nparams, nargs)
 	}
 
 	// bind positional arguments (TODO: should Nil values be already in args, or should it be padded here?)
 	for i := 0; i < nparams; i++ {
-		locals[i] = args[i]
+		locals[i] = args.Index(i)
 	}
 
 	// bind surplus positional arguments to *args parameter
 	if fn.Funcode.HasVarargs {
-		tuple := make(types.Tuple, len(args)-nparams)
-		for i := nparams; i < len(args); i++ {
-			tuple[i-nparams] = args[i]
+		elems := make([]Value, nargs-nparams)
+		for i := nparams; i < nargs; i++ {
+			elems[i-nparams] = args.Index(i)
 		}
-		locals[nparams] = tuple
+		locals[nparams] = NewTuple(elems)
 	}
 	return nil
 }

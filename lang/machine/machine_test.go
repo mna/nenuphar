@@ -12,7 +12,6 @@ import (
 
 	"github.com/mna/nenuphar/lang/compiler"
 	"github.com/mna/nenuphar/lang/machine"
-	"github.com/mna/nenuphar/lang/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,8 +49,8 @@ func TestExecAsm(t *testing.T) {
 			require.NoError(t, err)
 
 			var thread machine.Thread
-			gmap := types.NewMap(0)
-			thread.Predeclared = map[string]types.Value{"G": gmap}
+			gmap := machine.NewMap(0)
+			thread.Predeclared = map[string]machine.Value{"G": gmap}
 			res, err := thread.RunProgram(context.Background(), cprog)
 
 			ms := rxAssertGlobal.FindAllStringSubmatch(string(b), -1)
@@ -70,7 +69,7 @@ func TestExecAsm(t *testing.T) {
 					}
 				default:
 					// assert the provided global
-					gval, _, _ := gmap.Get(types.String(global))
+					gval, _, _ := gmap.Get(machine.String(global))
 					if assert.NotNil(t, gval, "global %s does not exist", global) {
 						assertValue(t, global, want, gval)
 					}
@@ -84,17 +83,17 @@ func TestExecAsm(t *testing.T) {
 	}
 }
 
-func assertValue(t *testing.T, name, want string, got types.Value) bool {
+func assertValue(t *testing.T, name, want string, got machine.Value) bool {
 	msg := "result"
 	if name != "" {
 		msg = fmt.Sprintf("global %s", name)
 	}
 	if want == "nil" {
-		return assert.Equal(t, types.Nil, got, msg)
+		return assert.Equal(t, machine.Nil, got, msg)
 	} else if want == "true" || want == "false" {
-		wantVal := types.True
+		wantVal := machine.True
 		if want != "true" {
-			wantVal = types.False
+			wantVal = machine.False
 		}
 		return assert.Equal(t, wantVal, got, msg)
 	} else if qs, err := strconv.Unquote(want); err == nil {

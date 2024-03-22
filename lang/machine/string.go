@@ -1,4 +1,4 @@
-package types
+package machine
 
 import (
 	"strconv"

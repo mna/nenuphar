@@ -1,4 +1,4 @@
-package types
+package machine
 
 // Bool is the type of boolean values.
 type Bool bool

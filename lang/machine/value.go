@@ -1,4 +1,4 @@
-package types
+package machine
 
 import "github.com/mna/nenuphar/lang/token"
 
@@ -9,6 +9,14 @@ type Value interface {
 
 	// Type returns a short string describing the value's type.
 	Type() string
+}
+
+// A Callable value f may be the operand of a function call, f(x). Clients
+// should use the Call function, never the CallInternal method.
+type Callable interface {
+	Value
+	Name() string
+	CallInternal(thread *Thread, args *Tuple) (Value, error)
 }
 
 // An Ordered type is a type whose values are ordered: if x and y are of the

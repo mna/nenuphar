@@ -7,17 +7,32 @@
  * the canonical version.
  *
  * Guiding lines:
- *   - JSON is valid syntax (trefle is a superset)
+ *   - JSON is valid syntax (language is a superset), need to handle edge cases
+ *   like "\/" in strings (could it be the only exception? maybe some utf-16
+ *   surrogates stuff 0xD800–0xDBFF?) This is why "null" is used for the nil
+ *   value.
  *   - Inspired by Lua, no need for statement terminators (not even newlines)
  *   - Given that tuples (and "..." to unpack array/tuple) are supported, no
  *   need for multi-value returns
- *   - Error handling: see doc/errors.md.
+ *   - Tuple values can be indexed using `v._0, v._1` so that those are valid 
+ *    names (don't need special case that would conflict with float literals).
+ *   - Error handling: defer/catch blocks, "try"/"must" unary operator, "throw"
+ *   statement.
  *   - Generally speaking, a block = a scope. GuardStmt and IfBindStmt have
  *   different scoping semantics.
  *   - No null-checking operators for now (`?.`, `?[`, etc.) as it's unclear
  *   if it would be super important in that language (especially with `try`)
  *   and it quickly adds up complexity (e.g. would it require `?(` for nil-
  *   checking function call too?).
+ *   - To disambiguate ExprList and Tuple literal syntax, Tuple (and any iterable)
+ *   unpacking is explicit (requires "..."), otherwise there's no unpacking or 
+ *   deconstruction happening. This means `x, y = (1, 2)` sets x to a tuple and y
+ *   to nil (or results in parsing error, probably). `x, y, z = (1, 2)...` results
+ *   in x=1, y=2, z=nil and no parsing error.
+ *   - Function `self` binding only happens for class objects. Maybe a runtime 
+ *   function could be called to re/un-bind but only succeeds on functions that 
+ *   actually make use of `self` (and fail otherwise).
+ *   - As a consequence, `self` is never implicit to lookup scope of a field.
 */
 
 Chunk    = Block .
@@ -54,13 +69,13 @@ ExprStmt     = FuncCall .
 ExprList     = Expr { "," Expr } .
 Expr         = (SimpleExpr | unop Expr) { binop Expr } .
 SimpleExpr   = float | int | string | "null" | "true" | "false" |
-               Map | Array | Tuple | FuncExpr |
-               ClassExpr | SuffixedExpr .
+               Map | Array | Tuple | FuncExpr | ClassExpr | 
+							 SuffixedExpr .
 
 Map          = "{" [Field {"," Field} [","]] "}" .
 Field        = (name | string | "[" Expr "]") ":" Expr .
-Array        = "[" [Expr {"," Expr} [","]] "]" .
-Tuple        = "tup" Array .
+Array        = "[" [ Expr { "," Expr } [","] ] "]" .
+Tuple        = "(" [ Expr ( "," | { "," Expr } [","] ) ] ")" .
 FuncExpr     = "fn" Signature Body .
 ClassExpr    = "class" InheritClause ClassBody .
 SuffixedExpr = PrimaryExpr
@@ -88,7 +103,7 @@ DoStmt       = "do" Block "end" .
 
 ForStmt          = CondForStmt | ThreePartForStmt | ForInStmt .
 CondForStmt      = "for" [ Cond ] DoStmt . // equivalent to a "while" in other languages
-ThreePartForStmt = "for" [ AssignStmt | DeclStmt | FuncCall ] ";" [ Cond ] ";" [ Expr ] DoStmt .
+ThreePartForStmt = "for" [ AssignStmt | DeclStmt ] ";" [ Cond ] ";" [ Expr ] DoStmt .
 ForInStmt        = "for" name { "," name } "in" ExprList DoStmt .
 
 DeferStmt    = "defer" Block "end" .
@@ -99,9 +114,9 @@ FuncStmt     = "fn" name Signature Body .
 DeclStmt     = ( "let" | "const" ) name { "," name } [ "=" ExprList ] .
 LabelStmt    = "::" name "::" .
 RetStmt      = "return" [ Expr ] .
-BreakStmt    = "break" . // cannot break to a label (?), use goto for the same effect.
-ContinueStmt = "continue" . // continue to label?
-GotoStmt     = "goto" name .
+BreakStmt    = "break" [ name ] .
+ContinueStmt = "continue" [ name ] . 
+GotoStmt     = "goto" name . // with multiple constraints (same func, not inside new variables, etc.)
 
 ClassStmt     = "class" name InheritClause ClassBody .
 InheritClause = ( "(" Expr ")" | "!" ) .
@@ -117,19 +132,19 @@ FieldDef      = DeclStmt .
 binop = "+"   | "-"   | "*"  | "/"  | "//" | "^"  |
         "%"   | "&"   | "~"  | "|"  | ">>" | "<<" |
 				"<"   | "<="  | ">"  | ">=" | "==" | "!=" |
-				"and" | "or"                              .  // "in" ? don't use ".." for concatenation, use "+" ?
+				"and" | "or"                              .
 unop  = "+" | "-" | "~" | "not" | "try" | "must" | "#" | "..." . // "try" returns nil if the expression fails, "must" turns an exception in a fatal error. "..." unpacks a tuple/array(?).
 name  = /* start with letter or underscore, next any letter, digit or "_" */ .
 
-int         = decimal | hex | octal | binary . // same as Go's rules, except leading 0 for octal
-decimal     = "0" | ("1" … "9") [["_"] decdigits] .
+int         = decimal | hex | octal | binary  . // same as Go's rules, except leading 0 for octal
+decimal     = ("0" … "9") [ ["_"] decdigits ] . // leading zeros are fine
 hex         = "0" ("x" | "X") ["_"] hexdigits .
 octal       = "0" ("o" | "O") ["_"] octdigits .
 binary      = "0" ("b" | "B") ["_"] bindigits .
-decdigits   = decdigit {["_"] decdigit} .
-hexdigits   = hexdigit {["_"] hexdigit} .
-octdigits   = octdigit {["_"] octdigit} .
-bindigits   = bindigit {["_"] bindigit} .
+decdigits   = decdigit { ["_"] decdigit } .
+hexdigits   = hexdigit { ["_"] hexdigit } .
+octdigits   = octdigit { ["_"] octdigit } .
+bindigits   = bindigit { ["_"] bindigit } .
 decdigit    = "0" … "9" .
 hexdigit    = "a" … "f" | "A" … "F" | decdigit .
 octdigit    = "0" … "7" .

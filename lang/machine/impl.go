@@ -110,6 +110,19 @@ func Compare(op token.Token, x, y types.Value) (bool, error) {
 			return threeway(op, t), nil
 		}
 
+		if op == token.EQL || op == token.NEQ {
+			if xeq, ok := x.(types.HasEqual); ok {
+				eq, err := xeq.Equals(y)
+				if err != nil {
+					return false, err
+				}
+				if op == token.NEQ {
+					return !eq, nil
+				}
+				return eq, nil
+			}
+		}
+
 		if x, ok := x.(types.HasMetamap); ok {
 			if meta := x.Metamap(); meta != nil {
 				// TODO: translate >= to <=, > to < with operands swapped, or just use a __cmp metamethod?

@@ -24,6 +24,18 @@ type Ordered interface {
 	Cmp(y Value) (int, error)
 }
 
+// A HasEqual type is a type which defines a custom equality logic for its
+// values. An Ordered type should not implement HasEqual, but if values of a
+// type are not ordered but should not use identity equality, then it should
+// implement HasEqual.
+type HasEqual interface {
+	Value
+	// Equals returns true if the receiver value is considered equal to y. Client
+	// code should not call this method. Instead, use the standalone Compare
+	// function, which is defined for all pairs of operands.
+	Equals(y Value) (bool, error)
+}
+
 // An Iterable abstracts a sequence of values. An iterable value may be
 // iterated over. Unlike a Sequence, the length of an Iterable is not
 // necessarily known in advance of iteration.

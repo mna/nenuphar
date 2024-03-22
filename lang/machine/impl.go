@@ -98,13 +98,13 @@ func Compare(op token.Token, x, y Value) (bool, error) {
 			return threeway(op, t), nil
 		}
 
-		if op == token.EQL || op == token.NEQ {
+		if op == token.EQEQ || op == token.EXCLAMATIONEQ {
 			if xeq, ok := x.(HasEqual); ok {
 				eq, err := xeq.Equals(y)
 				if err != nil {
 					return false, err
 				}
-				if op == token.NEQ {
+				if op == token.EXCLAMATIONEQ {
 					return !eq, nil
 				}
 				return eq, nil
@@ -132,9 +132,9 @@ func Compare(op token.Token, x, y Value) (bool, error) {
 
 		// use identity comparison
 		switch op {
-		case token.EQL:
+		case token.EQEQ:
 			return x == y, nil
-		case token.NEQ:
+		case token.EXCLAMATIONEQ:
 			return x != y, nil
 		}
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
@@ -208,9 +208,9 @@ func Compare(op token.Token, x, y Value) (bool, error) {
 
 	// All other values of different types compare unequal.
 	switch op {
-	case token.EQL:
+	case token.EQEQ:
 		return false, nil
-	case token.NEQ:
+	case token.EXCLAMATIONEQ:
 		return true, nil
 	}
 	return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
@@ -224,9 +224,9 @@ func sameType(x, y Value) bool {
 // as a boolean comparison (e.g. x < y).
 func threeway(op token.Token, cmp int) bool {
 	switch op {
-	case token.EQL:
+	case token.EQEQ:
 		return cmp == 0
-	case token.NEQ:
+	case token.EXCLAMATIONEQ:
 		return cmp != 0
 	case token.LE:
 		return cmp <= 0

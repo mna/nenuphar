@@ -30,58 +30,67 @@ const (
 	LTLT       // <<
 	GTGT       // >>
 	POUND      // #
+	DOTDOTDOT  // ...
+
+	// TODO: += -= etc.?
 
 	// relational operators - order must match compiler.Opcode
-	EQL // ==
-	NEQ // !=
-	LT  // <
-	GT  // >
-	GE  // >=
-	LE  // <=
+	EQEQ          // ==
+	EXCLAMATIONEQ // !=
+	LT            // <
+	GT            // >
+	GE            // >=
+	LE            // <=
 
 	// punctuation
-	SEMICOLON // ;
-	COMMA     // ,
-	LBRACE    // {
-	RBRACE    // }
-	LBRACK    // [
-	RBRACK    // ]
-	LPAREN    // (
-	RPAREN    // )
-	COLON     // :
-
-	DOT           // .
-	EQ            // =
-	PLUS_EQ       // +=    (keep order consistent with PLUS..GTGT)
-	MINUS_EQ      // -=
-	STAR_EQ       // *=
-	SLASH_EQ      // /=
-	SLASHSLASH_EQ // //=
-	PERCENT_EQ    // %=
-	AMP_EQ        // &=
-	PIPE_EQ       // |=
-	CIRCUMFLEX_EQ // ^=
-	LTLT_EQ       // <<=
-	GTGT_EQ       // >>=
-	STARSTAR      // **
+	SEMICOLON   // ;
+	COMMA       // ,
+	LBRACE      // {
+	RBRACE      // }
+	LBRACK      // [
+	RBRACK      // ]
+	LPAREN      // (
+	RPAREN      // )
+	COLON       // :
+	DOT         // .
+	EXCLAMATION // !
+	EQ          // =
+	COLONCOLON  // ::
 
 	// Keywords
-	AND
+	FUNCTION
+	CLASS
+	NULL // TODO: use universe lookup to resolve null, true, false and import?
+	TRUE
+	FALSE
+	END
+	IF
+	THEN
+	ELSEIF
+	ELSE
+	GUARD
+	DO
+	FOR
+	IN
+	DEFER
+	CATCH
+	THROW
+	LET
+	CONST
+	RETURN
 	BREAK
 	CONTINUE
-	DEF
-	ELIF
-	ELSE
-	FOR
-	IF
-	LOAD
-	NOT
+	GOTO
+	AND
 	OR
-	PASS
-	RETURN
-	WHILE
+	NOT
+	TRY
+	MUST
 
-	maxToken
+	maxToken             = MUST
+	litStart, litEnd     = IDENT, STRING
+	punctStart, punctEnd = PLUS, COLONCOLON
+	kwStart, kwEnd       = FUNCTION, MUST
 )
 
 func (tok Token) String() string { return tokenNames[tok] }
@@ -89,73 +98,83 @@ func (tok Token) String() string { return tokenNames[tok] }
 // GoString is like String but quotes punctuation tokens. Use Sprintf("%#v",
 // tok) when constructing error messages.
 func (tok Token) GoString() string {
-	if tok >= PLUS && tok <= STARSTAR {
+	if tok >= punctStart && tok <= punctEnd {
 		return "'" + tokenNames[tok] + "'"
 	}
 	return tokenNames[tok]
 }
 
 var tokenNames = [...]string{
-	ILLEGAL:       "illegal token",
-	EOF:           "end of file",
-	IDENT:         "identifier",
-	INT:           "int literal",
-	FLOAT:         "float literal",
-	STRING:        "string literal",
-	PLUS:          "+",
-	MINUS:         "-",
-	STAR:          "*",
-	SLASH:         "/",
-	SLASHSLASH:    "//",
-	PERCENT:       "%",
-	AMPERSAND:     "&",
-	PIPE:          "|",
-	CIRCUMFLEX:    "^",
-	LTLT:          "<<",
-	GTGT:          ">>",
-	POUND:         "#",
-	TILDE:         "~",
-	DOT:           ".",
-	COMMA:         ",",
-	EQ:            "=",
-	SEMICOLON:     ";",
-	COLON:         ":",
-	LPAREN:        "(",
-	RPAREN:        ")",
-	LBRACK:        "[",
-	RBRACK:        "]",
-	LBRACE:        "{",
-	RBRACE:        "}",
+	ILLEGAL: "illegal token",
+	EOF:     "end of file",
+
+	IDENT:  "identifier",
+	INT:    "int literal",
+	FLOAT:  "float literal",
+	STRING: "string literal",
+
+	PLUS:       "+",
+	MINUS:      "-",
+	STAR:       "*",
+	SLASH:      "/",
+	SLASHSLASH: "//",
+	PERCENT:    "%",
+	CIRCUMFLEX: "^",
+	AMPERSAND:  "&",
+	PIPE:       "|",
+	TILDE:      "~",
+	LTLT:       "<<",
+	GTGT:       ">>",
+	POUND:      "#",
+	DOTDOTDOT:  "...",
+
+	EQEQ:          "==",
+	EXCLAMATIONEQ: "!=",
 	LT:            "<",
 	GT:            ">",
 	GE:            ">=",
 	LE:            "<=",
-	EQL:           "==",
-	NEQ:           "!=",
-	PLUS_EQ:       "+=",
-	MINUS_EQ:      "-=",
-	STAR_EQ:       "*=",
-	SLASH_EQ:      "/=",
-	SLASHSLASH_EQ: "//=",
-	PERCENT_EQ:    "%=",
-	AMP_EQ:        "&=",
-	PIPE_EQ:       "|=",
-	CIRCUMFLEX_EQ: "^=",
-	LTLT_EQ:       "<<=",
-	GTGT_EQ:       ">>=",
-	STARSTAR:      "**",
-	AND:           "and",
-	BREAK:         "break",
-	CONTINUE:      "continue",
-	DEF:           "def",
-	ELIF:          "elif",
-	ELSE:          "else",
-	FOR:           "for",
-	IF:            "if",
-	LOAD:          "load",
-	NOT:           "not",
-	OR:            "or",
-	PASS:          "pass",
-	RETURN:        "return",
-	WHILE:         "while",
+
+	SEMICOLON:   ";",
+	COMMA:       ",",
+	LBRACE:      "{",
+	RBRACE:      "}",
+	LBRACK:      "[",
+	RBRACK:      "]",
+	LPAREN:      "(",
+	RPAREN:      ")",
+	COLON:       ":",
+	DOT:         ".",
+	EXCLAMATION: "!",
+	EQ:          "=",
+	COLONCOLON:  "::",
+
+	FUNCTION: "fn",
+	CLASS:    "class",
+	NULL:     "null",
+	TRUE:     "true",
+	FALSE:    "false",
+	END:      "end",
+	IF:       "if",
+	THEN:     "then",
+	ELSEIF:   "elseif",
+	ELSE:     "else",
+	GUARD:    "guard",
+	DO:       "do",
+	FOR:      "for",
+	IN:       "in",
+	DEFER:    "defer",
+	CATCH:    "catch",
+	THROW:    "throw",
+	LET:      "let",
+	CONST:    "const",
+	RETURN:   "return",
+	BREAK:    "break",
+	CONTINUE: "continue",
+	GOTO:     "goto",
+	AND:      "and",
+	OR:       "or",
+	NOT:      "not",
+	TRY:      "try",
+	MUST:     "must",
 }

@@ -40,7 +40,7 @@ func (t *Tuple) Equals(y Value) (bool, error) {
 	}
 	for i, xv := range t.elems {
 		yv := yt.elems[i]
-		eq, err := Compare(token.EQL, xv, yv)
+		eq, err := Compare(token.EQEQ, xv, yv)
 		if !eq || err != nil {
 			return eq, err
 		}

@@ -127,7 +127,7 @@ loop:
 			stack[sp-2], stack[sp-1] = stack[sp-1], stack[sp-2]
 
 		case compiler.EQL, compiler.NEQ, compiler.GT, compiler.LT, compiler.LE, compiler.GE:
-			op := token.Token(op-compiler.EQL) + token.EQL
+			op := token.Token(op-compiler.EQL) + token.EQEQ
 			y := stack[sp-1]
 			x := stack[sp-2]
 			sp -= 2

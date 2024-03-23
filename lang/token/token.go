@@ -32,30 +32,42 @@ const (
 	POUND      // #
 	DOTDOTDOT  // ...
 
-	// TODO: += -= etc.?
+	// augmented binary operators
+	PLUSEQ       // +=
+	MINUSEQ      // -=
+	STAREQ       // *=
+	SLASHEQ      // /=
+	SLASHSLASHEQ // //=
+	PERCENTEQ    // %=
+	CIRCUMFLEXEQ // ^=
+	AMPERSANDEQ  // &=
+	PIPEEQ       // |=
+	TILDEEQ      // ~=
+	LTLTEQ       // <<=
+	GTGTEQ       // >>=
 
 	// relational operators - order must match compiler.Opcode
-	EQEQ          // ==
-	EXCLAMATIONEQ // !=
-	LT            // <
-	GT            // >
-	GE            // >=
-	LE            // <=
+	EQEQ   // ==
+	BANGEQ // !=
+	LT     // <
+	GT     // >
+	GE     // >=
+	LE     // <=
 
 	// punctuation
-	SEMICOLON   // ;
-	COMMA       // ,
-	LBRACE      // {
-	RBRACE      // }
-	LBRACK      // [
-	RBRACK      // ]
-	LPAREN      // (
-	RPAREN      // )
-	COLON       // :
-	DOT         // .
-	EXCLAMATION // !
-	EQ          // =
-	COLONCOLON  // ::
+	SEMICOLON  // ;
+	COMMA      // ,
+	LBRACE     // {
+	RBRACE     // }
+	LBRACK     // [
+	RBRACK     // ]
+	LPAREN     // (
+	RPAREN     // )
+	COLON      // :
+	DOT        // .
+	BANG       // !
+	EQ         // =
+	COLONCOLON // ::
 
 	// Keywords
 	FUNCTION
@@ -128,26 +140,39 @@ var tokenNames = [...]string{
 	POUND:      "#",
 	DOTDOTDOT:  "...",
 
-	EQEQ:          "==",
-	EXCLAMATIONEQ: "!=",
-	LT:            "<",
-	GT:            ">",
-	GE:            ">=",
-	LE:            "<=",
+	PLUSEQ:       "+=",
+	MINUSEQ:      "-=",
+	STAREQ:       "*=",
+	SLASHEQ:      "/=",
+	SLASHSLASHEQ: "//=",
+	PERCENTEQ:    "%=",
+	CIRCUMFLEXEQ: "^=",
+	AMPERSANDEQ:  "&=",
+	PIPEEQ:       "|=",
+	TILDEEQ:      "~=",
+	LTLTEQ:       "<<=",
+	GTGTEQ:       ">>=",
 
-	SEMICOLON:   ";",
-	COMMA:       ",",
-	LBRACE:      "{",
-	RBRACE:      "}",
-	LBRACK:      "[",
-	RBRACK:      "]",
-	LPAREN:      "(",
-	RPAREN:      ")",
-	COLON:       ":",
-	DOT:         ".",
-	EXCLAMATION: "!",
-	EQ:          "=",
-	COLONCOLON:  "::",
+	EQEQ:   "==",
+	BANGEQ: "!=",
+	LT:     "<",
+	GT:     ">",
+	GE:     ">=",
+	LE:     "<=",
+
+	SEMICOLON:  ";",
+	COMMA:      ",",
+	LBRACE:     "{",
+	RBRACE:     "}",
+	LBRACK:     "[",
+	RBRACK:     "]",
+	LPAREN:     "(",
+	RPAREN:     ")",
+	COLON:      ":",
+	DOT:        ".",
+	BANG:       "!",
+	EQ:         "=",
+	COLONCOLON: "::",
 
 	FUNCTION: "fn",
 	CLASS:    "class",

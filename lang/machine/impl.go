@@ -98,13 +98,13 @@ func Compare(op token.Token, x, y Value) (bool, error) {
 			return threeway(op, t), nil
 		}
 
-		if op == token.EQEQ || op == token.EXCLAMATIONEQ {
+		if op == token.EQEQ || op == token.BANGEQ {
 			if xeq, ok := x.(HasEqual); ok {
 				eq, err := xeq.Equals(y)
 				if err != nil {
 					return false, err
 				}
-				if op == token.EXCLAMATIONEQ {
+				if op == token.BANGEQ {
 					return !eq, nil
 				}
 				return eq, nil
@@ -134,7 +134,7 @@ func Compare(op token.Token, x, y Value) (bool, error) {
 		switch op {
 		case token.EQEQ:
 			return x == y, nil
-		case token.EXCLAMATIONEQ:
+		case token.BANGEQ:
 			return x != y, nil
 		}
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
@@ -210,7 +210,7 @@ func Compare(op token.Token, x, y Value) (bool, error) {
 	switch op {
 	case token.EQEQ:
 		return false, nil
-	case token.EXCLAMATIONEQ:
+	case token.BANGEQ:
 		return true, nil
 	}
 	return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
@@ -226,7 +226,7 @@ func threeway(op token.Token, cmp int) bool {
 	switch op {
 	case token.EQEQ:
 		return cmp == 0
-	case token.EXCLAMATIONEQ:
+	case token.BANGEQ:
 		return cmp != 0
 	case token.LE:
 		return cmp <= 0

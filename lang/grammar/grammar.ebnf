@@ -47,6 +47,7 @@ Block    = { Stmt } .
 Stmt     =  ";"
          |  ExprStmt
 				 |  AssignStmt
+				 |  AugAssignStmt
          |  IfStmt
          |  GuardStmt
          |  DoStmt
@@ -88,6 +89,7 @@ Body         = Block "end" .
 ParamList    = [ {name ","} ((name | "..." name) [","]) ] .
 
 AssignStmt   = SuffixedExpr {"," SuffixedExpr} "=" ExprList . // lhs has to be assignable
+AugAssignStmt = SuffixedExpr  augbinop Expr . // lhs has to be assignable, evaluated only once
 FuncCall     = SuffixedExpr . /* Must be a function call  */
 
 IfStmt       = SimpleIfStmt | BindIfStmt .
@@ -103,7 +105,7 @@ DoStmt       = "do" Block "end" .
 
 ForStmt          = CondForStmt | ThreePartForStmt | ForInStmt .
 CondForStmt      = "for" [ Cond ] DoStmt . // equivalent to a "while" in other languages
-ThreePartForStmt = "for" [ AssignStmt | DeclStmt ] ";" [ Cond ] ";" [ Expr ] DoStmt .
+ThreePartForStmt = "for" [ AssignStmt | AugAssignStmt | DeclStmt ] ";" [ Cond ] ";" [ Expr ] DoStmt .
 ForInStmt        = "for" name { "," name } "in" ExprList DoStmt .
 
 DeferStmt    = "defer" Block "end" .
@@ -133,6 +135,10 @@ binop = "+"   | "-"   | "*"  | "/"  | "//" | "^"  |
         "%"   | "&"   | "~"  | "|"  | ">>" | "<<" |
 				"<"   | "<="  | ">"  | ">=" | "==" | "!=" |
 				"and" | "or"                              .
+
+augbinop = "+="   | "-="   | "*="  | "/="  | "//=" | "^="  |
+					 "%="   | "&="   | "~="  | "|="  | ">>=" | "<<=" .
+
 unop  = "+" | "-" | "~" | "not" | "try" | "must" | "#" | "..." . // "try" returns nil if the expression fails, "must" turns an exception in a fatal error. "..." unpacks a tuple/array(?).
 name  = /* start with letter or underscore, next any letter, digit or "_" */ .
 

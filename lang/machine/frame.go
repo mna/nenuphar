@@ -17,15 +17,15 @@ func (fr *Frame) Position() token.Position {
 	switch c := fr.callable.(type) {
 	case *Function:
 		line, col := c.Funcode.Pos(fr.pc).LineCol()
-		return token.MakePosition(c.Funcode.Prog.Filename, line, col)
+		return token.MakePosition(c.Funcode.Prog.Filename, -1, line, col)
 	case callableWithPosition:
 		// If a built-in Callable defines a Position method, use it.
 		return c.Position()
 	case callableWithPos:
 		line, col := c.Pos().LineCol()
-		return token.MakePosition("", line, col)
+		return token.MakePosition("", -1, line, col)
 	}
-	return token.MakePosition("", 0, 0)
+	return token.MakePosition("", -1, 0, 0)
 }
 
 type callableWithPosition interface {

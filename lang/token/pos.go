@@ -48,11 +48,12 @@ func (p Pos) Unknown() bool {
 type Position struct {
 	Filename string
 	Pos      Pos
+	Offset   int // offset in bytes
 }
 
 // MakePosition returns a position with the specified components.
-func MakePosition(file string, line, col int) Position {
-	return Position{Filename: file, Pos: MakePos(line, col)}
+func MakePosition(file string, offset, line, col int) Position {
+	return Position{Filename: file, Pos: MakePos(line, col), Offset: offset}
 }
 
 func (p Position) String() string {

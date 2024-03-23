@@ -16,14 +16,13 @@ type Frame struct {
 func (fr *Frame) Position() token.Position {
 	switch c := fr.callable.(type) {
 	case *Function:
-		line, col := c.Funcode.Pos(fr.pc).LineCol()
-		return token.MakePosition(c.Funcode.Prog.Filename, -1, line, col)
+		p := c.Funcode.Pos(fr.pc)
+		return p.ToPosition(c.Funcode.Prog.Filename, -1)
 	case callableWithPosition:
 		// If a built-in Callable defines a Position method, use it.
 		return c.Position()
 	case callableWithPos:
-		line, col := c.Pos().LineCol()
-		return token.MakePosition("", -1, line, col)
+		return c.Pos().ToPosition("", -1)
 	}
 	return token.MakePosition("", -1, 0, 0)
 }

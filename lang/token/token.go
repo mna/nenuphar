@@ -203,3 +203,38 @@ var tokenNames = [...]string{
 	TRY:      "try",
 	MUST:     "must",
 }
+
+var (
+	keywords = func() map[string]Token {
+		kw := make(map[string]Token)
+		for i := kwStart + 1; i < kwEnd; i++ {
+			kw[tokenNames[i]] = i
+		}
+		return kw
+	}()
+	punctuations = func() map[string]Token {
+		puncts := make(map[string]Token)
+		for i := punctStart + 1; i < punctEnd; i++ {
+			puncts[tokenNames[i]] = i
+		}
+		return puncts
+	}()
+)
+
+// LookupKw maps an identifier to its keyword token or IDENT (if not a
+// keyword).
+func LookupKw(ident string) Token {
+	if tok, ok := keywords[ident]; ok {
+		return tok
+	}
+	return IDENT
+}
+
+// LookupPunct maps a punctuation to its token or ILLEGAL (if not a valid
+// punctuation).
+func LookupPunct(punct string) Token {
+	if tok, ok := punctuations[punct]; ok {
+		return tok
+	}
+	return ILLEGAL
+}

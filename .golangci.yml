@@ -30,9 +30,8 @@ linters-settings:
           - $gostd
           - github.com/mna/nenuphar
           - github.com/dolthub/swiss
-          - github.com/chzyer/readline
-          - github.com/google/go-cmp/cmp
           - github.com/stretchr/testify
+          - github.com/kylelemons/godebug
 
   govet:
     check-shadowing: true

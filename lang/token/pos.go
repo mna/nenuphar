@@ -44,6 +44,10 @@ func (p Pos) Unknown() bool {
 	return l == 0 || c == 0
 }
 
+func (p Pos) ToPosition(file string, offset int) Position {
+	return Position{Filename: file, Pos: p, Offset: offset}
+}
+
 // Position fully describes a location in a file, including its filename.
 type Position struct {
 	Filename string

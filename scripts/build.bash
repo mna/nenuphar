@@ -20,6 +20,4 @@ DATE="$(date --iso-8601)"
 
 mkdir -p ./bin
 
-echo "${VERSION}"
-
-#go build -o ./bin/nenuphar -ldflags "-X main.version=${VERSION} -X main.buildDate=${DATE}" ./cmd/nenuphar/
+go build -o ./bin/nenuphar -ldflags "-X main.version=${VERSION} -X main.buildDate=${DATE}" ./cmd/nenuphar/

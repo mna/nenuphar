@@ -15,9 +15,11 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 # get the version information and current date
-VERSION="$(git describe --tags || git rev-parse --short HEAD)"
+VERSION="$(git describe --tags 2> /dev/null || git rev-parse --short HEAD)"
 DATE="$(date --iso-8601)"
 
 mkdir -p ./bin
 
-go build -o ./bin/nenuphar -ldflags "-X main.version=${VERSION} -X main.buildDate=${DATE}" ./cmd/nenuphar/
+echo "${VERSION}"
+
+#go build -o ./bin/nenuphar -ldflags "-X main.version=${VERSION} -X main.buildDate=${DATE}" ./cmd/nenuphar/

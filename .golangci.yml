@@ -28,10 +28,11 @@ linters-settings:
         list-mode: strict
         allow:
           - $gostd
-          - github.com/mna/nenuphar
           - github.com/dolthub/swiss
-          - github.com/stretchr/testify
           - github.com/kylelemons/godebug
+          - github.com/mna/mainer
+          - github.com/mna/nenuphar
+          - github.com/stretchr/testify
 
   govet:
     check-shadowing: true

@@ -10,7 +10,7 @@
  *   - JSON is valid syntax (language is a superset), need to handle edge cases
  *   like "\/" in strings (could it be the only exception? maybe some utf-16
  *   surrogates stuff 0xD800–0xDBFF?) This is why "null" is used for the nil
- *   value.
+ *   value. (validate with https://github.com/nst/JSONTestSuite test suite)
  *   - Inspired by Lua, no need for statement terminators (not even newlines)
  *   - Given that tuples (and "..." to unpack array/tuple) are supported, no
  *   need for multi-value returns

@@ -16,7 +16,7 @@ import (
 // struct.
 type TokenAndValue struct {
 	Token token.Token
-	Value TokenValue
+	Value token.Value
 }
 
 // ScanFiles is a helper function that tokenizes the source files and returns
@@ -30,7 +30,7 @@ func ScanFiles(ctx context.Context, files ...string) ([][]TokenAndValue, error) 
 
 	var (
 		s      Scanner
-		tokVal TokenValue
+		tokVal token.Value
 		errs   []error
 	)
 
@@ -57,16 +57,6 @@ func ScanFiles(ctx context.Context, files ...string) ([][]TokenAndValue, error) 
 		}
 	}
 	return tokensByFile, errors.Join(errs...)
-}
-
-// TokenValue records the raw text, position and decoded value associated with
-// each token.
-type TokenValue struct {
-	Raw    string    // raw text of token
-	Int    int64     // decoded int
-	Float  float64   // decoded float
-	String string    // decoded string or bytes
-	Pos    token.Pos // start position of token
 }
 
 // Scanner tokenizes source files for the parser to consume.
@@ -187,7 +177,7 @@ func (s *Scanner) advanceIf(matches ...byte) bool {
 }
 
 // Scan returns the next token in the source file.
-func (s *Scanner) Scan(tokVal *TokenValue) (tok token.Token) {
+func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 	s.skipWhitespace()
 
 	// current token start
@@ -202,7 +192,7 @@ func (s *Scanner) Scan(tokVal *TokenValue) (tok token.Token) {
 			// keywords are longer than one letter - avoid lookup otherwise
 			tok = token.LookupKw(lit)
 		}
-		*tokVal = TokenValue{Raw: lit, Pos: makeSafePos(startLine, startCol)}
+		*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol)}
 
 		/*
 			case isDecimal(cur):
@@ -210,15 +200,17 @@ func (s *Scanner) Scan(tokVal *TokenValue) (tok token.Token) {
 				// consumed because that's the case when the number starts with a dot.
 				s.advance()
 				tok, lit = s.number(start)
+		*/
 
-			default:
-				// keywords, identifiers and numbers are done
+	default:
+		// keywords, identifiers and numbers are done
 
-				s.advance() // always make progress
-				switch cur {
-				case -1:
-					tok = token.EOF
+		s.advance() // always make progress
+		switch cur {
+		case -1:
+			tok = token.EOF
 
+			/*
 				case '+', '*', '^', '%', '&', '~', '|', '#', ';', ',', '(', ')', '{', '}', ']':
 					// all unambiguous single-char operators/delimiters can be processed here
 					tok = token.LookupOp(string(cur))
@@ -324,16 +316,17 @@ func (s *Scanner) Scan(tokVal *TokenValue) (tok token.Token) {
 					// short String
 					tok = token.String
 					lit = s.shortString(start, cur)
-		*/
+			*/
 
-	default:
-		if cur == utf8.RuneError && s.invalidByte > 0 {
-			cur = rune(s.invalidByte)
-			s.invalidByte = 0
+		default:
+			if cur == utf8.RuneError && s.invalidByte > 0 {
+				cur = rune(s.invalidByte)
+				s.invalidByte = 0
+			}
+			s.errorf(startOff, startLine, startCol, "illegal character %#U", cur)
+			tok = token.ILLEGAL
+			*tokVal = token.Value{Raw: string(cur), Pos: makeSafePos(startLine, startCol)}
 		}
-		s.errorf(startOff, startLine, startCol, "illegal character %#U", cur)
-		tok = token.ILLEGAL
-		*tokVal = TokenValue{Raw: string(cur), Pos: makeSafePos(startLine, startCol)}
 	}
 	return tok
 }

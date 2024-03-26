@@ -1,5 +1,7 @@
 package token
 
+import "strconv"
+
 // A Token represents a lexical token.
 type Token int8
 
@@ -237,4 +239,32 @@ func LookupPunct(punct string) Token {
 		return tok
 	}
 	return ILLEGAL
+}
+
+// Value records the raw text, position and decoded value associated with
+// each token.
+type Value struct {
+	Raw    string  // raw text of token
+	Int    int64   // decoded int
+	Float  float64 // decoded float
+	String string  // decoded string or bytes
+	Pos    Pos     // start position of token
+}
+
+// Literal returns the string representation of the literal value of the token
+// from its associated Value struct. If t is not a literal, it returns an empty
+// string.
+func (tok Token) Literal(v Value) string {
+	switch tok {
+	case IDENT:
+		return v.Raw
+	case STRING:
+		return strconv.Quote(v.String)
+	case INT:
+		return strconv.FormatInt(v.Int, 10)
+	case FLOAT:
+		return strconv.FormatFloat(v.Float, 'g', 10, 64)
+	default:
+		return ""
+	}
 }

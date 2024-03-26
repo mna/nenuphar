@@ -2,44 +2,61 @@ package scanner
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"os"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/mna/nenuphar/lang/token"
 )
 
+// TokenAndValue combines the token type with the token value type in the same
+// struct.
+type TokenAndValue struct {
+	Token token.Token
+	Value TokenValue
+}
+
 // ScanFiles is a helper function that tokenizes the source files and returns
 // the list of tokens, grouped by the file at the same index, and produces any
 // error encountered. The error, if non-nil, is guaranteed to implement
 // Unwrap() []error.
-func ScanFiles(files ...string) ([][]TokenValue, error) {
+func ScanFiles(ctx context.Context, files ...string) ([][]TokenAndValue, error) {
 	if len(files) == 0 {
 		return nil, nil
 	}
 
-	/*
-		for _, file := range files {
-			b, err := ioutil.ReadFile(file)
-			if err != nil {
-				el.Add(token.Position{Filename: file}, err.Error())
-				continue
-			}
+	var (
+		s      Scanner
+		tokVal TokenValue
+		errs   []error
+	)
 
-			fsf := fs.AddFile(file, -1, len(b))
-			s.Init(fsf, b, el.Add)
-			for {
-				pos, tok, lit := s.Scan()
-				tup := TokenTuple{pos, tok, lit}
-				tts = append(tts, tup)
-				if tok == token.EOF {
-					break
-				}
+	tokensByFile := make([][]TokenAndValue, len(files))
+	for i, file := range files {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", token.MakePosition(file, 0, 0, 0), err))
+			continue
+		}
+
+		s.Init(file, b, func(pos token.Position, msg string) {
+			errs = append(errs, fmt.Errorf("%s: %s", pos, msg))
+		})
+		for {
+			tok := s.Scan(&tokVal)
+			tokensByFile[i] = append(tokensByFile[i], TokenAndValue{
+				Token: tok,
+				Value: tokVal,
+			})
+			if tok == token.EOF {
+				break
 			}
 		}
-		return fs, tts, el.Err()
-	*/
-	panic("unimplemented")
+	}
+	return tokensByFile, errors.Join(errs...)
 }
 
 // TokenValue records the raw text, position and decoded value associated with

@@ -23,7 +23,7 @@ Run '%[1]s --help' for details.
        %[1]s -h|--help
        %[1]s -v|--version
 
-Compiler and all-in-one tool for the %[1]s programming language.
+Compiler and all-in-one tool for the %[1]s programming language. 
 
 The <command> can be one of:
        tokenize                  Execute the scanner phase of the
@@ -75,6 +75,13 @@ func (c *Cmd) Validate() error {
 	c.cmdFn = commands[cmdName]
 	if c.cmdFn == nil {
 		return fmt.Errorf("unknown command: %s", c.args[0])
+	}
+
+	if cmdName == "tokenize" {
+		// at least one file is required, or read from stdin
+		if len(c.args[1:]) == 0 {
+			return fmt.Errorf("%s: at least one file must be provided", cmdName)
+		}
 	}
 
 	return nil

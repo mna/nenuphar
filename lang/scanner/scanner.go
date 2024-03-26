@@ -9,6 +9,39 @@ import (
 	"github.com/mna/nenuphar/lang/token"
 )
 
+// ScanFiles is a helper function that tokenizes the source files and returns
+// the list of tokens, grouped by the file at the same index, and produces any
+// error encountered. The error, if non-nil, is guaranteed to implement
+// Unwrap() []error.
+func ScanFiles(files ...string) ([][]TokenValue, error) {
+	if len(files) == 0 {
+		return nil, nil
+	}
+
+	/*
+		for _, file := range files {
+			b, err := ioutil.ReadFile(file)
+			if err != nil {
+				el.Add(token.Position{Filename: file}, err.Error())
+				continue
+			}
+
+			fsf := fs.AddFile(file, -1, len(b))
+			s.Init(fsf, b, el.Add)
+			for {
+				pos, tok, lit := s.Scan()
+				tup := TokenTuple{pos, tok, lit}
+				tts = append(tts, tup)
+				if tok == token.EOF {
+					break
+				}
+			}
+		}
+		return fs, tts, el.Err()
+	*/
+	panic("unimplemented")
+}
+
 // TokenValue records the raw text, position and decoded value associated with
 // each token.
 type TokenValue struct {

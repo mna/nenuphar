@@ -26,8 +26,8 @@ Run '%[1]s --help' for details.
 Compiler and all-in-one tool for the %[1]s programming language.
 
 The <command> can be one of:
-       tokenize                  Execute the scanner phase of the 
-                                 compilation and print the resulting 
+       tokenize                  Execute the scanner phase of the
+                                 compilation and print the resulting
                                  tokens.
 
 Valid flag options are:
@@ -79,42 +79,6 @@ func (c *Cmd) Validate() error {
 
 	return nil
 }
-
-/*
-func (c *cmd) Asm(stdio mainer.Stdio, args []string) error {
-	// TODO: for now, assemble to memory and assume --run is provided - the
-	// binary format of bytecode will be formalized later, maybe just some
-	// msgpack, gob or cbor encoding.
-	// see https://github.com/tinylib/msgp
-	for _, file := range args {
-		mod, err := asm.LoadFile(file)
-		if err != nil {
-			return printError(stdio, err)
-		}
-
-		var mach vm.Machine
-		res, st, err := mach.Run(mod, vm.WithPanicDump(true))
-		if err != nil {
-			return printError(stdio, err)
-		}
-
-		fmt.Fprintln(stdio.Stdout, file, ":")
-		fmt.Fprintf(stdio.Stdout, ">>> %#v\n", res)
-		if err := st.Dump(stdio.Stdout); err != nil {
-			return printError(stdio, err)
-		}
-	}
-	return nil
-}
-
-func (c *cmd) Dasm(stdio mainer.Stdio, args []string) error {
-	return nil
-}
-
-func (c *cmd) Run(stdio mainer.Stdio, args []string) error {
-	return nil
-}
-*/
 
 func printError(stdio mainer.Stdio, err error) error {
 	if err != nil {

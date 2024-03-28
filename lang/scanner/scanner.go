@@ -1,4 +1,4 @@
-// Much of the scanner package is adapted from the Go source code:
+// Some of the scanner package is adapted from the Go source code:
 // https://cs.opensource.google/go/go/+/refs/tags/go1.22.1:src/go/scanner/scanner.go
 //
 // Copyright 2009 The Go Authors. All rights reserved.
@@ -216,6 +216,7 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 		*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol)}
 
 	case isDecimal(cur) || cur == '.' && isDecimal(rune(s.peek())):
+		// integer and float
 		var base int
 		var lit string
 		tok, base, lit = s.number()
@@ -237,15 +238,20 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 			lit, val := s.shortString(cur)
 			*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
 
-		//case '[':
-		//	// can be Lbrack or long String
-		//	if s.cur == '=' || s.cur == '[' {
-		//		tok = token.STRING
-		//		lit, val := s.longString(startOff)
-		//		*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
-		//		break
-		//	}
-		//	tok = token.LBRACK
+		case '[':
+			// can be Lbrack or long String
+			if s.cur == '=' || s.cur == '[' {
+				tok = token.STRING
+				lit, val := s.longString()
+				*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
+				break
+			}
+			tok = token.LBRACK
+
+		case ';', ',', '{', '}', ']', '(', ')':
+			// unambiguous single-char punctuation
+			tok = token.LookupPunct(string(cur))
+			*tokVal = token.Value{Raw: tok.String(), Pos: makeSafePos(startLine, startCol)}
 
 		case -1:
 			tok = token.EOF

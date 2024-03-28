@@ -7,6 +7,52 @@ import (
 	"unicode/utf8"
 )
 
+func (s *Scanner) longString() (lit, decoded string) {
+	// '[' opening already consumed, hence the -1
+	startOff, startLine, startCol := s.off-1, s.line, s.col-1
+	s.sb.Reset()
+
+	var level int
+	for s.advanceIf('=') {
+		level++
+	}
+	if !s.advanceIf('[') {
+		s.error(startOff, startLine, startCol, "invalid long string literal opening sequence")
+		return string(s.src[startOff:s.off]), ""
+	}
+
+	closeLevel := -1
+	closeStartOff := 0
+	for s.cur != -1 {
+		if s.advanceIf(']') {
+			// maybe a closing sequence, keep start index in case it ends up not being it
+			closeStartOff = s.off - 1 // -1 since we're past the initial ']' now
+
+			// calculate the close level
+			closeLevel = 0
+			for s.advanceIf('=') {
+				closeLevel++
+			}
+			if !s.advanceIf(']') {
+				closeLevel = -1
+			}
+			if closeLevel > -1 /* a valid close sequence */ && closeLevel == level /* matching the opening level */ {
+				break
+			}
+			closeLevel = -1
+			s.sb.Write(s.src[closeStartOff:s.off])
+			continue
+		}
+		s.sb.WriteRune(s.cur)
+		s.advance()
+	}
+
+	if closeLevel == -1 {
+		s.error(startOff, startLine, startCol, "long string literal not terminated")
+	}
+	return string(s.src[startOff:s.off]), s.sb.String()
+}
+
 func (s *Scanner) shortString(opening rune) (lit, decoded string) {
 	// '"' / "'" opening already consumed, hence the -1
 	startOff, startLine, startCol := s.off-1, s.line, s.col-1

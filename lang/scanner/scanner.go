@@ -226,6 +226,22 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 
 		s.advance() // always make progress
 		switch cur {
+		case '"', '\'':
+			// short string
+			tok = token.STRING
+			lit, val := s.shortString(cur)
+			*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
+
+		case '[':
+			// can be Lbrack or long String
+			if s.cur == '=' || s.cur == '[' {
+				tok = token.STRING
+				lit, val := s.longString(startOff)
+				*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
+				break
+			}
+			tok = token.LBRACK
+
 		case -1:
 			tok = token.EOF
 
@@ -233,15 +249,6 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 				case '+', '*', '^', '%', '&', '~', '|', '#', ';', ',', '(', ')', '{', '}', ']':
 					// all unambiguous single-char operators/delimiters can be processed here
 					tok = token.LookupOp(string(cur))
-
-				case '[':
-					// can be Lbrack or long String
-					if s.cur == '=' || s.cur == '[' {
-						tok = token.String
-						lit = s.longString(start)
-						break
-					}
-					tok = token.Lbrack
 
 				case '-':
 					// can be Sub or Comment
@@ -330,11 +337,6 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 					s.errorf(s.file.Offset(pos), "illegal character %#U", cur)
 					tok = token.Illegal
 					lit = string(cur)
-
-				case '"', '\'':
-					// short String
-					tok = token.String
-					lit = s.shortString(start, cur)
 			*/
 
 		default:

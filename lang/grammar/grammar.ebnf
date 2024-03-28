@@ -7,14 +7,14 @@
  * the canonical version.
  *
  * Guiding lines:
- *   - JSON is valid syntax (language is a superset), need to handle edge cases
- *   like "\/" in strings (could it be the only exception? maybe some utf-16
- *   surrogates stuff 0xD800–0xDBFF?) This is why "null" is used for the nil
- *   value. (validate with https://github.com/nst/JSONTestSuite test suite)
+ *   - **valid** JSON is valid syntax (language is a superset), need to handle
+ *   edge cases like "\/" in strings and utf-16 surrogates stuff. This is why
+ *   "null" is used for the nil value. (validate with
+ *   https://github.com/nst/JSONTestSuite test suite)
  *   - Inspired by Lua, no need for statement terminators (not even newlines)
  *   - Given that tuples (and "..." to unpack array/tuple) are supported, no
  *   need for multi-value returns
- *   - Tuple values can be indexed using `v._0, v._1` so that those are valid
+ *   - Tuple values must be indexed using `v._0, v._1` so that those are valid
  *    names (don't need special case that would conflict with float literals).
  *   - Error handling: defer/catch blocks, "try"/"must" unary operator, "throw"
  *   statement.
@@ -172,6 +172,11 @@ short    = ( "\"" { char } "\"" ) | ( "'" { char } "'" ) .
 long     = "[" { "=" } "[" { rawchar } "]" { "=" } "]" . /* number of equal signs must match */
 char     = esc | rawchar .
 rawchar  = /* any byte */ .
+
+// esc covers the JSON 2-char escapes ('"', '\', '/', 'b', 'f', 'n', 'r', 't')
+// and the unicode codepoint \uHHHH. It additionally supports 'a' (bell
+// character), 'v' (vertical tab), "'" (single quote), newline (same as "\n")
+// and 'z' (skip all following whitespace).
 esc      = "\\" ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | "\\" | "/" | "\"" | "'" | "\n" | "z" ) |
            "\\x" hexdigit hexdigit                  |
            "\\" decdigit [ decdigit [ decdigit ] ]  |

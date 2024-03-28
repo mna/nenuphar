@@ -1,3 +1,10 @@
+// Much of the compiler package is adapted from the Starlark source code:
+// https://github.com/google/starlark-go/tree/ee8ed142361c69d52fe8e9fb5e311d2a0a7c02de
+//
+// Copyright 2017 The Bazel Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package compiler
 
 type insn struct {

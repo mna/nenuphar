@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/mna/nenuphar/lang/token"
 )
@@ -186,7 +187,8 @@ func numberToInt(lit string, base int) int64 {
 		// skip the 0x/0o/0b prefix
 		lit = lit[2:]
 	}
-	v, err := strconv.ParseInt(lit, base, 64)
+	// underscores and prefix must be removed when a base is provided
+	v, err := strconv.ParseInt(strings.ReplaceAll(lit, "_", ""), base, 64)
 	if err != nil {
 		return 0 // only possible if the literal had errors, which will be reported
 	}
@@ -194,6 +196,7 @@ func numberToInt(lit string, base int) int64 {
 }
 
 func numberToFloat(lit string) float64 {
+	// underscores and 0x prefix are fine for ParseFloat.
 	v, err := strconv.ParseFloat(lit, 64)
 	if err != nil {
 		return 0 // only possible if the literal had errors, which will be reported

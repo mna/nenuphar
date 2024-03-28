@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -74,11 +75,12 @@ type Scanner struct {
 	err      func(pos token.Position, msg string) // error handler for scanning errors
 
 	// mutable scanning state
-	invalidByte byte // when cur==RuneError due to failed utf8 decode, this is the invalid byte
-	cur         rune // current character
-	line, col   int  // line/col position of cur
-	off         int  // character offset in bytes of cur
-	roff        int  // reading offset in bytes (position after current character)
+	sb          strings.Builder // writes to Builder never fail, so errors are ignored
+	invalidByte byte            // when cur==RuneError due to failed utf8 decode, this is the invalid byte
+	cur         rune            // current character
+	line, col   int             // line/col position of cur
+	off         int             // character offset in bytes of cur
+	roff        int             // reading offset in bytes (position after current character)
 }
 
 var (
@@ -96,6 +98,7 @@ func (s *Scanner) Init(filename string, src []byte, errHandler func(token.Positi
 	s.src = src
 	s.err = errHandler
 
+	s.sb.Reset()
 	s.invalidByte = 0
 	s.cur = ' '
 	s.line, s.col = 1, 0
@@ -232,15 +235,15 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 			lit, val := s.shortString(cur)
 			*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
 
-		case '[':
-			// can be Lbrack or long String
-			if s.cur == '=' || s.cur == '[' {
-				tok = token.STRING
-				lit, val := s.longString(startOff)
-				*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
-				break
-			}
-			tok = token.LBRACK
+		//case '[':
+		//	// can be Lbrack or long String
+		//	if s.cur == '=' || s.cur == '[' {
+		//		tok = token.STRING
+		//		lit, val := s.longString(startOff)
+		//		*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
+		//		break
+		//	}
+		//	tok = token.LBRACK
 
 		case -1:
 			tok = token.EOF

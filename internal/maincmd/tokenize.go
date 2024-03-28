@@ -27,5 +27,5 @@ func (c *Cmd) Tokenize(ctx context.Context, stdio mainer.Stdio, args []string) e
 			fmt.Fprintln(stdio.Stderr, err)
 		}
 	}
-	return nil
+	return err
 }

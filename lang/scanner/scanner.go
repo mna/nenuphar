@@ -1,3 +1,10 @@
+// Much of the scanner package is adapted from the Go source code:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.22.1:src/go/scanner/scanner.go
+//
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package scanner
 
 import (
@@ -109,6 +116,15 @@ func (s *Scanner) Init(filename string, src []byte, errHandler func(token.Positi
 	s.advance()
 }
 
+// peek returns the byte following the most recently read character without
+// advancing the scanner. If the scanner is at EOF, peek returns 0.
+func (s *Scanner) peek() byte {
+	if s.roff < len(s.src) {
+		return s.src[s.roff]
+	}
+	return 0
+}
+
 // read the next Unicode char into s.cur; s.cur < 0 means end-of-file.
 func (s *Scanner) advance() {
 	if s.roff >= len(s.src) {
@@ -186,7 +202,7 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 	switch cur := s.cur; {
 	case isLetter(cur):
 		// keywords and identifiers
-		lit := s.ident(startOff)
+		lit := s.ident()
 		tok = token.IDENT
 		if len(lit) > 1 {
 			// keywords are longer than one letter - avoid lookup otherwise
@@ -194,13 +210,16 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 		}
 		*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol)}
 
-		/*
-			case isDecimal(cur):
-				// numbers (integers and floats), it expects the leading char to be
-				// consumed because that's the case when the number starts with a dot.
-				s.advance()
-				tok, lit = s.number(start)
-		*/
+	case isDecimal(cur) || cur == '.' && isDecimal(rune(s.peek())):
+		var base int
+		var lit string
+		tok, base, lit = s.number()
+		*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol)}
+		if tok == token.INT {
+			tokVal.Int = numberToInt(lit, base)
+		} else if tok == token.FLOAT {
+			tokVal.Float = numberToFloat(lit)
+		}
 
 	default:
 		// keywords, identifiers and numbers are done
@@ -331,11 +350,12 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 	return tok
 }
 
-func (s *Scanner) ident(startOff int) string {
+func (s *Scanner) ident() string {
+	start := s.off
 	for isLetter(s.cur) || isDigit(s.cur) {
 		s.advance()
 	}
-	return string(s.src[startOff:s.off])
+	return string(s.src[start:s.off])
 }
 
 func (s *Scanner) skipWhitespace() {
@@ -358,22 +378,4 @@ func isLetter(rn rune) bool {
 func isDigit(rn rune) bool {
 	return '0' <= rn && rn <= '9' ||
 		rn >= utf8.RuneSelf && unicode.IsDigit(rn)
-}
-
-func isDecimal(rn rune) bool {
-	return '0' <= rn && rn <= '9'
-}
-
-func isBinary(rn rune) bool {
-	return '0' <= rn && rn <= '1'
-}
-
-func isOctal(rn rune) bool {
-	return '0' <= rn && rn <= '7'
-}
-
-func isHexadecimal(rn rune) bool {
-	return isDecimal(rn) ||
-		'a' <= rn && rn <= 'f' ||
-		'A' <= rn && rn <= 'F'
 }

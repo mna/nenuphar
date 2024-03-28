@@ -75,12 +75,13 @@ type Scanner struct {
 	err      func(pos token.Position, msg string) // error handler for scanning errors
 
 	// mutable scanning state
-	sb          strings.Builder // writes to Builder never fail, so errors are ignored
-	invalidByte byte            // when cur==RuneError due to failed utf8 decode, this is the invalid byte
-	cur         rune            // current character
-	line, col   int             // line/col position of cur
-	off         int             // character offset in bytes of cur
-	roff        int             // reading offset in bytes (position after current character)
+	sb               strings.Builder // writes to Builder never fail, so errors are ignored
+	pendingSurrogate rune            // in short string literal, the first half of a surrogate pair, pending the second (or rendered as replacement rune)
+	invalidByte      byte            // when cur==RuneError due to failed utf8 decode, this is the invalid byte
+	cur              rune            // current character
+	line, col        int             // line/col position of cur
+	off              int             // character offset in bytes of cur
+	roff             int             // reading offset in bytes (position after current character)
 }
 
 var (
@@ -99,6 +100,7 @@ func (s *Scanner) Init(filename string, src []byte, errHandler func(token.Positi
 	s.err = errHandler
 
 	s.sb.Reset()
+	s.pendingSurrogate = 0
 	s.invalidByte = 0
 	s.cur = ' '
 	s.line, s.col = 1, 0

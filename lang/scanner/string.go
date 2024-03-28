@@ -3,12 +3,15 @@ package scanner
 import (
 	"fmt"
 	"unicode"
+	"unicode/utf16"
+	"unicode/utf8"
 )
 
 func (s *Scanner) shortString(opening rune) (lit, decoded string) {
 	// '"' / "'" opening already consumed, hence the -1
 	startOff, startLine, startCol := s.off-1, s.line, s.col-1
 	s.sb.Reset()
+	s.pendingSurrogate = 0
 
 	var skipws bool
 	for {
@@ -25,8 +28,11 @@ func (s *Scanner) shortString(opening rune) (lit, decoded string) {
 			skipws = s.escape()
 		} else if !skipws || !isWhitespace(cur) {
 			skipws = false
-			s.sb.WriteRune(cur)
+			s.writeStringLitRune(cur)
 		}
+	}
+	if s.pendingSurrogate != 0 {
+		s.sb.WriteRune(utf8.RuneError)
 	}
 	return string(s.src[startOff:s.off]), s.sb.String()
 }
@@ -58,7 +64,7 @@ func (s *Scanner) escape() (skipws bool) {
 
 	if cur := s.cur; s.advanceIf('a', 'b', 'f', 'n', 'r', 't', 'v', 'z', '\\', '/', '"', '\'', '\n') {
 		if cur != 'z' {
-			s.sb.WriteByte(simpleEscapes[cur])
+			s.writeStringLitRune(rune(simpleEscapes[cur]))
 		}
 		return cur == 'z'
 	}
@@ -140,8 +146,7 @@ func (s *Scanner) escape() (skipws bool) {
 		return false
 	}
 
-	if rn > max || 0xD800 <= rn && rn < 0xE000 {
-		// TODO: if surrogate, try to decode following rune otherwise replace with invalid rune
+	if rn > max {
 		msg := "escape sequence is invalid Unicode code point"
 		if max == 255 {
 			msg = "escape sequence is invalid byte value"
@@ -149,8 +154,31 @@ func (s *Scanner) escape() (skipws bool) {
 		s.error(startOff, startLine, startCol, msg)
 		return false
 	}
-	s.sb.WriteRune(rune(rn))
+	if utf16.IsSurrogate(rune(rn)) {
+		s.writeStringLitSurrogate(rune(rn))
+		return false
+	}
+	s.writeStringLitRune(rune(rn))
 	return false
+}
+
+// writes a rune that is _not_ a surrogate
+func (s *Scanner) writeStringLitRune(rn rune) {
+	if s.pendingSurrogate != 0 {
+		s.sb.WriteRune(utf8.RuneError)
+		s.pendingSurrogate = 0
+	}
+	s.sb.WriteRune(rn)
+}
+
+// writes a rune that is a surrogate (could be first or second half)
+func (s *Scanner) writeStringLitSurrogate(rn rune) {
+	if s.pendingSurrogate == 0 {
+		s.pendingSurrogate = rn
+	} else {
+		s.sb.WriteRune(utf16.DecodeRune(s.pendingSurrogate, rn))
+		s.pendingSurrogate = 0
+	}
 }
 
 func digitVal(rn rune) int {

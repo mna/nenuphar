@@ -350,15 +350,6 @@ func (s *Scanner) ident() string {
 	return string(s.src[start:s.off])
 }
 
-func (s *Scanner) comment() (lit, val string) {
-	// '--' opening already consumed, hence the -2
-	startOff, startLine, startCol := s.off-2, s.line, s.col-2
-	s.sb.Reset()
-
-	_, _, _ = startOff, startLine, startCol
-	panic("unimplemented")
-}
-
 func (s *Scanner) skipWhitespace() {
 	for isWhitespace(s.cur) {
 		s.advance()

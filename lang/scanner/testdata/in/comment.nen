@@ -1,0 +1,12 @@
+-- single-line comment
+--[=[
+multi
+line
+comment
+]=
+haha
+not closed
+]==]
+still not closed
+]=]
+-- done

@@ -232,6 +232,13 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 
 		s.advance() // always make progress
 		switch cur {
+		case '=':
+			tok = token.EQ
+			if s.advanceIf('=') {
+				tok = token.EQEQ
+			}
+			*tokVal = token.Value{Raw: tok.String(), Pos: makeSafePos(startLine, startCol)}
+
 		case '"', '\'':
 			// short string
 			tok = token.STRING
@@ -248,107 +255,68 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 			}
 			tok = token.LBRACK
 
-		case ';', ',', '{', '}', ']', '(', ')':
+		case '(', ')', ',', '{', '}', ']', '#', ';':
 			// unambiguous single-char punctuation
 			tok = token.LookupPunct(string(cur))
 			*tokVal = token.Value{Raw: tok.String(), Pos: makeSafePos(startLine, startCol)}
 
+		case '+', '*', '!', '%', '^', '&', '|', '~':
+			// single-char operators that can be followed by '=' and nothing else
+			if s.advanceIf('=') {
+				tok = token.LookupPunct(string(s.src[startOff:s.off]))
+			} else {
+				tok = token.LookupPunct(string(cur))
+			}
+			*tokVal = token.Value{Raw: tok.String(), Pos: makeSafePos(startLine, startCol)}
+
+		case '-':
+			// minus, minuseq or start of a comment (--)
+			tok = token.MINUS
+			if s.advanceIf('=') {
+				tok = token.MINUSEQ
+			} else if s.advanceIf('-') {
+				tok = token.COMMENT
+				lit, val := s.comment()
+				*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol), String: val}
+				break
+			}
+			*tokVal = token.Value{Raw: tok.String(), Pos: makeSafePos(startLine, startCol)}
+
+		case '<', '>', '/':
+			// all can be followed by the same, eq or the same and eq
+			s.advanceIf(byte(cur))
+			s.advanceIf('=')
+			tok = token.LookupPunct(string(s.src[startOff:s.off]))
+			*tokVal = token.Value{Raw: tok.String(), Pos: makeSafePos(startLine, startCol)}
+
+		case ':':
+			// colon or colon colon
+			tok = token.COLON
+			if s.advanceIf('.') {
+				tok = token.COLONCOLON
+			}
+			*tokVal = token.Value{Raw: tok.String(), Pos: makeSafePos(startLine, startCol)}
+
+		case '.':
+			// dot or dotdotdot
+			tok = token.DOT
+			raw := tok.String()
+			if s.advanceIf('.') {
+				if s.advanceIf('.') {
+					tok = token.DOTDOTDOT
+					raw = tok.String()
+				} else {
+					// we could tokenize this as DOT and DOT, but it's never a valid
+					// sequence so we error (and we only have 1 lookahead).
+					s.error(startOff, startLine, startCol, "illegal punctuation '..'")
+					tok = token.ILLEGAL
+					raw = ".."
+				}
+			}
+			*tokVal = token.Value{Raw: raw, Pos: makeSafePos(startLine, startCol)}
+
 		case -1:
 			tok = token.EOF
-
-			/*
-				case '+', '*', '^', '%', '&', '~', '|', '#', ';', ',', '(', ')', '{', '}', ']':
-					// all unambiguous single-char operators/delimiters can be processed here
-					tok = token.LookupOp(string(cur))
-
-				case '-':
-					// can be Sub or Comment
-					if s.advanceIf('-') {
-						tok = token.Comment
-						lit = s.comment(start)
-						break
-					}
-					tok = token.Sub
-
-				case '/':
-					// can be Div or FloorDiv
-					switch {
-					case s.advanceIf('/'):
-						tok = token.FloorDiv
-					default:
-						tok = token.Div
-					}
-
-				case '!':
-					// can be Bang or NotEq
-					if s.advanceIf('=') {
-						tok = token.NotEq
-						break
-					}
-					tok = token.Bang
-
-				case '=':
-					// can be Assign or Eq
-					if s.advanceIf('=') {
-						tok = token.Eq
-						break
-					}
-					tok = token.Assign
-
-				case ':':
-					// can be Colon or ColonColon
-					if s.advanceIf(':') {
-						tok = token.ColonColon
-						break
-					}
-					tok = token.Colon
-
-				case '>':
-					// can be Gt, Gte or ShiftRight
-					switch {
-					case s.advanceIf('='):
-						tok = token.Gte
-					case s.advanceIf('>'):
-						tok = token.ShiftRight
-					default:
-						tok = token.Gt
-					}
-
-				case '<':
-					// can be Lt, Lte or ShiftLeft
-					switch {
-					case s.advanceIf('='):
-						tok = token.Lte
-					case s.advanceIf('<'):
-						tok = token.ShiftLeft
-					default:
-						tok = token.Lt
-					}
-
-				case '.':
-					// can be Dot, Concat or Unpack, or the start of a Float
-					tok = token.Dot
-					if s.advanceIf('.') {
-						tok = token.Concat
-						if s.advanceIf('.') {
-							tok = token.Unpack
-						}
-					} else if isDecimal(s.cur) {
-						tok, lit = s.number(start)
-					}
-
-				case '?':
-					if s.advanceIf('.') {
-						tok = token.QuestionDot
-						break
-					} else if s.advanceIf('#') {
-						tok = token.QuestionPound
-						break
-					}
-					s.errorf(s.file.Offset(pos), "illegal character %#U", cur)
-					tok = token.Illegal
-					lit = string(cur)
-			*/
 
 		default:
 			if cur == utf8.RuneError && s.invalidByte > 0 {
@@ -369,6 +337,15 @@ func (s *Scanner) ident() string {
 		s.advance()
 	}
 	return string(s.src[start:s.off])
+}
+
+func (s *Scanner) comment() (lit, val string) {
+	// '--' opening already consumed, hence the -2
+	startOff, startLine, startCol := s.off-2, s.line, s.col-2
+	s.sb.Reset()
+
+	_, _, _ = startOff, startLine, startCol
+	panic("unimplemented")
 }
 
 func (s *Scanner) skipWhitespace() {

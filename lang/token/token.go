@@ -11,10 +11,11 @@ const (
 	EOF
 
 	// Tokens with values
-	IDENT  // x
-	INT    // 123
-	FLOAT  // 1.23e45
-	STRING // "foo" or 'foo' or [[foo]]
+	COMMENT // -- code comment
+	IDENT   // x
+	INT     // 123
+	FLOAT   // 1.23e45
+	STRING  // "foo" or 'foo' or [[foo]]
 
 	// Punctuation
 
@@ -102,7 +103,7 @@ const (
 	MUST
 
 	maxToken             = MUST
-	litStart, litEnd     = IDENT, STRING
+	litStart, litEnd     = COMMENT, STRING
 	punctStart, punctEnd = PLUS, COLONCOLON
 	kwStart, kwEnd       = FUNCTION, MUST
 )
@@ -122,10 +123,11 @@ var tokenNames = [...]string{
 	ILLEGAL: "illegal token",
 	EOF:     "end of file",
 
-	IDENT:  "identifier",
-	INT:    "int literal",
-	FLOAT:  "float literal",
-	STRING: "string literal",
+	COMMENT: "comment",
+	IDENT:   "identifier",
+	INT:     "int literal",
+	FLOAT:   "float literal",
+	STRING:  "string literal",
 
 	PLUS:       "+",
 	MINUS:      "-",
@@ -260,6 +262,8 @@ func (tok Token) Literal(v Value) string {
 		return v.Raw
 	case STRING:
 		return strconv.Quote(v.String)
+	case COMMENT:
+		return v.String
 	case INT:
 		return strconv.FormatInt(v.Int, 10)
 	case FLOAT:

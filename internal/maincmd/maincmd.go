@@ -23,7 +23,7 @@ Run '%[1]s --help' for details.
        %[1]s -h|--help
        %[1]s -v|--version
 
-Compiler and all-in-one tool for the %[1]s programming language. 
+Compiler and all-in-one tool for the %[1]s programming language.
 
 The <command> can be one of:
        tokenize                  Execute the scanner phase of the
@@ -55,7 +55,6 @@ func (c *Cmd) SetArgs(args []string) {
 	c.args = args
 }
 
-// TODO: implement SetFlagsCount(map[string]int) if needed (e.g. verbosity)
 func (c *Cmd) SetFlags(flags map[string]bool) {
 	c.flags = flags
 }

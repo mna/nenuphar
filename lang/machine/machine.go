@@ -304,6 +304,36 @@ loop:
 			stack[sp] = NewMap(int(arg))
 			sp++
 
+		case compiler.UNPACK:
+			n := int(arg)
+			iterable := stack[sp-1]
+			sp--
+
+			iter := Iterate(iterable)
+			if iter == nil {
+				inFlightErr = fmt.Errorf("%s value is not iterable", iterable.Type())
+				break loop
+			}
+
+			i := 0
+			sp += n
+			for i < n && iter.Next(&stack[sp-1-i]) {
+				i++
+			}
+
+			// TODO: define UNPACK semantics - fill missing values with null, ignore extra ones?
+			//var dummy Value
+			//if iter.Next(&dummy) {
+			//	// NB: Len may return -1 here in obscure cases.
+			//	inFlightErr = fmt.Errorf("too many values to unpack (got %d, want %d)", Len(iterable), n)
+			//	break loop
+			//}
+			iter.Done()
+			//if i < n {
+			//	inFlightErr = fmt.Errorf("too few values to unpack (got %d, want %d)", i, n)
+			//	break loop
+			//}
+
 		case compiler.CJMP:
 			if Truth(stack[sp-1]) {
 				if runDefer {

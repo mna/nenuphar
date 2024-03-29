@@ -90,7 +90,7 @@ const ( //nolint:revive
 	UNIVERSAL    //                 - UNIVERSAL<name>     value       universe = part of the language, all programs have access to those
 	ATTR         //                 x ATTR<name>          y           y = x.name, fallbacks to x["name"]
 	SETFIELD     //               x y SETFIELD<name>      -           x.name = y, fallbacks to x["name"] = y
-	UNPACK       //          iterable UNPACK<n>           vn ... v1 TODO: add to machine
+	UNPACK       //          iterable UNPACK<n>           vn ... v1
 
 	// n is #args excluding vararg.
 	CALL     // fn positional                CALL<n>        result

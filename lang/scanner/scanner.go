@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -222,9 +223,19 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 		tok, base, lit = s.number()
 		*tokVal = token.Value{Raw: lit, Pos: makeSafePos(startLine, startCol)}
 		if tok == token.INT {
-			tokVal.Int = numberToInt(lit, base)
+			v, err := numberToInt(lit, base)
+			if err != nil && errors.Is(err, strconv.ErrRange) {
+				// syntax errors would have already generated an error, but not range
+				s.error(startOff, startLine, startCol, "integer literal value out of range")
+			}
+			tokVal.Int = v
 		} else if tok == token.FLOAT {
-			tokVal.Float = numberToFloat(lit)
+			v, err := numberToFloat(lit)
+			if err != nil && errors.Is(err, strconv.ErrRange) {
+				// syntax errors would have already generated an error, but not range
+				s.error(startOff, startLine, startCol, "float literal value out of range")
+			}
+			tokVal.Float = v
 		}
 
 	default:

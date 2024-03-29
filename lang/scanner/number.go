@@ -182,26 +182,16 @@ func lower(ch rune) rune {
 	return ('a' - 'A') | ch // returns lower-case ch iff ch is ASCII letter
 }
 
-func numberToInt(lit string, base int) int64 {
+func numberToInt(lit string, base int) (int64, error) {
 	if base != 10 {
 		// skip the 0x/0o/0b prefix
 		lit = lit[2:]
 	}
 	// underscores and prefix must be removed when a base is provided
-	v, err := strconv.ParseInt(strings.ReplaceAll(lit, "_", ""), base, 64)
-	if err != nil {
-		// TODO: what about limits, too big literal value!
-		return 0 // only possible if the literal had errors, which will be reported
-	}
-	return v
+	return strconv.ParseInt(strings.ReplaceAll(lit, "_", ""), base, 64)
 }
 
-func numberToFloat(lit string) float64 {
+func numberToFloat(lit string) (float64, error) {
 	// underscores and 0x prefix are fine for ParseFloat.
-	v, err := strconv.ParseFloat(lit, 64)
-	if err != nil {
-		// TODO: what about limits, too big literal value!
-		return 0 // only possible if the literal had errors, which will be reported
-	}
-	return v
+	return strconv.ParseFloat(lit, 64)
 }

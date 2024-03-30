@@ -9,7 +9,7 @@ import (
 
 func (s *Scanner) longString() (lit, decoded string) {
 	// '[' opening already consumed, hence the -1
-	startOff, startLine, startCol := s.off-1, s.line, s.col-1
+	start := s.off - 1
 	s.sb.Reset()
 
 	var level int
@@ -17,8 +17,8 @@ func (s *Scanner) longString() (lit, decoded string) {
 		level++
 	}
 	if !s.advanceIf('[') {
-		s.error(startOff, startLine, startCol, "invalid long string literal opening sequence")
-		return string(s.src[startOff:s.off]), ""
+		s.error(start, "invalid long string literal opening sequence")
+		return string(s.src[start:s.off]), ""
 	}
 
 	closeLevel := -1
@@ -48,14 +48,14 @@ func (s *Scanner) longString() (lit, decoded string) {
 	}
 
 	if closeLevel == -1 {
-		s.error(startOff, startLine, startCol, "long string literal not terminated")
+		s.error(start, "long string literal not terminated")
 	}
-	return string(s.src[startOff:s.off]), s.sb.String()
+	return string(s.src[start:s.off]), s.sb.String()
 }
 
 func (s *Scanner) shortString(opening rune) (lit, decoded string) {
 	// '"' / "'" opening already consumed, hence the -1
-	startOff, startLine, startCol := s.off-1, s.line, s.col-1
+	start := s.off - 1
 	s.sb.Reset()
 	s.pendingSurrogate = 0
 
@@ -63,7 +63,7 @@ func (s *Scanner) shortString(opening rune) (lit, decoded string) {
 	for {
 		cur := s.cur
 		if (cur == '\n' && !skipws) || cur < 0 {
-			s.error(startOff, startLine, startCol, "string literal not terminated")
+			s.error(start, "string literal not terminated")
 			break
 		}
 		s.advance()
@@ -80,7 +80,7 @@ func (s *Scanner) shortString(opening rune) (lit, decoded string) {
 	if s.pendingSurrogate != 0 {
 		s.sb.WriteRune(utf8.RuneError)
 	}
-	return string(s.src[startOff:s.off]), s.sb.String()
+	return string(s.src[start:s.off]), s.sb.String()
 }
 
 var simpleEscapes = [...]byte{
@@ -106,7 +106,7 @@ var simpleEscapes = [...]byte{
 // skipped for the string value.
 func (s *Scanner) escape() (skipws bool) {
 	// initial backslash already consumed, hence the -1
-	startOff, startLine, startCol := s.off-1, s.line, s.col-1
+	start := s.off - 1
 
 	if cur := s.cur; s.advanceIf('a', 'b', 'f', 'n', 'r', 't', 'v', 'z', '\\', '/', '"', '\'', '\n') {
 		if cur != 'z' {
@@ -119,13 +119,13 @@ func (s *Scanner) escape() (skipws bool) {
 	// this escape sequence) or at the start of the escape sequence (if the
 	// error applies to the escape as a whole).
 	illegalOrIncomplete := func() {
-		pos, line, col := s.off, s.line, s.col
+		pos := s.off
 		msg := fmt.Sprintf("illegal character %#U in escape sequence", s.cur)
 		if s.cur < 0 {
 			msg = "escape sequence not terminated"
-			pos, line, col = startOff, startLine, startCol
+			pos = start
 		}
-		s.error(pos, line, col, msg)
+		s.error(pos, msg)
 	}
 
 	var max, rn uint32
@@ -169,7 +169,7 @@ func (s *Scanner) escape() (skipws bool) {
 				return false
 			}
 			if count > 8 {
-				s.error(startOff, startLine, startCol, "escape sequence has too many hexadecimal digits")
+				s.error(start, "escape sequence has too many hexadecimal digits")
 				return false
 			}
 		} else {
@@ -188,7 +188,7 @@ func (s *Scanner) escape() (skipws bool) {
 		if s.cur < 0 {
 			msg = "escape sequence not terminated"
 		}
-		s.error(startOff, startLine, startCol, msg)
+		s.error(start, msg)
 		return false
 	}
 
@@ -197,7 +197,7 @@ func (s *Scanner) escape() (skipws bool) {
 		if max == 255 {
 			msg = "escape sequence is invalid byte value"
 		}
-		s.error(startOff, startLine, startCol, msg)
+		s.error(start, msg)
 		return false
 	}
 	if utf16.IsSurrogate(rune(rn)) {

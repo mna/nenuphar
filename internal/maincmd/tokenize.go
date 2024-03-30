@@ -9,10 +9,12 @@ import (
 )
 
 func (c *Cmd) Tokenize(ctx context.Context, stdio mainer.Stdio, args []string) error {
-	toksByFile, err := scanner.ScanFiles(ctx, args...)
-	for i, toks := range toksByFile {
+	// TODO: use FormatPos, provide position mode as flag
+
+	fs, toksByFile, err := scanner.ScanFiles(ctx, args...)
+	for _, toks := range toksByFile {
 		for _, tok := range toks {
-			fmt.Fprintf(stdio.Stdout, "%s: %s", tok.Value.Pos.ToPosition(args[i], 0), tok.Token)
+			fmt.Fprintf(stdio.Stdout, "%s: %s", fs.Position(tok.Value.Pos), tok.Token)
 			if lit := tok.Token.Literal(tok.Value); lit != "" {
 				fmt.Fprintf(stdio.Stdout, " %s", lit)
 			}
@@ -20,12 +22,7 @@ func (c *Cmd) Tokenize(ctx context.Context, stdio mainer.Stdio, args []string) e
 		}
 	}
 	if err != nil {
-		// errors already have the position information with the filename as
-		// part of the message
-		errs := err.(interface{ Unwrap() []error }).Unwrap()
-		for _, err := range errs {
-			fmt.Fprintln(stdio.Stderr, err)
-		}
+		scanner.PrintError(stdio.Stderr, err)
 	}
 	return err
 }

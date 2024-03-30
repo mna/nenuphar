@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Scanner) number() (tok token.Token, base int, lit string) {
-	startOff, startLine, startCol := s.off, s.line, s.col
+	start := s.off
 	tok = token.ILLEGAL
 
 	base = 10         // number base
@@ -40,23 +40,23 @@ func (s *Scanner) number() (tok token.Token, base int, lit string) {
 	if s.cur == '.' {
 		tok = token.FLOAT
 		if prefix == 'o' || prefix == 'b' {
-			s.error(s.off, s.line, s.col, "invalid radix point in "+litname(prefix))
+			s.error(s.off, "invalid radix point in "+litname(prefix))
 		}
 		s.advance()
 		digsep |= s.digits(base, &invalid)
 	}
 
 	if digsep&1 == 0 {
-		s.error(s.off, s.line, s.col, litname(prefix)+" has no digits")
+		s.error(s.off, litname(prefix)+" has no digits")
 	}
 
 	// exponent
 	if e := lower(s.cur); e == 'e' || e == 'p' {
 		switch {
 		case e == 'e' && prefix != 0:
-			s.errorf(s.off, s.line, s.col, "%q exponent requires decimal mantissa", s.cur)
+			s.errorf(s.off, "%q exponent requires decimal mantissa", s.cur)
 		case e == 'p' && prefix != 'x':
-			s.errorf(s.off, s.line, s.col, "%q exponent requires hexadecimal mantissa", s.cur)
+			s.errorf(s.off, "%q exponent requires hexadecimal mantissa", s.cur)
 		}
 		s.advance()
 		tok = token.FLOAT
@@ -66,19 +66,19 @@ func (s *Scanner) number() (tok token.Token, base int, lit string) {
 		ds := s.digits(10, nil)
 		digsep |= ds
 		if ds&1 == 0 {
-			s.error(s.off, s.line, s.col, "exponent has no digits")
+			s.error(s.off, "exponent has no digits")
 		}
 	} else if prefix == 'x' && tok == token.FLOAT {
-		s.error(s.off, s.line, s.col, "hexadecimal mantissa requires a 'p' exponent")
+		s.error(s.off, "hexadecimal mantissa requires a 'p' exponent")
 	}
 
-	lit = string(s.src[startOff:s.off])
+	lit = string(s.src[start:s.off])
 	if tok == token.INT && invalid >= 0 {
-		s.errorf(invalid, startLine, startCol+invalid-startOff, "invalid digit %q in %s", lit[invalid-startOff], litname(prefix))
+		s.errorf(invalid, "invalid digit %q in %s", lit[invalid-start], litname(prefix))
 	}
 	if digsep&2 != 0 {
 		if i := invalidSep(lit); i >= 0 {
-			s.error(startOff+i, startLine, startCol+i, "'_' must separate successive digits")
+			s.error(start+i, "'_' must separate successive digits")
 		}
 	}
 	return tok, base, lit

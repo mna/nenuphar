@@ -2,7 +2,7 @@ package scanner
 
 func (s *Scanner) comment() (lit, val string) {
 	// '--' opening already consumed, hence the -2
-	startOff := s.off - 2
+	start := s.off - 2
 
 	// this is a long comment only if there is a valid opening long bracket
 	// sequence.
@@ -23,12 +23,12 @@ func (s *Scanner) comment() (lit, val string) {
 	for s.cur != '\n' && s.cur != -1 {
 		s.advance()
 	}
-	return string(s.src[startOff:s.off]), string(s.src[startOff+2 : s.off])
+	return string(s.src[start:s.off]), string(s.src[start+2 : s.off])
 }
 
 func (s *Scanner) longComment(level int) (lit, val string) {
 	// '--[=[' opening already consumed, hence the -(4+level)
-	startOff, startLine, startCol := s.off-(4+level), s.line, s.col-(4+level)
+	start := s.off - (4 + level)
 	s.sb.Reset()
 
 	closeLevel := -1
@@ -58,7 +58,7 @@ func (s *Scanner) longComment(level int) (lit, val string) {
 	}
 
 	if closeLevel == -1 {
-		s.error(startOff, startLine, startCol, "long comment not terminated")
+		s.error(start, "long comment not terminated")
 	}
-	return string(s.src[startOff:s.off]), s.sb.String()
+	return string(s.src[start:s.off]), s.sb.String()
 }

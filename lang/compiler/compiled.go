@@ -2,9 +2,15 @@ package compiler
 
 import (
 	"sync"
-
-	"github.com/mna/nenuphar/lang/token"
 )
+
+// Position is a compiled position, which differs from token.Position. A
+// compiled position is already decoded to line and col (because there's no
+// token.FileSet available), and the filename can be retrieved via the
+// Funcode's Program.
+type Position struct {
+	Line, Col uint32
+}
 
 // A Program is a source code file compiled in executable form. Programs are
 // serialized by the Program.Encode method, which must be updated whenever this
@@ -35,8 +41,8 @@ type Funcode struct {
 	NumParams  int // includes the catchall vararg, if any
 	HasVarargs bool
 
-	pos       token.Pos // position of fn token
-	pclinetab []uint16  // mapping from pc to linenum
+	pos       Position // position of fn token
+	pclinetab []uint16 // mapping from pc to linenum
 
 	// -- transient state --
 
@@ -46,11 +52,11 @@ type Funcode struct {
 
 type pclinecol struct {
 	pc  uint32
-	pos token.Pos
+	pos Position
 }
 
 // Pos returns the source position for program counter pc.
-func (fn *Funcode) Pos(pc uint32) token.Pos {
+func (fn *Funcode) Pos(pc uint32) Position {
 	fn.lntOnce.Do(fn.decodeLNT)
 
 	// Binary search to find last LNT entry not greater than pc.
@@ -71,7 +77,7 @@ func (fn *Funcode) Pos(pc uint32) token.Pos {
 	if i < n {
 		return fn.lnt[i].pos
 	}
-	return token.MakePos(0, 0)
+	return Position{0, 0}
 }
 
 // decodeLNT decodes the line number table and populates fn.lnt.
@@ -100,7 +106,7 @@ func (fn *Funcode) decodeLNT() {
 	// and allow >97% of rows to be encoded in a single uint16.
 
 	fn.lnt = make([]pclinecol, 0, len(fn.pclinetab)) // a minor overapproximation
-	line, col := fn.pos.LineCol()
+	line, col := int(fn.pos.Line), int(fn.pos.Col)
 	entry := pclinecol{
 		pc:  0,
 		pos: fn.pos,
@@ -110,7 +116,7 @@ func (fn *Funcode) decodeLNT() {
 		line += int((int16(x) << 4) >> (16 - 5)) // sign extend Δline
 		col += int((int16(x) << 9) >> (16 - 6))  // sign extend Δcol
 		if (x & 1) == 0 {
-			entry.pos = token.MakePos(line, col)
+			entry.pos = Position{uint32(line), uint32(col)}
 			fn.lnt = append(fn.lnt, entry)
 		}
 	}
@@ -119,7 +125,7 @@ func (fn *Funcode) decodeLNT() {
 // A Binding is the name and position of a binding identifier.
 type Binding struct {
 	Name string
-	Pos  token.Pos
+	Pos  Position
 }
 
 // Defer is a defer or catch block that runs on exit of a block (defer) or if

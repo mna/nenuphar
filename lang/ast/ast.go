@@ -14,9 +14,10 @@ package ast
 
 import (
 	"fmt"
-	"go/token"
 	"sort"
 	"strings"
+
+	"github.com/mna/nenuphar/lang/token"
 )
 
 // Node represents any node in the AST.
@@ -95,12 +96,14 @@ type (
 	// STATEMENTS
 	// ====================
 
-	// AssignStmt represents an assignment statement, e.g. x = y + z.
+	// AssignStmt represents an assignment statement, e.g. x = y + z which may
+	// also be a, b, c = 1, 2, 3 or an AugAssignStmt x += 2.
 	AssignStmt struct {
-		Left        []Expr      // guaranteed to be *IdentExpr, *IndexExpr or *SelectorExpr
+		Left        []Expr      // only 1 for augassign
 		LeftCommas  []token.Pos // always len(Left)-1, commas separating the Left
-		Assign      token.Pos
-		Right       []Expr
+		AssignTok   token.Token // either EQ or between PLUSEQ and GTGTEQ
+		AssignPos   token.Pos   // start pos of AssignTok
+		Right       []Expr      // only 1 for augassign
 		RightCommas []token.Pos // always len(Right)-1, commas separating the Right expressions
 	}
 
@@ -125,22 +128,52 @@ func (n *Chunk) Walk(v Visitor) {
 }
 
 func (n *Comment) Format(f fmt.State, verb rune) { format(f, verb, n, n.Val, nil) }
-func (n *Comment) Span() (start, end token.Pos) {
-	return n.Start, n.Start + token.Pos(len(n.Raw))
-}
-func (n *Comment) Walk(_ Visitor) {}
+func (n *Comment) Span() (start, end token.Pos)  { return n.Start, n.Start + token.Pos(len(n.Raw)) }
+func (n *Comment) Walk(_ Visitor)                {}
 
 func (n *Block) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "block", map[string]int{"stmts": len(n.Stmts)})
 }
-func (n *Block) Span() (start, end token.Pos) {
-	return n.Start, n.End
-}
+func (n *Block) Span() (start, end token.Pos) { return n.Start, n.End }
 func (n *Block) Walk(v Visitor) {
 	for _, s := range n.Stmts {
 		Walk(v, s)
 	}
 }
+
+func (n *AssignStmt) Format(f fmt.State, verb rune) {
+	format(f, verb, n, "assignment", map[string]int{"left": len(n.Left), "right": len(n.Right)})
+}
+func (n *AssignStmt) Span() (start, end token.Pos) {
+	start, _ = n.Left[0].Span()
+	_, end = n.Right[len(n.Right)-1].Span()
+	return start, end
+}
+func (n *AssignStmt) Walk(v Visitor) {
+	for _, e := range n.Left {
+		Walk(v, e)
+	}
+	for _, e := range n.Right {
+		Walk(v, e)
+	}
+}
+
+func (n *AugAssignStmt) Format(f fmt.State, verb rune) {
+	format(f, verb, n, "assignment", nil)
+}
+func (n *AugAssignStmt) Span() (start, end token.Pos) {
+	start, _ = n.Left.Span()
+	_, end = n.Right.Span()
+	return start, end
+}
+func (n *AugAssignStmt) Walk(v Visitor) {
+	Walk(v, n.Left)
+	Walk(v, n.Right)
+}
+
+func (n *ExprStmt) Format(f fmt.State, verb rune) { format(f, verb, n, "expr", nil) }
+func (n *ExprStmt) Span() (start, end token.Pos)  { return n.Expr.Span() }
+func (n *ExprStmt) Walk(v Visitor)                { Walk(v, n.Expr) }
 
 func format(f fmt.State, verb rune, n Node, label string, counts map[string]int) {
 	if verb != 'v' && verb != 's' {

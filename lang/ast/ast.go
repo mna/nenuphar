@@ -97,8 +97,11 @@ type (
 	// ====================
 
 	// AssignStmt represents an assignment statement, e.g. x = y + z which may
-	// also be a, b, c = 1, 2, 3 or an AugAssignStmt x += 2.
+	// also be a, b, c = 1, 2, 3 or an AugAssignStmt x += 2. It is also used to
+	// represent DeclStmt.
 	AssignStmt struct {
+		DeclType    token.Token // zero if not a DeclStmt
+		DeclStart   token.Pos   // zero if not a DeclStmt
 		Left        []Expr      // only 1 for augassign
 		LeftCommas  []token.Pos // always len(Left)-1, commas separating the Left
 		AssignTok   token.Token // either EQ or between PLUSEQ and GTGTEQ
@@ -111,6 +114,25 @@ type (
 	// for function calls (possibly wrapped in ParenExpr).
 	ExprStmt struct {
 		Expr Expr
+	}
+
+	// IfGuardStmt represents an if..then..elseif..else or a guard..else
+	// statement.
+	IfGuardStmt struct {
+		Type  token.Token // if, elseif or guard
+		Start token.Pos   // Position of Type token
+		Cond  Expr        // nil if bind-type statement
+		Decl  *AssignStmt // nil if cond-type statement
+		Then  token.Pos   // zero for guard
+		True  *Block      // nil for guard
+		Else  token.Pos   // zero if no else/elseif
+		False *Block      // nil if no else, single stmt in block if elseif (an IfGuardStmt)
+	}
+
+	SimpleBlockStmt struct {
+		Type  token.Token // do, defer, catch
+		Start token.Pos   // position of Type
+		Body  *Block
 	}
 )
 
@@ -142,10 +164,20 @@ func (n *Block) Walk(v Visitor) {
 }
 
 func (n *AssignStmt) Format(f fmt.State, verb rune) {
-	format(f, verb, n, "assignment", map[string]int{"left": len(n.Left), "right": len(n.Right)})
+	lbl := "assignment"
+	if n.DeclType > 0 {
+		lbl = n.DeclType.String() + " declaration"
+	} else if n.AssignTok != token.EQ {
+		lbl = "augmented assignment"
+	}
+	format(f, verb, n, lbl, map[string]int{"left": len(n.Left), "right": len(n.Right)})
 }
 func (n *AssignStmt) Span() (start, end token.Pos) {
-	start, _ = n.Left[0].Span()
+	if n.DeclStart > 0 {
+		start = n.DeclStart
+	} else {
+		start, _ = n.Left[0].Span()
+	}
 	_, end = n.Right[len(n.Right)-1].Span()
 	return start, end
 }
@@ -158,22 +190,45 @@ func (n *AssignStmt) Walk(v Visitor) {
 	}
 }
 
-func (n *AugAssignStmt) Format(f fmt.State, verb rune) {
-	format(f, verb, n, "assignment", nil)
-}
-func (n *AugAssignStmt) Span() (start, end token.Pos) {
-	start, _ = n.Left.Span()
-	_, end = n.Right.Span()
-	return start, end
-}
-func (n *AugAssignStmt) Walk(v Visitor) {
-	Walk(v, n.Left)
-	Walk(v, n.Right)
-}
-
 func (n *ExprStmt) Format(f fmt.State, verb rune) { format(f, verb, n, "expr", nil) }
 func (n *ExprStmt) Span() (start, end token.Pos)  { return n.Expr.Span() }
 func (n *ExprStmt) Walk(v Visitor)                { Walk(v, n.Expr) }
+
+func (n *IfGuardStmt) Format(f fmt.State, verb rune) { format(f, verb, n, n.Type.String(), nil) }
+func (n *IfGuardStmt) Span() (start, end token.Pos) {
+	if n.True != nil {
+		_, end = n.True.Span()
+	}
+	if n.False != nil {
+		_, end = n.False.Span()
+	}
+	return n.Start, end
+}
+func (n *IfGuardStmt) Walk(v Visitor) {
+	if n.Cond != nil {
+		Walk(v, n.Cond)
+	}
+	if n.Decl != nil {
+		Walk(v, n.Decl)
+	}
+	if n.True != nil {
+		Walk(v, n.True)
+	}
+	if n.False != nil {
+		Walk(v, n.False)
+	}
+}
+
+func (n *SimpleBlockStmt) Format(f fmt.State, verb rune) { format(f, verb, n, n.Type.String(), nil) }
+func (n *SimpleBlockStmt) Span() (start, end token.Pos) {
+	_, end = n.Body.Span()
+	return n.Start, end
+}
+func (n *SimpleBlockStmt) Walk(v Visitor) {
+	if n.Body != nil {
+		Walk(v, n.Body)
+	}
+}
 
 func format(f fmt.State, verb rune, n Node, label string, counts map[string]int) {
 	if verb != 'v' && verb != 's' {

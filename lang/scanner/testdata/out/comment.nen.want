@@ -1,0 +1,13 @@
+0: comment  single-line comment
+23: comment 
+multi
+line
+comment
+]=
+haha
+not closed
+]==]
+still not closed
+
+93: comment  done
+101: end of file

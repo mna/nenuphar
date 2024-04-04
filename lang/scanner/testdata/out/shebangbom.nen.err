@@ -1,0 +1,4 @@
+testdata/in/shebangbom.nen:2:1: illegal UTF-8 encoding
+testdata/in/shebangbom.nen:2:1: illegal character U+00FF 'ÿ'
+testdata/in/shebangbom.nen:2:2: illegal UTF-8 encoding
+testdata/in/shebangbom.nen:2:2: illegal character U+FFFD '�'

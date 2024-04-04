@@ -38,8 +38,8 @@ type TokenAndValue struct {
 
 // ScanFiles is a helper function that tokenizes the source files and returns
 // the list of tokens, grouped by the file at the same index, and produces any
-// error encountered. The error, if non-nil, is guaranteed to implement
-// Unwrap() []error.
+// error encountered. The error, if non-nil, is guaranteed to be an
+// ErrorList.
 func ScanFiles(ctx context.Context, files ...string) (*token.FileSet, [][]TokenAndValue, error) {
 	if len(files) == 0 {
 		return nil, nil, nil

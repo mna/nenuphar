@@ -73,8 +73,8 @@ SimpleExpr   = float | int | string | "null" | "true" | "false" |
                Map | Array | Tuple | FuncExpr | ClassExpr |
 							 SuffixedExpr .
 
-Map          = "{" [Field {"," Field} [","]] "}" .
-Field        = (name | string | "[" Expr "]") ":" Expr .
+Map          = "{" [KeyVal {"," KeyVal} [","]] "}" .
+KeyVal       = (name | string | "[" Expr "]") ":" Expr .
 Array        = "[" [ Expr { "," Expr } [","] ] "]" .
 Tuple        = "(" [ Expr ( "," | { "," Expr } [","] ) ] ")" .
 FuncExpr     = "fn" Signature Body .

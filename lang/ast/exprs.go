@@ -16,6 +16,15 @@ type (
 		Right  token.Pos
 	}
 
+	// BinOpExpr represents a binary expression, e.g. x + y.
+	BinOpExpr struct {
+		Left  Expr
+		Type  token.Token // binary operator token type
+		Op    token.Pos
+		Right Expr
+	}
+
+	// CallExpr represents a function call, e.g. x(y, z).
 	CallExpr struct {
 		Fn     Expr
 		Bang   token.Pos // 0 if no '!'
@@ -83,6 +92,13 @@ type (
 		Expr   Expr
 		Rparen token.Pos
 	}
+
+	// UnaryOpExpr represents a unary operator expression (e.g. -4).
+	UnaryOpExpr struct {
+		Type  token.Token // unary operator token type
+		Op    token.Pos
+		Right Expr
+	}
 )
 
 func (n *ArrayLikeExpr) Format(f fmt.State, verb rune) {
@@ -102,6 +118,19 @@ func (n *ArrayLikeExpr) Walk(v Visitor) {
 }
 func (n *ArrayLikeExpr) expr() {}
 
+func (n *BinOpExpr) Format(f fmt.State, verb rune) {
+	format(f, verb, n, "binary "+n.Type.GoString(), nil)
+}
+func (n *BinOpExpr) Span() (start, end token.Pos) {
+	start, _ = n.Left.Span()
+	_, end = n.Right.Span()
+	return start, end
+}
+func (n *BinOpExpr) Walk(v Visitor) {
+	Walk(v, n.Left)
+	Walk(v, n.Right)
+}
+
 func (n *CallExpr) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "call", map[string]int{"args": len(n.Args)})
 }
@@ -116,24 +145,13 @@ func (n *CallExpr) Span() (start, end token.Pos) {
 	}
 	return start, end
 }
-func (n *FuncCallExpr) EndPos() token.Pos {
-	if n.Rparen.IsValid() {
-		return n.Rparen + 1
-	}
-	if len(n.Args) > 0 {
-		return n.Args[len(n.Args)-1].EndPos()
-	}
-	if n.Bang.IsValid() {
-		return n.Bang + 1
-	}
-	return n.Func.EndPos()
-}
-func (n *FuncCallExpr) Walk(v Visitor) {
-	Walk(v, n.Func)
+func (n *CallExpr) Walk(v Visitor) {
+	Walk(v, n.Fn)
 	for _, e := range n.Args {
 		Walk(v, e)
 	}
 }
+func (n *CallExpr) expr() {}
 
 func (n *ClassExpr) Format(f fmt.State, verb rune) {
 	var inheritsCount int
@@ -263,3 +281,15 @@ func (n *ParenExpr) Unwrap() Expr {
 	}
 	return n.Expr
 }
+
+func (n *UnaryOpExpr) Format(f fmt.State, verb rune) {
+	format(f, verb, n, "unary "+n.Type.GoString(), nil)
+}
+func (n *UnaryOpExpr) Span() (start, end token.Pos) {
+	_, end = n.Right.Span()
+	return n.Op, end
+}
+func (n *UnaryOpExpr) Walk(v Visitor) {
+	Walk(v, n.Right)
+}
+func (n *UnaryOpExpr) expr() {}

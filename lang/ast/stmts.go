@@ -21,6 +21,12 @@ type (
 		RightCommas []token.Pos // always len(Right)-1, commas separating the Right expressions
 	}
 
+	// BadStmt represents a bad statement that failed to parse.
+	BadStmt struct {
+		Start token.Pos
+		Raw   string // raw text of the bad statement
+	}
+
 	// ClassStmt represents a class declaration statement.
 	ClassStmt struct {
 		Class    token.Pos
@@ -35,17 +41,16 @@ type (
 		Expr Expr
 	}
 
-	// IfGuardStmt represents an if..then..elseif..else or a guard..else
-	// statement.
-	IfGuardStmt struct {
-		Type  token.Token // if, elseif or guard
-		Start token.Pos   // Position of Type token
-		Cond  Expr        // nil if bind-type statement
-		Decl  *AssignStmt // nil if cond-type statement
-		Then  token.Pos   // zero for guard
-		True  *Block      // nil for guard
-		Else  token.Pos   // zero if no else/elseif
-		False *Block      // nil if no else, single stmt in block if elseif (an IfGuardStmt)
+	// ForInStmt represents a for-in loop statement.
+	ForInStmt struct {
+		For         token.Pos
+		Left        []Expr      // SuffixedExpr, has to be assignable
+		LeftCommas  []token.Pos // always len(Left)-1, commas separating the Left
+		In          token.Pos
+		Right       []Expr
+		RightCommas []token.Pos // always len(Right)-1, commas separating the Right expressions
+		Do          token.Pos
+		Body        *Block
 	}
 
 	// ForLoopStmt represents a 1- or 3-clause for loop statement.
@@ -60,18 +65,6 @@ type (
 		Body     *Block
 	}
 
-	// ForInStmt represents a for-in loop statement.
-	ForInStmt struct {
-		For         token.Pos
-		Left        []Expr      // SuffixedExpr, has to be assignable
-		LeftCommas  []token.Pos // always len(Left)-1, commas separating the Left
-		In          token.Pos
-		Right       []Expr
-		RightCommas []token.Pos // always len(Right)-1, commas separating the Right expressions
-		Do          token.Pos
-		Body        *Block
-	}
-
 	// FuncStmt represents a function declaration statement.
 	FuncStmt struct {
 		Fn   token.Pos
@@ -79,6 +72,19 @@ type (
 		Sig  *FuncSignature
 		Body *Block
 		End  token.Pos
+	}
+
+	// IfGuardStmt represents an if..then..elseif..else or a guard..else
+	// statement.
+	IfGuardStmt struct {
+		Type  token.Token // if, elseif or guard
+		Start token.Pos   // Position of Type token
+		Cond  Expr        // nil if bind-type statement
+		Decl  *AssignStmt // nil if cond-type statement
+		Then  token.Pos   // zero for guard
+		True  *Block      // nil for guard
+		Else  token.Pos   // zero if no else/elseif
+		False *Block      // nil if no else, single stmt in block if elseif (an IfGuardStmt)
 	}
 
 	// LabelStmt represents a label declaration statement.
@@ -131,6 +137,15 @@ func (n *AssignStmt) Walk(v Visitor) {
 	}
 }
 func (n *AssignStmt) BlockEnding() bool { return false }
+
+func (n *BadStmt) Format(f fmt.State, verb rune) {
+	format(f, verb, n, "!bad stmt!", nil)
+}
+func (n *BadStmt) Span() (start, end token.Pos) {
+	return n.Start, n.Start + token.Pos(len(n.Raw))
+}
+func (n *BadStmt) Walk(v Visitor)    {}
+func (n *BadStmt) BlockEnding() bool { return false }
 
 func (n *ClassStmt) Format(f fmt.State, verb rune) {
 	var inheritsCount int

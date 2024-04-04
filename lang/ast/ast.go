@@ -56,6 +56,10 @@ type Stmt interface {
 }
 
 type (
+	// ====================
+	// SUPPORTING NODES
+	// ====================
+
 	// Chunk represents a Chunk production. It is exactly the same as Block
 	// except that it keeps track of its name and the EOF, which is useful for
 	// empty files to get a valid position.
@@ -110,6 +114,13 @@ type (
 		RightCommas []token.Pos // always len(Right)-1, commas separating the Right expressions
 	}
 
+	ClassStmt struct {
+		Class    token.Pos
+		Name     *Ident
+		Inherits *ClassInherit
+		Body     *ClassBody
+	}
+
 	// ExprStmt represents an expression used as statement, which is only valid
 	// for function calls (possibly wrapped in ParenExpr).
 	ExprStmt struct {
@@ -129,10 +140,79 @@ type (
 		False *Block      // nil if no else, single stmt in block if elseif (an IfGuardStmt)
 	}
 
+	ForLoopStmt struct {
+		For  token.Pos
+		Init Stmt // may be nil, assign, augassign, decl or exprstmt (func call)
+		Cond Expr // may be nil
+		Post Stmt // may be nil, assign, augassign or exprstmt (func call)
+		Do   token.Pos
+		Body *Block
+	}
+
+	ForInStmt struct {
+		For         token.Pos
+		Left        []Expr      // SuffixedExpr, has to be assignable
+		LeftCommas  []token.Pos // always len(Left)-1, commas separating the Left
+		In          token.Pos
+		Right       []Expr
+		RightCommas []token.Pos // always len(Right)-1, commas separating the Right expressions
+		Do          token.Pos
+		Body        *Block
+	}
+
+	FuncStmt struct {
+		Fn   token.Pos
+		Name *Ident
+		Sig  *FuncSignature
+		Body *Block
+		End  token.Pos
+	}
+
+	LabelStmt struct {
+		Lcolon token.Pos // start '::'
+		Name   *Ident
+		Rcolon token.Pos // end '::'
+	}
+
+	// ReturnLikeStmt represents a return, break, continue, goto or throw.
+	ReturnLikeStmt struct {
+		Type  token.Token // return, break, continue, goto, throw
+		Start token.Pos   // position of Type
+		Expr  Expr        // may be nil, *Ident for break, continue, goto
+	}
+
+	// SimpleBlockStmt represents a simple keyword-defined block statement, do,
+	// defer or catch.
 	SimpleBlockStmt struct {
 		Type  token.Token // do, defer, catch
 		Start token.Pos   // position of Type
 		Body  *Block
+	}
+
+	// ====================
+	// HELPERS (not nodes)
+	// ====================
+
+	FuncSignature struct {
+		Lparen    token.Pos // zero if '!'
+		Params    []*Ident
+		Commas    []token.Pos // at least len(Params)-1, can be len(Params)
+		DotDotDot token.Pos   // zero if no '...', otherwise last param is vararg
+		Rparen    token.Pos   // zero if '!'
+		Excl      token.Pos   // position of the '!' token if no param and present
+	}
+
+	ClassInherit struct {
+		Lparen token.Pos // zero if '!'
+		Expr   Expr      // may be nil, inherits expression
+		Rparen token.Pos // zero if '!'
+		Excl   token.Pos // position of the '!' token if no expr and present
+	}
+
+	ClassBody struct {
+		Methods []*FuncStmt
+		Fields  []*AssignStmt // must all be DeclStmt
+		End     token.Pos
 	}
 )
 
@@ -189,10 +269,40 @@ func (n *AssignStmt) Walk(v Visitor) {
 		Walk(v, e)
 	}
 }
+func (n *AssignStmt) BlockEnding() bool { return false }
+
+func (n *ClassStmt) Format(f fmt.State, verb rune) {
+	var inheritsCount int
+	if n.Inherits != nil {
+		inheritsCount = 1
+	}
+	format(f, verb, n, "class", map[string]int{
+		"inherits": inheritsCount,
+		"methods":  len(n.Body.Methods),
+		"fields":   len(n.Body.Fields),
+	})
+}
+func (n *ClassStmt) Span() (start, end token.Pos) {
+	return n.Class, n.Body.End + token.Pos(len(token.END.String()))
+}
+func (n *ClassStmt) Walk(v Visitor) {
+	Walk(v, n.Name)
+	if n.Inherits.Expr != nil {
+		Walk(v, n.Inherits.Expr)
+	}
+	for _, e := range n.Body.Fields {
+		Walk(v, e)
+	}
+	for _, e := range n.Body.Methods {
+		Walk(v, e)
+	}
+}
+func (n *ClassStmt) BlockEnding() bool { return false }
 
 func (n *ExprStmt) Format(f fmt.State, verb rune) { format(f, verb, n, "expr", nil) }
 func (n *ExprStmt) Span() (start, end token.Pos)  { return n.Expr.Span() }
 func (n *ExprStmt) Walk(v Visitor)                { Walk(v, n.Expr) }
+func (n *ExprStmt) BlockEnding() bool             { return false }
 
 func (n *IfGuardStmt) Format(f fmt.State, verb rune) { format(f, verb, n, n.Type.String(), nil) }
 func (n *IfGuardStmt) Span() (start, end token.Pos) {
@@ -218,6 +328,105 @@ func (n *IfGuardStmt) Walk(v Visitor) {
 		Walk(v, n.False)
 	}
 }
+func (n *IfGuardStmt) BlockEnding() bool { return false }
+
+func (n *ForLoopStmt) Format(f fmt.State, verb rune) {
+	var clauses int
+	if n.Init != nil {
+		clauses++
+	}
+	if n.Cond != nil {
+		clauses++
+	}
+	if n.Post != nil {
+		clauses++
+	}
+	format(f, verb, n, "for", map[string]int{"clauses": clauses})
+}
+func (n *ForLoopStmt) Span() (start, end token.Pos) {
+	_, end = n.Body.Span()
+	return n.For, end
+}
+func (n *ForLoopStmt) Walk(v Visitor) {
+	if n.Init != nil {
+		Walk(v, n.Init)
+	}
+	if n.Cond != nil {
+		Walk(v, n.Cond)
+	}
+	if n.Post != nil {
+		Walk(v, n.Post)
+	}
+	if n.Body != nil {
+		Walk(v, n.Body)
+	}
+}
+func (n *ForLoopStmt) BlockEnding() bool { return false }
+
+func (n *ForInStmt) Format(f fmt.State, verb rune) {
+	format(f, verb, n, "for in", map[string]int{"left": len(n.Left), "right": len(n.Right)})
+}
+func (n *ForInStmt) Span() (start, end token.Pos) {
+	_, end = n.Body.Span()
+	return n.For, end
+}
+func (n *ForInStmt) Walk(v Visitor) {
+	for _, e := range n.Left {
+		Walk(v, e)
+	}
+	for _, e := range n.Right {
+		Walk(v, e)
+	}
+	if n.Body != nil {
+		Walk(v, n.Body)
+	}
+}
+func (n *ForInStmt) BlockEnding() bool { return false }
+
+func (n *FuncStmt) Format(f fmt.State, verb rune) {
+	format(f, verb, n, "fn", map[string]int{"params": len(n.Sig.Params)})
+}
+func (n *FuncStmt) Span() (start, end token.Pos) {
+	return n.Fn, n.End + token.Pos(len(token.END.String()))
+}
+func (n *FuncStmt) Walk(v Visitor) {
+	Walk(v, n.Name)
+	for _, e := range n.Sig.Params {
+		Walk(v, e)
+	}
+	Walk(v, n.Body)
+}
+func (n *FuncStmt) BlockEnding() bool { return false }
+
+func (n *LabelStmt) Format(f fmt.State, verb rune) { format(f, verb, n, "label", nil) }
+func (n *LabelStmt) Span() (start, end token.Pos) {
+	return n.Lcolon, n.Rcolon + token.Pos(len(token.COLONCOLON.String()))
+}
+func (n *LabelStmt) Walk(v Visitor) {
+	Walk(v, n.Name)
+}
+func (n *LabelStmt) BlockEnding() bool { return false }
+
+func (n *ReturnLikeStmt) Format(f fmt.State, verb rune) {
+	var exprCount int
+	if n.Expr != nil {
+		exprCount = 1
+	}
+	format(f, verb, n, n.Type.String(), map[string]int{"expr": exprCount})
+}
+func (n *ReturnLikeStmt) Span() (start, end token.Pos) {
+	end = n.Start + token.Pos(len(n.Type.String()))
+	if n.Expr != nil {
+		_, end = n.Expr.Span()
+	}
+	return n.Start, end
+}
+func (n *ReturnLikeStmt) Walk(v Visitor) {
+	if n.Expr != nil {
+		Walk(v, n.Expr)
+	}
+}
+func (n *ReturnLikeStmt) BlockEnding() bool { return true }
 
 func (n *SimpleBlockStmt) Format(f fmt.State, verb rune) { format(f, verb, n, n.Type.String(), nil) }
 func (n *SimpleBlockStmt) Span() (start, end token.Pos) {
@@ -229,6 +438,7 @@ func (n *SimpleBlockStmt) Walk(v Visitor) {
 		Walk(v, n.Body)
 	}
 }
+func (n *SimpleBlockStmt) BlockEnding() bool { return false }
 
 func format(f fmt.State, verb rune, n Node, label string, counts map[string]int) {
 	if verb != 'v' && verb != 's' {

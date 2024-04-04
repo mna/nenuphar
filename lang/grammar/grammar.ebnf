@@ -84,9 +84,9 @@ SuffixedExpr = PrimaryExpr
 PrimaryExpr  = name | "(" Expr ")" .
 FuncArgs     = "(" [ExprList] ")" | Map | string | "!" .
 
-Signature    = "(" ParamList ")" | "!" .
+Signature    = "(" [ ParamList ] ")" | "!" .
 Body         = Block "end" .
-ParamList    = [ {name ","} ((name | "..." name) [","]) ] .
+ParamList    = {name ","} ((name | "..." name) [","]) .
 
 AssignStmt   = SuffixedExpr {"," SuffixedExpr} "=" ExprList . // lhs has to be assignable
 AugAssignStmt = SuffixedExpr  augbinop Expr . // lhs has to be assignable, evaluated only once
@@ -105,8 +105,8 @@ DoStmt       = "do" Block "end" .
 
 ForStmt          = CondForStmt | ThreePartForStmt | ForInStmt .
 CondForStmt      = "for" [ Cond ] DoStmt . // equivalent to a "while" in other languages
-ThreePartForStmt = "for" [ AssignStmt | AugAssignStmt | DeclStmt ] ";" [ Cond ] ";" [ Expr ] DoStmt .
-ForInStmt        = "for" name { "," name } "in" ExprList DoStmt .
+ThreePartForStmt = "for" [ AssignStmt | AugAssignStmt | DeclStmt | ExprStmt ] ";" [ Cond ] ";" [ AssignStmt | AugAssignStmt | ExprStmt ] DoStmt .
+ForInStmt        = "for" SuffixedExpr { "," SuffixedExpr } "in" ExprList DoStmt . // lhs has to be assignable
 
 DeferStmt    = "defer" Block "end" .
 CatchStmt    = "catch" Block "end" .

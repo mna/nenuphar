@@ -28,7 +28,7 @@ type (
 	// Comment represents a single comment, either short or long.
 	Comment struct {
 		// Node this comment is associated with, only set if parsing comments was
-		// requested.
+		// requested, and only after parsing (via post-processing).
 		Node     Node
 		Start    token.Pos // Position of the starting '-'
 		Raw, Val string

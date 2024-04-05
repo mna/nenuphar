@@ -88,5 +88,31 @@ func (p *parser) init(fset *token.FileSet, filename string, src []byte) {
 	p.pendingComments = nil
 
 	// advance to first token
-	//p.advance()
+	p.advance()
+}
+
+func (p *parser) advance() {
+	p.tok = p.scanner.Scan(&p.val)
+	p.preCommentPos = p.val.Pos
+	for p.tok == token.COMMENT {
+		if p.parseComments {
+			p.pendingComments = append(p.pendingComments, &ast.Comment{
+				Start: p.val.Pos,
+				Raw:   p.val.Raw,
+				Val:   p.val.String,
+			})
+		}
+		p.tok = p.scanner.Scan(&p.val)
+	}
+}
+
+func (p *parser) parseChunk() *ast.Chunk {
+	var chunk ast.Chunk
+	//chunk.Block = p.parseBlock()
+	//chunk.EOF = p.expect(token.EOF)
+
+	//if p.parseComments {
+	//	p.processComments(&chunk)
+	//}
+	return &chunk
 }

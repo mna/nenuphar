@@ -78,8 +78,8 @@ func (p *parser) parseStmt() (stmt ast.Stmt) {
 	case token.IF:
 		return p.parseIfStmt()
 
-		//case token.FOR:
-		//	return p.parseForStmt()
+	case token.FOR:
+		return p.parseForStmt()
 
 		//case token.FUNCTION:
 		//	return p.parseFuncStmt()
@@ -160,6 +160,17 @@ func (p *parser) parseIfStmt() *ast.IfGuardStmt {
 			stmt.False = p.parseBlock(token.END)
 		}
 	}
+	return &stmt
+}
+
+func (p *parser) parseForStmt() ast.Stmt {
+	// TODO: for is quite complex, needs to determine what comes after "for"
+	panic("unimplemented")
+}
+
+func (p *parser) parseFuncStmt() *ast.FuncStmt {
+	var stmt ast.FuncStmt
+	stmt.Fn = p.expect(token.FUNCTION)
 	return &stmt
 }
 

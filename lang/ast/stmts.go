@@ -15,9 +15,9 @@ type (
 		DeclStart   token.Pos   // zero if not a DeclStmt
 		Left        []Expr      // only 1 for augassign
 		LeftCommas  []token.Pos // always len(Left)-1, commas separating the Left
-		AssignTok   token.Token // either EQ or between PLUSEQ and GTGTEQ
-		AssignPos   token.Pos   // start pos of AssignTok
-		Right       []Expr      // only 1 for augassign
+		AssignTok   token.Token // may be 0, either EQ or between PLUSEQ and GTGTEQ
+		AssignPos   token.Pos   // may be 0, start pos of AssignTok
+		Right       []Expr      // only 1 for augassign, may be empty for DeclStmt
 		RightCommas []token.Pos // always len(Right)-1, commas separating the Right expressions
 	}
 

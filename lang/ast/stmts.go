@@ -24,7 +24,7 @@ type (
 	// BadStmt represents a bad statement that failed to parse.
 	BadStmt struct {
 		Start token.Pos
-		Raw   string // raw text of the bad statement
+		End   token.Pos
 	}
 
 	// ClassStmt represents a class declaration statement.
@@ -142,7 +142,7 @@ func (n *BadStmt) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "!bad stmt!", nil)
 }
 func (n *BadStmt) Span() (start, end token.Pos) {
-	return n.Start, n.Start + token.Pos(len(n.Raw))
+	return n.Start, n.End
 }
 func (n *BadStmt) Walk(v Visitor)    {}
 func (n *BadStmt) BlockEnding() bool { return false }

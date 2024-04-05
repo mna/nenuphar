@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"errors"
 	"os"
+	"strings"
 
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/scanner"
@@ -106,13 +108,60 @@ func (p *parser) advance() {
 	}
 }
 
-func (p *parser) parseChunk() *ast.Chunk {
-	var chunk ast.Chunk
-	//chunk.Block = p.parseBlock()
-	//chunk.EOF = p.expect(token.EOF)
+var errPanicMode = errors.New("panic")
 
-	//if p.parseComments {
-	//	p.processComments(&chunk)
-	//}
-	return &chunk
+// expect returns the position of the current token and consumes it if it is
+// one of the expected tokens, otherwise it reports an error and panics with
+// errPanicMode which gets recovered at the statement level, resulting in a
+// BadStmt.
+func (p *parser) expect(toks ...token.Token) token.Pos {
+	pos := p.val.Pos
+
+	var buf strings.Builder
+	var ok bool
+	for i, tok := range toks {
+		if p.tok == tok {
+			ok = true
+			break
+		}
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(tok.GoString())
+	}
+
+	if !ok {
+		var lbl string
+		if len(toks) > 1 {
+			lbl = "one of " + buf.String()
+		} else {
+			lbl = buf.String()
+		}
+		p.errorExpected(pos, lbl)
+		panic(errPanicMode)
+	}
+
+	p.advance()
+	return pos
+}
+
+func (p *parser) error(pos token.Pos, msg string) {
+	lpos := p.file.Position(pos)
+	p.errors.Add(lpos, msg)
+}
+
+func (p *parser) errorExpected(pos token.Pos, msg string) {
+	msg = "expected " + msg
+	if pos == p.val.Pos {
+		// the error happened at the current position;
+		// make the error message more specific
+		switch lit := p.tok.Literal(p.val); lit {
+		case "":
+			msg += ", found " + p.tok.GoString()
+		default:
+			// print 123 rather than 'INT', etc.
+			msg += ", found " + lit
+		}
+	}
+	p.error(pos, msg)
 }

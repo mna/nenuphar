@@ -81,23 +81,23 @@ func (p *parser) parseStmt() (stmt ast.Stmt) {
 	case token.FOR:
 		return p.parseForStmt()
 
-		//case token.FUNCTION:
-		//	return p.parseFuncStmt()
+	case token.FUNCTION:
+		return p.parseFuncStmt()
 
-		//case token.DEFER, token.CATCH, token.DO:
-		//	return p.parseSimpleStmt()
+	case token.DEFER, token.CATCH, token.DO:
+		return p.parseSimpleStmt()
 
-		//case token.RETURN, token.BREAK, token.CONTINUE, token.GOTO, token.THROW:
-		//	return p.parseReturnLikeStmt(tokenIn(p.tok, token.RETURN, token.THROW))
+	case token.RETURN, token.BREAK, token.CONTINUE, token.GOTO, token.THROW:
+		return p.parseReturnLikeStmt(tokenIn(p.tok, token.RETURN, token.THROW))
 
-		//case token.CLASS:
-		//	return p.parseClassStmt()
+	//case token.CLASS:
+	//	return p.parseClassStmt()
 
-		//case token.GUARD:
-		//	return p.parseGuardStmt()
+	//case token.GUARD:
+	//	return p.parseGuardStmt()
 
-		//case token.COLONCOLON:
-		//	return p.parseLabelStmt()
+	case token.COLONCOLON:
+		return p.parseLabelStmt()
 
 		//default:
 		//	// can be func call, assign stmt, augassign stmt, try or must unop.
@@ -171,6 +171,73 @@ func (p *parser) parseForStmt() ast.Stmt {
 func (p *parser) parseFuncStmt() *ast.FuncStmt {
 	var stmt ast.FuncStmt
 	stmt.Fn = p.expect(token.FUNCTION)
+	stmt.Name = p.parseIdentExpr()
+	stmt.Sig = p.parseFuncSignature()
+	stmt.Body = p.parseBlock(token.END)
+	stmt.End = p.expect(token.END)
+	return &stmt
+}
+
+func (p *parser) parseFuncSignature() *ast.FuncSignature {
+	var sig ast.FuncSignature
+	if p.tok == token.BANG {
+		sig.Bang = p.expect(token.BANG)
+		return &sig
+	}
+	sig.Lparen = p.expect(token.LPAREN)
+
+	if !tokenIn(p.tok, token.RPAREN, token.EOF) {
+		var params []*ast.IdentExpr
+		var commas []token.Pos
+		for p.tok == token.IDENT {
+			params = append(params, p.parseIdentExpr())
+			if p.tok == token.COMMA {
+				commas = append(commas, p.expect(token.COMMA))
+			} else {
+				break
+			}
+		}
+		// only way it could exit loop is if it hit RPAREN or DOTDOTDOT
+		if p.tok == token.DOTDOTDOT {
+			sig.DotDotDot = p.expect(token.DOTDOTDOT)
+			params = append(params, p.parseIdentExpr())
+			// can have a trailing comma
+			if p.tok == token.COMMA {
+				commas = append(commas, p.expect(token.COMMA))
+			}
+		}
+		sig.Params = params
+		sig.Commas = commas
+	}
+	sig.Rparen = p.expect(token.RPAREN)
+	return &sig
+}
+
+func (p *parser) parseSimpleStmt() *ast.SimpleBlockStmt {
+	var stmt ast.SimpleBlockStmt
+	stmt.Type = p.tok
+	stmt.Start = p.expect(p.tok)
+	stmt.Body = p.parseBlock(token.END)
+	return &stmt
+}
+
+func (p *parser) parseReturnLikeStmt(exprAllowed bool) *ast.ReturnLikeStmt {
+	var stmt ast.ReturnLikeStmt
+	stmt.Type = p.tok
+	stmt.Start = p.expect(p.tok)
+	if exprAllowed && maybeExprStart(p.tok) {
+		stmt.Expr = p.parseExpr()
+	} else if (p.tok == token.IDENT) || stmt.Type == token.GOTO {
+		stmt.Expr = p.parseIdentExpr()
+	}
+	return &stmt
+}
+
+func (p *parser) parseLabelStmt() *ast.LabelStmt {
+	var stmt ast.LabelStmt
+	stmt.Lcolon = p.expect(token.COLONCOLON)
+	stmt.Name = p.parseIdentExpr()
+	stmt.Rcolon = p.expect(token.COLONCOLON)
 	return &stmt
 }
 
@@ -224,6 +291,33 @@ const (
 )
 
 var (
+	// "fn" and "class" could be valid starts of expressions
+	stmtStartToks = []token.Token{
+		token.SEMICOLON,
+		token.IF,
+		token.GUARD,
+		token.DO,
+		token.FOR,
+		token.COLONCOLON,
+		token.LET,
+		token.CONST,
+		token.RETURN,
+		token.BREAK,
+		token.CONTINUE,
+		token.GOTO,
+		token.DEFER,
+		token.CATCH,
+		token.THROW,
+	}
+
+	eobToks = []token.Token{
+		token.ILLEGAL,
+		token.EOF,
+		token.END,
+		token.ELSEIF,
+		token.ELSE,
+	}
+
 	// Do and Function are not safe because they may appear as part
 	// of a statement, so not a good sync position.
 	// (e.g. for ... do, x = fn (...) end)
@@ -260,6 +354,16 @@ func (p *parser) syncAfterError() token.Pos {
 		p.advance()
 	}
 	return p.val.Pos - 1 // EOF is 1 past the end of the file
+}
+
+// returns true if t may indicate the start of a valid expression, false
+// otherwise. Not completely reliable because ExprStmt, AssignStmt and
+// AugAssignStmt start with an expression, and FuncStmt and ClassStmt start
+// with a keyword used in FuncExpr and ClassExpr, but is a best effort check
+// and is good enough when used while parsing a block-ending statement (e.g.
+// return).
+func maybeExprStart(t token.Token) bool {
+	return !tokenIn(t, append(stmtStartToks, eobToks...)...)
 }
 
 func tokenIn(t token.Token, toks ...token.Token) bool {

@@ -90,7 +90,7 @@ ParamList    = {name ","} ((name | "..." name) [","]) .
 
 AssignStmt   = SuffixedExpr {"," SuffixedExpr} "=" ExprList . // lhs has to be assignable
 AugAssignStmt = SuffixedExpr  augbinop Expr . // lhs has to be assignable, evaluated only once
-FuncCall     = SuffixedExpr . /* Must be a function call  */
+FuncCall     = Expr . /* Must be a function call, can be an IIFE  */
 
 IfStmt       = SimpleIfStmt | BindIfStmt .
 SimpleIfStmt = "if" Cond "then" Block { "elseif" Cond "then" Block } [ "else" Block ] "end" .

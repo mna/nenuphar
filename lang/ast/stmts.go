@@ -98,7 +98,7 @@ type (
 	ReturnLikeStmt struct {
 		Type  token.Token // return, break, continue, goto, throw
 		Start token.Pos   // position of Type
-		Expr  Expr        // may be nil, *Ident for break, continue, goto
+		Expr  Expr        // may be nil, *IdentExpr for break, continue, goto
 	}
 
 	// SimpleBlockStmt represents a simple keyword-defined block statement, do,

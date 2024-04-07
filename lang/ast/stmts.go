@@ -36,7 +36,8 @@ type (
 	}
 
 	// ExprStmt represents an expression used as statement, which is only valid
-	// for function calls (possibly wrapped in ParenExpr).
+	// for function calls (possibly wrapped in ParenExpr). Function can be an
+	// IIFE, and "try" or "must" unop can be applied to the call.
 	ExprStmt struct {
 		Expr Expr
 	}
@@ -85,6 +86,7 @@ type (
 		True  *Block      // nil for guard
 		Else  token.Pos   // zero if no else/elseif
 		False *Block      // nil if no else, single stmt in block if elseif (an IfGuardStmt)
+		End   token.Pos   // only Type if or guard has the End set
 	}
 
 	// LabelStmt represents a label declaration statement.

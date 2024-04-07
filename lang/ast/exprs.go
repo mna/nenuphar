@@ -6,6 +6,30 @@ import (
 	"github.com/mna/nenuphar/lang/token"
 )
 
+// Unwrap the expression inside the parens. It unwraps multiple ParenExpr
+// recursively until it reaches a non-ParenExpr.
+func Unwrap(e Expr) Expr {
+	if pe, ok := e.(*ParenExpr); ok {
+		return Unwrap(pe)
+	}
+	return e
+}
+
+// IsValidStmt returns true if e is a valid ExprStmt expression. Only function
+// calls, possibly prefixed with a "try" or "must" unary operator, are valid
+// statements.
+func IsValidStmt(e Expr) bool {
+	ue := Unwrap(e)
+	if unary, ok := ue.(*UnaryOpExpr); ok {
+		if unary.Type != token.MUST && unary.Type != token.TRY {
+			return false
+		}
+		ue = unary.Right
+	}
+	_, ok := ue.(*CallExpr)
+	return ok
+}
+
 type (
 	// ArrayLikeExpr represents an array or tuple literal.
 	ArrayLikeExpr struct {
@@ -272,15 +296,6 @@ func (n *ParenExpr) Walk(v Visitor) {
 	Walk(v, n.Expr)
 }
 func (n *ParenExpr) expr() {}
-
-// Unwrap the expression inside the parens. It unwraps multiple ParenExpr
-// recursively until it reaches a non-ParenExpr.
-func (n *ParenExpr) Unwrap() Expr {
-	if pe, ok := n.Expr.(*ParenExpr); ok {
-		return pe.Unwrap()
-	}
-	return n.Expr
-}
 
 func (n *UnaryOpExpr) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "unary "+n.Type.GoString(), nil)

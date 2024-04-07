@@ -66,7 +66,7 @@ Stmt     =  ";"
          |  ThrowStmt
          .
 
-ExprStmt     = FuncCall . // TODO: try and must would also be valid?
+ExprStmt     = Expr . // must be a function call, can be IIFE, try/must unop.
 ExprList     = Expr { "," Expr } .
 Expr         = (SimpleExpr | unop Expr) { binop Expr } .
 SimpleExpr   = float | int | string | "null" | "true" | "false" |
@@ -90,7 +90,6 @@ ParamList    = {name ","} ((name | "..." name) [","]) .
 
 AssignStmt   = SuffixedExpr {"," SuffixedExpr} "=" ExprList . // lhs has to be assignable
 AugAssignStmt = SuffixedExpr  augbinop Expr . // lhs has to be assignable, evaluated only once
-FuncCall     = Expr . /* Must be a function call, can be an IIFE  */
 
 IfStmt       = SimpleIfStmt | BindIfStmt .
 SimpleIfStmt = "if" Cond "then" Block { "elseif" Cond "then" Block } [ "else" Block ] "end" .
@@ -121,7 +120,7 @@ ContinueStmt = "continue" [ name ] .
 GotoStmt     = "goto" name . // with multiple constraints (same func, not inside new variables, etc.)
 
 ClassStmt     = "class" name InheritClause ClassBody .
-InheritClause = ( "(" Expr ")" | "!" ) .
+InheritClause = ( "(" [ Expr ] ")" | "!" ) .
 ClassBody     = { ( MethodDef | FieldDef ) } "end" .
 MethodDef     = FuncStmt .
 FieldDef      = DeclStmt .

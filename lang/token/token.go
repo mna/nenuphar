@@ -105,6 +105,7 @@ const (
 	maxToken             = MUST
 	litStart, litEnd     = COMMENT, STRING
 	punctStart, punctEnd = PLUS, COLONCOLON
+	augopStart, augopEnd = PLUSEQ, GTGTEQ
 	kwStart, kwEnd       = FUNCTION, MUST
 )
 
@@ -271,4 +272,9 @@ func (tok Token) Literal(v Value) string {
 	default:
 		return ""
 	}
+}
+
+// IsAugBinop indicates if tok is an augmented binary operator assignment.
+func (tok Token) IsAugBinop() bool {
+	return tok >= augopStart && tok <= augopEnd
 }

@@ -40,6 +40,12 @@ type (
 		Right  token.Pos
 	}
 
+	// BadExpr represents a bad expression that failed to parse.
+	BadExpr struct {
+		Start token.Pos
+		End   token.Pos
+	}
+
 	// BinOpExpr represents a binary expression, e.g. x + y.
 	BinOpExpr struct {
 		Left  Expr
@@ -142,6 +148,15 @@ func (n *ArrayLikeExpr) Walk(v Visitor) {
 }
 func (n *ArrayLikeExpr) expr() {}
 
+func (n *BadExpr) Format(f fmt.State, verb rune) {
+	format(f, verb, n, "!bad expr!", nil)
+}
+func (n *BadExpr) Span() (start, end token.Pos) {
+	return n.Start, n.End
+}
+func (n *BadExpr) Walk(v Visitor) {}
+func (n *BadExpr) expr()          {}
+
 func (n *BinOpExpr) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "binary "+n.Type.GoString(), nil)
 }
@@ -154,6 +169,7 @@ func (n *BinOpExpr) Walk(v Visitor) {
 	Walk(v, n.Left)
 	Walk(v, n.Right)
 }
+func (n *BinOpExpr) expr() {}
 
 func (n *CallExpr) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "call", map[string]int{"args": len(n.Args)})

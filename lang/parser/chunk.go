@@ -101,7 +101,7 @@ func (p *parser) parseStmt() (stmt ast.Stmt) {
 
 	default:
 		// can be func call, assign stmt, augassign stmt, try or must unop.
-		return p.parseExprOrAssignStmt()
+		return p.parseExprOrAssignStmt(true)
 	}
 }
 
@@ -113,6 +113,21 @@ const (
 )
 
 var (
+	augBinops = []token.Token{
+		token.PLUSEQ,
+		token.MINUSEQ,
+		token.STAREQ,
+		token.SLASHEQ,
+		token.SLASHSLASHEQ,
+		token.PERCENTEQ,
+		token.CIRCUMFLEXEQ,
+		token.AMPERSANDEQ,
+		token.PIPEEQ,
+		token.TILDEEQ,
+		token.LTLTEQ,
+		token.GTGTEQ,
+	}
+
 	// "fn" and "class" could be valid starts of expressions
 	stmtStartToks = []token.Token{
 		token.SEMICOLON,

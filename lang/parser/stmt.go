@@ -70,8 +70,66 @@ func (p *parser) parseIfStmt(topLevel bool) *ast.IfGuardStmt {
 }
 
 func (p *parser) parseForStmt() ast.Stmt {
-	// TODO: for is quite complex, needs to determine what comes after "for"
-	panic("unimplemented")
+	forPos := p.expect(token.FOR)
+	switch p.tok {
+	case token.DO:
+		// for [ cond ] do, no condition (loop forever)
+		return p.parseForCondStmt(forPos, nil)
+	case token.SEMICOLON:
+		// for [ init ]; [ cond ]; [ post ] do, no init
+		return p.parseForThreePartStmt(forPos, nil)
+	case token.LET, token.CONST:
+		// for DeclStmt ; [ cond ]; [ post ] do, init is DeclStmt
+		declStmt := p.parseDeclStmt()
+		return p.parseForThreePartStmt(forPos, declStmt)
+	default:
+		// harder, parse the next node and decide
+		firstStmt := p.parseExprOrAssignStmt(false)
+		// next token disambiguates the statement
+		switch p.tok {
+		case token.DO:
+			// for [ cond ] do, with condition - firstStmt must be ExprStmt
+			var firstExpr ast.Expr
+			es, ok := firstStmt.(*ast.ExprStmt)
+			if ok {
+				firstExpr = es.Expr
+			} else {
+				start, end := es.Span()
+				p.errorExpected(start, "expression")
+				firstExpr = &ast.BadExpr{Start: start, End: end}
+			}
+			return p.parseForCondStmt(forPos, firstExpr)
+
+		case token.SEMICOLON:
+			// for [ init ]; [ cond ]; [ post ] do, with init - if firstStmt is an
+			// ExprStmt it must be valid.
+			if es, ok := firstStmt.(*ast.ExprStmt); ok {
+				if !ast.IsValidStmt(es.Expr) {
+					start, end := es.Span()
+					p.errorExpected(start, "function call")
+					firstStmt = &ast.BadStmt{Start: start, End: end}
+				}
+			}
+			return p.parseForThreePartStmt(forPos, firstStmt)
+
+		case token.COMMA, token.IN:
+			// for expr in exprlist, firstStmt must be an ExprStmt
+			var firstExpr ast.Expr
+			es, ok := firstStmt.(*ast.ExprStmt)
+			if ok {
+				firstExpr = es.Expr
+			} else {
+				start, end := es.Span()
+				p.errorExpected(start, "expression")
+				firstExpr = &ast.BadExpr{Start: start, End: end}
+			}
+			// TODO: firstExpr must be assignable
+			return p.parseForInStmt(forPos, firstExpr)
+		}
+
+		p.expect(token.DO)
+		panic("unreachable")
+	}
 }
 
 func (p *parser) parseFuncStmt() *ast.FuncStmt {
@@ -210,7 +268,7 @@ func (p *parser) parseLabelStmt() *ast.LabelStmt {
 	return &stmt
 }
 
-func (p *parser) parseExprOrAssignStmt() ast.Stmt {
+func (p *parser) parseExprOrAssignStmt(validateExprStmt bool) ast.Stmt {
 	expr := p.parseExpr()
 	if tokenIn(p.tok, token.COMMA, token.EQ) {
 		return p.parseAssignStmt(expr)
@@ -218,10 +276,39 @@ func (p *parser) parseExprOrAssignStmt() ast.Stmt {
 	if p.tok.IsAugBinop() {
 		return p.parseAugAssignStmt(expr)
 	}
-	if !ast.IsValidStmt(expr) {
+	if validateExprStmt && !ast.IsValidStmt(expr) {
 		start, end := expr.Span()
 		p.errorExpected(start, "function call")
 		return &ast.BadStmt{Start: start, End: end}
 	}
 	return &ast.ExprStmt{Expr: expr}
+}
+
+func (p *parser) parseAssignStmt(firstExpr ast.Expr) *ast.AssignStmt {
+	var stmt ast.AssignStmt
+
+	var commas []token.Pos
+	left := []ast.Expr{firstExpr}
+	for p.tok == token.COMMA {
+		commas = append(commas, p.expect(token.COMMA))
+		left = append(left, p.parseExpr())
+	}
+	// TODO: all left exprs must be assignable
+	stmt.Left = left
+	stmt.LeftCommas = commas
+
+	stmt.AssignTok = token.EQ
+	stmt.AssignPos = p.expect(token.EQ)
+	stmt.Right, stmt.RightCommas = p.parseExprList()
+	return &stmt
+}
+
+func (p *parser) parseAugAssignStmt(firstExpr ast.Expr) *ast.AssignStmt {
+	var stmt ast.AssignStmt
+	// TODO: left expr must be assignable
+	stmt.Left = []ast.Expr{firstExpr}
+	stmt.AssignTok = p.tok
+	stmt.AssignPos = p.expect(augBinops...)
+	stmt.Right = []ast.Expr{p.parseExpr()}
+	return &stmt
 }

@@ -52,6 +52,7 @@ type (
 		RightCommas []token.Pos // always len(Right)-1, commas separating the Right expressions
 		Do          token.Pos
 		Body        *Block
+		End         token.Pos
 	}
 
 	// ForLoopStmt represents a 1- or 3-clause for loop statement.
@@ -64,6 +65,7 @@ type (
 		Post     Stmt      // may be nil, assign, augassign or exprstmt (func call)
 		Do       token.Pos
 		Body     *Block
+		End      token.Pos
 	}
 
 	// FuncStmt represents a function declaration statement.
@@ -109,6 +111,7 @@ type (
 		Type  token.Token // do, defer, catch
 		Start token.Pos   // position of Type
 		Body  *Block
+		End   token.Pos
 	}
 )
 
@@ -190,6 +193,9 @@ func (n *IfGuardStmt) Span() (start, end token.Pos) {
 	if n.False != nil {
 		_, end = n.False.Span()
 	}
+	if n.End.IsValid() {
+		end = n.End + token.Pos(len(token.END.String()))
+	}
 	return n.Start, end
 }
 func (n *IfGuardStmt) Walk(v Visitor) {
@@ -222,7 +228,7 @@ func (n *ForLoopStmt) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "for", map[string]int{"clauses": clauses})
 }
 func (n *ForLoopStmt) Span() (start, end token.Pos) {
-	_, end = n.Body.Span()
+	end = n.End + token.Pos(len(token.END.String()))
 	return n.For, end
 }
 func (n *ForLoopStmt) Walk(v Visitor) {
@@ -245,7 +251,7 @@ func (n *ForInStmt) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "for in", map[string]int{"left": len(n.Left), "right": len(n.Right)})
 }
 func (n *ForInStmt) Span() (start, end token.Pos) {
-	_, end = n.Body.Span()
+	end = n.End + token.Pos(len(token.END.String()))
 	return n.For, end
 }
 func (n *ForInStmt) Walk(v Visitor) {
@@ -312,7 +318,7 @@ func (n *ReturnLikeStmt) BlockEnding() bool { return true }
 
 func (n *SimpleBlockStmt) Format(f fmt.State, verb rune) { format(f, verb, n, n.Type.String(), nil) }
 func (n *SimpleBlockStmt) Span() (start, end token.Pos) {
-	_, end = n.Body.Span()
+	end = n.End + token.Pos(len(token.END.String()))
 	return n.Start, end
 }
 func (n *SimpleBlockStmt) Walk(v Visitor) {

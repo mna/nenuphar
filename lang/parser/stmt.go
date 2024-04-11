@@ -83,7 +83,7 @@ func (p *parser) parseForStmt() ast.Stmt {
 		declStmt := p.parseDeclStmt()
 		return p.parseForThreePartStmt(forPos, declStmt)
 	default:
-		// harder, parse the next node and decide
+		// parse the next node and decide
 		firstStmt := p.parseExprOrAssignStmt(false)
 		// next token disambiguates the statement
 		switch p.tok {
@@ -125,11 +125,64 @@ func (p *parser) parseForStmt() ast.Stmt {
 			}
 			// TODO: firstExpr must be assignable
 			return p.parseForInStmt(forPos, firstExpr)
-		}
 
-		p.expect(token.DO)
-		panic("unreachable")
+		default:
+			p.expect(token.DO)
+			panic("unreachable")
+		}
 	}
+}
+
+func (p *parser) parseForInStmt(forPos token.Pos, firstExpr ast.Expr) *ast.ForInStmt {
+	var stmt ast.ForInStmt
+	stmt.For = forPos
+
+	var commas []token.Pos
+	left := []ast.Expr{firstExpr}
+	for p.tok == token.COMMA {
+		commas = append(commas, p.expect(token.COMMA))
+		left = append(left, p.parseExpr())
+	}
+	// TODO: left must be assignable
+	stmt.Left = left
+	stmt.LeftCommas = commas
+	stmt.In = p.expect(token.IN)
+	stmt.Right, stmt.RightCommas = p.parseExprList()
+	stmt.Do = p.expect(token.DO)
+	stmt.Body = p.parseBlock(token.END)
+	stmt.End = p.expect(token.END)
+	return &stmt
+}
+
+func (p *parser) parseForCondStmt(forPos token.Pos, cond ast.Expr) *ast.ForLoopStmt {
+	var stmt ast.ForLoopStmt
+	stmt.For = forPos
+	stmt.Cond = cond
+	stmt.Do = p.expect(token.DO)
+	stmt.Body = p.parseBlock(token.END)
+	stmt.End = p.expect(token.END)
+	return &stmt
+}
+
+func (p *parser) parseForThreePartStmt(forPos token.Pos, init ast.Stmt) *ast.ForLoopStmt {
+	var stmt ast.ForLoopStmt
+	stmt.For = forPos
+	stmt.Init = init
+	stmt.InitSemi = p.expect(token.SEMICOLON)
+
+	if p.tok != token.SEMICOLON {
+		stmt.Cond = p.parseExpr()
+	}
+	stmt.CondSemi = p.expect(token.SEMICOLON)
+
+	if p.tok != token.DO {
+		stmt.Post = p.parseExprOrAssignStmt(true)
+	}
+
+	stmt.Do = p.expect(token.DO)
+	stmt.Body = p.parseBlock(token.END)
+	stmt.End = p.expect(token.END)
+	return &stmt
 }
 
 func (p *parser) parseFuncStmt() *ast.FuncStmt {

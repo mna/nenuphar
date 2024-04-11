@@ -92,6 +92,13 @@ type (
 	}
 )
 
+var formatReplacer = strings.NewReplacer(
+	"\r\n", "⏎",
+	"\n", "⏎",
+	"\t", "⭾",
+	"\v", "⭿",
+)
+
 func format(f fmt.State, verb rune, n Node, label string, counts map[string]int) {
 	if verb != 'v' && verb != 's' {
 		fmt.Fprintf(f, "%%!%c(%T)", verb, n)
@@ -99,10 +106,7 @@ func format(f fmt.State, verb rune, n Node, label string, counts map[string]int)
 	}
 
 	// replace tabs and newlines with the corresponding unicode key
-	label = strings.ReplaceAll(label, "\r\n", "⏎")
-	label = strings.ReplaceAll(label, "\n", "⏎")
-	label = strings.ReplaceAll(label, "\t", "⭾")
-	label = strings.ReplaceAll(label, "\v", "⭿")
+	label = formatReplacer.Replace(label)
 
 	if w, ok := f.Width(); ok {
 		minus, plus := f.Flag('-'), f.Flag('+')

@@ -175,6 +175,120 @@ func (p *parser) parseClassExpr() *ast.ClassExpr {
 	return &expr
 }
 
+func (p *parser) parseTupleOrSuffixedExpr() ast.Expr {
+	primary, isTuple := p.parseTupleOrPrimaryExpr()
+	if isTuple {
+		return primary
+	}
+
+loop:
+	for p.tok != token.EOF {
+		switch p.tok {
+		case token.DOT:
+			primary = p.parseDotExpr(primary)
+		case token.LBRACK:
+			primary = p.parseIndexExpr(primary)
+		case token.LPAREN, token.LBRACE, token.STRING, token.BANG:
+			primary = p.parseCallExpr(primary)
+		default:
+			break loop
+		}
+	}
+	return primary
+}
+
+func (p *parser) parseTupleOrPrimaryExpr() (e ast.Expr, isTuple bool) {
+	if p.tok == token.IDENT {
+		return p.parseIdentExpr(), false
+	}
+
+	lparen := p.expect(token.LPAREN)
+	if p.tok == token.RPAREN {
+		// empty tuple
+		return &ast.ArrayLikeExpr{
+			Type:  token.LPAREN,
+			Left:  lparen,
+			Right: p.expect(token.RPAREN),
+		}, true
+	}
+
+	// at this point, an expr is required
+	expr := p.parseExpr()
+	if p.tok == token.RPAREN {
+		// paren expression, a tuple would require a trailing comma
+		return &ast.ParenExpr{
+			Lparen: lparen,
+			Expr:   expr,
+			Rparen: p.expect(token.RPAREN),
+		}, false
+	}
+
+	// must be a tuple
+	items := []ast.Expr{expr}
+	commas := []token.Pos{p.expect(token.COMMA)}
+	for !tokenIn(p.tok, token.RPAREN, token.EOF) {
+		items = append(items, p.parseExpr())
+		if p.tok == token.COMMA {
+			// may or may not be the last, trailing comma is valid
+			commas = append(commas, p.expect(token.COMMA))
+		} else {
+			// no comma after value, must be the last
+			break
+		}
+	}
+	return &ast.ArrayLikeExpr{
+		Type:   token.LPAREN,
+		Left:   lparen,
+		Items:  items,
+		Commas: commas,
+		Right:  p.expect(token.RPAREN),
+	}, true
+}
+
+func (p *parser) parseDotExpr(left ast.Expr) *ast.DotExpr {
+	var expr ast.DotExpr
+	expr.Left = left
+	expr.Dot = p.expect(token.DOT)
+	expr.Right = p.parseIdentExpr()
+	return &expr
+}
+
+func (p *parser) parseIndexExpr(prefix ast.Expr) *ast.IndexExpr {
+	var expr ast.IndexExpr
+	expr.Prefix = prefix
+	expr.Lbrack = p.expect(token.LBRACK)
+	expr.Index = p.parseExpr()
+	expr.Rbrack = p.expect(token.RBRACK)
+	return &expr
+}
+
+func (p *parser) parseCallExpr(fn ast.Expr) *ast.CallExpr {
+	var expr ast.CallExpr
+	expr.Fn = fn
+	switch p.tok {
+	case token.LPAREN:
+		expr.Lparen = p.expect(token.LPAREN)
+		if p.tok != token.RPAREN {
+			expr.Args, expr.Commas = p.parseExprList()
+		}
+		expr.Rparen = p.expect(token.RPAREN)
+
+	case token.LBRACE:
+		expr.Args = []ast.Expr{p.parseMapExpr()}
+
+	case token.STRING:
+		expr.Args = []ast.Expr{p.parseAtomExpr()}
+
+	case token.BANG:
+		expr.Bang = p.expect(token.BANG)
+
+	default:
+		p.expect(token.LPAREN, token.LBRACE, token.STRING, token.BANG)
+		panic("unreachable")
+	}
+	return &expr
+}
+
 func (p *parser) parseIdentExpr() *ast.IdentExpr {
 	var exp ast.IdentExpr
 	exp.Lit = p.val.Raw

@@ -126,7 +126,7 @@ func (p *parser) parseForStmt() ast.Stmt {
 			return p.parseForInStmt(forPos, firstExpr)
 
 		default:
-			p.expect(token.DO)
+			p.expect(token.DO, token.SEMICOLON, token.COMMA, token.IN)
 			panic("unreachable")
 		}
 	}

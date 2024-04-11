@@ -6,8 +6,7 @@ import (
 )
 
 func (p *parser) parseExpr() ast.Expr {
-	panic("unimplemented")
-	//return p.parseSubExpr(0)
+	return p.parseSubExpr(0)
 }
 
 var (
@@ -27,6 +26,137 @@ var (
 	}
 	unopPriority = 12
 )
+
+// parses a SubExpr where the binary operator has a priority higher than the
+// provided priority (for precedence climbing).
+func (p *parser) parseSubExpr(priority int) ast.Expr {
+	var left ast.Expr
+
+	if p.tok.IsUnop() {
+		var unop ast.UnaryOpExpr
+		unop.Type = p.tok
+		unop.Op = p.expect(p.tok)
+		unop.Right = p.parseSubExpr(unopPriority)
+		left = &unop
+	} else {
+		left = p.parseSimpleExpr()
+	}
+
+	for p.tok.IsBinop() && binopPriority[p.tok].left > priority {
+		var bin ast.BinOpExpr
+		bin.Left = left
+		bin.Type = p.tok
+		bin.Op = p.expect(p.tok)
+		bin.Right = p.parseSubExpr(binopPriority[bin.Type].right)
+		left = &bin
+	}
+
+	return left
+}
+
+func (p *parser) parseSimpleExpr() ast.Expr {
+	switch {
+	case p.tok.IsAtom():
+		return p.parseAtomExpr()
+	case p.tok == token.LBRACE:
+		return p.parseMapExpr()
+	case p.tok == token.LBRACK:
+		return p.parseArrayExpr()
+	case p.tok == token.FUNCTION:
+		return p.parseFuncExpr()
+	case p.tok == token.CLASS:
+		return p.parseClassExpr()
+	default:
+		return p.parseTupleOrSuffixedExpr()
+	}
+}
+
+func (p *parser) parseAtomExpr() *ast.LiteralExpr {
+	var val any
+	switch p.tok {
+	case token.INT:
+		val = p.val.Int
+	case token.FLOAT:
+		val = p.val.Float
+	case token.STRING:
+		val = p.val.String
+	}
+	lit := &ast.LiteralExpr{
+		Type:  p.tok,
+		Start: p.expect(p.tok),
+		Raw:   p.val.Raw,
+		Value: val,
+	}
+	return lit
+}
+
+func (p *parser) parseMapExpr() *ast.MapExpr {
+	var expr ast.MapExpr
+	expr.Lbrace = p.expect(token.LBRACE)
+
+	var items []*ast.KeyVal
+	var commas []token.Pos
+	for !tokenIn(p.tok, token.RBRACE, token.EOF) {
+		items = append(items, p.parseKeyVal())
+		if p.tok == token.COMMA {
+			// may or may not be the last, trailing comma is valid
+			commas = append(commas, p.expect(token.COMMA))
+		} else {
+			// no comma after keyval, must be the last
+			break
+		}
+	}
+
+	expr.Items = items
+	expr.Commas = commas
+	expr.Rbrace = p.expect(token.RBRACE)
+	return &expr
+}
+
+func (p *parser) parseKeyVal() *ast.KeyVal {
+	var kv ast.KeyVal
+
+	// parse the key
+	switch p.tok {
+	case token.LBRACK:
+		kv.Lbrack = p.expect(token.LBRACK)
+		kv.Key = p.parseExpr()
+		kv.Rbrack = p.expect(token.RBRACK)
+	case token.STRING:
+		kv.Key = p.parseAtomExpr()
+	case token.IDENT:
+		kv.Key = p.parseIdentExpr()
+	default:
+		p.expect(token.IDENT, token.LBRACK, token.STRING)
+		panic("unreachable")
+	}
+
+	kv.Colon = p.expect(token.COLON)
+	kv.Value = p.parseExpr()
+	return &kv
+}
+
+func (p *parser) parseArrayExpr() *ast.ArrayLikeExpr {
+	var expr ast.ArrayLikeExpr
+	expr.Type = token.LBRACK
+	expr.Left = p.expect(token.LBRACK)
+
+	var items []ast.Expr
+	var commas []token.Pos
+	for !tokenIn(p.tok, token.RBRACK, token.EOF) {
+		items = append(items, p.parseExpr())
+		if p.tok == token.COMMA {
+			// may or may not be the last, trailing comma is valid
+			commas = append(commas, p.expect(token.COMMA))
+		} else {
+			// no comma after value, must be the last
+			break
+		}
+	}
+
+	expr.Right = p.expect(token.RBRACK)
+	return &expr
+}
 
 func (p *parser) parseIdentExpr() *ast.IdentExpr {
 	var exp ast.IdentExpr

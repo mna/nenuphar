@@ -118,7 +118,7 @@ type (
 		Rbrack token.Pos
 	}
 
-	// LiteralExpr represents a literal string or number.
+	// LiteralExpr represents a literal string, number, boolean or null.
 	LiteralExpr struct {
 		Type  token.Token // null, true, false, string, int or float
 		Start token.Pos

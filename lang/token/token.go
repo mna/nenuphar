@@ -278,3 +278,24 @@ func (tok Token) Literal(v Value) string {
 func (tok Token) IsAugBinop() bool {
 	return tok >= augopStart && tok <= augopEnd
 }
+
+// IsBinop indicates if tok is valid as a binary operator.
+func (tok Token) IsBinop() bool {
+	return (tok >= PLUS && tok <= GTGT) ||
+		(tok >= EQEQ && tok <= LE) ||
+		tok == AND || tok == OR
+}
+
+// IsUnop indicates if tok is valid as a unary operator.
+func (tok Token) IsUnop() bool {
+	return tok == PLUS || tok == MINUS || tok == TILDE ||
+		tok == NOT || tok == TRY || tok == MUST ||
+		tok == POUND || tok == DOTDOTDOT
+}
+
+// IsAtom indicates if tok is an atom token, i.e. a literal string, number,
+// true, false or null.
+func (tok Token) IsAtom() bool {
+	return (tok >= INT && tok <= STRING) ||
+		(tok >= NULL && tok <= FALSE)
+}

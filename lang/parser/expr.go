@@ -158,6 +158,23 @@ func (p *parser) parseArrayExpr() *ast.ArrayLikeExpr {
 	return &expr
 }
 
+func (p *parser) parseFuncExpr() *ast.FuncExpr {
+	var expr ast.FuncExpr
+	expr.Fn = p.expect(token.FUNCTION)
+	expr.Sig = p.parseFuncSignature()
+	expr.Body = p.parseBlock(token.END)
+	expr.End = p.expect(token.END)
+	return &expr
+}
+
+func (p *parser) parseClassExpr() *ast.ClassExpr {
+	var expr ast.ClassExpr
+	expr.Class = p.expect(token.CLASS)
+	expr.Inherits = p.parseClassInherits()
+	expr.Body = p.parseClassBody()
+	return &expr
+}
+
 func (p *parser) parseIdentExpr() *ast.IdentExpr {
 	var exp ast.IdentExpr
 	exp.Lit = p.val.Raw

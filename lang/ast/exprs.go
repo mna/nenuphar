@@ -30,6 +30,24 @@ func IsValidStmt(e Expr) bool {
 	return ok
 }
 
+// IsAssignable returns true if e can be assigned to. For an expression to be
+// assignable, it must be an IdentExpr, a DotExpr or an IndexExpr. Moreover,
+// the left-hand side of those expressions must also be assignable.
+func IsAssignable(e Expr) bool {
+	switch e := e.(type) {
+	case *IdentExpr:
+		return true
+	case *DotExpr:
+		left := Unwrap(e.Left)
+		return IsAssignable(left)
+	case *IndexExpr:
+		left := Unwrap(e.Prefix)
+		return IsAssignable(left)
+	default:
+		return false
+	}
+}
+
 type (
 	// ArrayLikeExpr represents an array or tuple literal.
 	ArrayLikeExpr struct {

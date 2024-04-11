@@ -123,7 +123,6 @@ func (p *parser) parseForStmt() ast.Stmt {
 				p.errorExpected(start, "expression")
 				firstExpr = &ast.BadExpr{Start: start, End: end}
 			}
-			// TODO: firstExpr must be assignable
 			return p.parseForInStmt(forPos, firstExpr)
 
 		default:
@@ -143,7 +142,15 @@ func (p *parser) parseForInStmt(forPos token.Pos, firstExpr ast.Expr) *ast.ForIn
 		commas = append(commas, p.expect(token.COMMA))
 		left = append(left, p.parseExpr())
 	}
-	// TODO: left must be assignable
+
+	// left must be assignable
+	for _, e := range left {
+		if !ast.IsAssignable(e) {
+			start, _ := e.Span()
+			p.errorExpected(start, "assignable expression")
+		}
+	}
+
 	stmt.Left = left
 	stmt.LeftCommas = commas
 	stmt.In = p.expect(token.IN)
@@ -346,7 +353,15 @@ func (p *parser) parseAssignStmt(firstExpr ast.Expr) *ast.AssignStmt {
 		commas = append(commas, p.expect(token.COMMA))
 		left = append(left, p.parseExpr())
 	}
-	// TODO: all left exprs must be assignable
+
+	// left must be assignable
+	for _, e := range left {
+		if !ast.IsAssignable(e) {
+			start, _ := e.Span()
+			p.errorExpected(start, "assignable expression")
+		}
+	}
+
 	stmt.Left = left
 	stmt.LeftCommas = commas
 
@@ -358,7 +373,12 @@ func (p *parser) parseAssignStmt(firstExpr ast.Expr) *ast.AssignStmt {
 
 func (p *parser) parseAugAssignStmt(firstExpr ast.Expr) *ast.AssignStmt {
 	var stmt ast.AssignStmt
-	// TODO: left expr must be assignable
+
+	// left must be assignable
+	if !ast.IsAssignable(firstExpr) {
+		start, _ := firstExpr.Span()
+		p.errorExpected(start, "assignable expression")
+	}
 	stmt.Left = []ast.Expr{firstExpr}
 	stmt.AssignTok = p.tok
 	stmt.AssignPos = p.expect(augBinops...)

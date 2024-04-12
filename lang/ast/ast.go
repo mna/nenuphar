@@ -11,6 +11,8 @@
 // node they are most likely linked to. As such, they are not taken into
 // consideration when reporting node positions, but they may affect the span
 // of blocks (and indirectly, of the chunk).
+//
+// Note that this package is tested via the parser package's tests.
 package ast
 
 import (

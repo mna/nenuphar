@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -21,92 +22,88 @@ type Printer struct {
 	// supported (`-` only when a width is set, to pad with spaces on the right
 	// instead of the left). Defaults to `%v`.
 	NodeFmt string
-
-	// set during printing
-	file  *token.File
-	depth int
-	err   error
 }
 
-// PrintComments pretty-prints the comments of the specified chunk and file.
-func (p *Printer) PrintComments(chunk *Chunk, file *token.File) error {
-	if file == nil || len(chunk.Comments) == 0 {
-		return nil
-	}
-
-	if p.NodeFmt == "" {
-		p.NodeFmt = "%v"
-	}
-	p.file = file
-	p.depth = 0
-	p.err = nil
-	p.printComments(chunk)
-	return p.err
-}
-
-func (p *Printer) printComments(chunk *Chunk) {
-	var node Node
-	for _, c := range chunk.Comments {
-		if c.Node != node {
-			node = c.Node
-			p.printNode(node, 0)
-		}
-		p.printNode(c, 1)
-	}
-}
-
-// Print pretty-prints the AST node n from the specified file.
+// Print pretty-prints the AST node n from the specified file. If n is an
+// *ast.Chunk and it has comments, they will be printed along with their
+// associated node. The file argument is only required for printing positions,
+// if p.Pos == token.PosNone, it does not have to be provided.
 func (p *Printer) Print(n Node, file *token.File) error {
-	if file == nil {
-		return nil
+	if file == nil && p.Pos != token.PosNone {
+		return errors.New("file must be provided to print positions")
 	}
 
-	if p.NodeFmt == "" {
-		p.NodeFmt = "%v"
+	pp := &printer{
+		w:       p.Output,
+		pos:     p.Pos,
+		nodeFmt: p.NodeFmt,
+		file:    file,
 	}
-	p.file = file
-	p.depth = 0
-	p.err = nil
-	Walk(p, n)
-	return p.err
+	if p.NodeFmt == "" {
+		pp.nodeFmt = "%v"
+	}
+
+	if ch, ok := n.(*Chunk); ok && len(ch.Comments) > 0 {
+		// index comments by their associated node for printing
+		m := make(map[Node][]*Comment, len(ch.Comments))
+		for _, c := range ch.Comments {
+			m[c.Node] = append(m[c.Node], c)
+		}
+		pp.comments = m
+	}
+
+	Walk(pp, n)
+	return pp.err
 }
 
-// Visit implements the Visitor interface for the Printer. It is not meant
-// to be called directly, it is called by Print to walk the AST and print it.
-func (p *Printer) Visit(n Node, dir VisitDirection) Visitor {
+type printer struct {
+	w        io.Writer
+	pos      token.PosMode
+	nodeFmt  string
+	comments map[Node][]*Comment
+	file     *token.File
+	depth    int
+	err      error
+}
+
+func (p *printer) Visit(n Node, dir VisitDirection) Visitor {
 	if dir == VisitExit || p.err != nil {
-		if requiresIndentDedent(n) {
-			p.depth--
-		}
+		p.depth--
 		return nil
 	}
 
-	if requiresIndentDedent(n) {
-		p.depth++
-	}
-
+	p.depth++
 	p.printNode(n, p.depth-1)
+	p.printNodeComments(n, p.depth)
 	return p
 }
 
-func (p *Printer) printNode(n Node, indent int) {
+func (p *printer) printNode(n Node, indent int) {
 	if p.err != nil {
 		return
 	}
 
 	format := "%s"
 	args := []interface{}{strings.Repeat(". ", indent)}
-	if p.Pos != token.PosNone {
+	if p.pos != token.PosNone {
 		format += "[%s:%s] "
+		start, end := n.Span()
 		args = append(args,
-			token.FormatPos(p.Pos, p.file, n.StartPos(), true),
-			token.FormatPos(p.Pos, p.file, n.EndPos(), false),
+			token.FormatPos(p.pos, p.file, start, true),
+			token.FormatPos(p.pos, p.file, end, false),
 		)
 	}
-	format += p.NodeFmt + "\n"
+	format += p.nodeFmt + "\n"
 	args = append(args, n)
 
-	_, p.err = fmt.Fprintf(p.Output, format, args...)
+	_, p.err = fmt.Fprintf(p.w, format, args...)
+}
+
+func (p *printer) printNodeComments(n Node, indent int) {
+	comments := p.comments[n]
+	for _, c := range comments {
+		p.printNode(c, indent)
+	}
 }
 
 func requiresIndentDedent(n Node) bool {

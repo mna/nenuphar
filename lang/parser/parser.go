@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -22,7 +23,7 @@ const (
 // ParseFiles is a helper function that parses the source files and returns the
 // fileset along with the ASTs and any error encountered. The error, if
 // non-nil, is guaranteed to be a scanner.ErrorList.
-func ParseFiles(mode Mode, files ...string) (*token.FileSet, []*ast.Chunk, error) {
+func ParseFiles(ctx context.Context, mode Mode, files ...string) (*token.FileSet, []*ast.Chunk, error) {
 	if len(files) == 0 {
 		return nil, nil, nil
 	}
@@ -51,7 +52,7 @@ func ParseFiles(mode Mode, files ...string) (*token.FileSet, []*ast.Chunk, error
 // bytes and returns the AST and any error encountered. The chunk is added to
 // the provided fset for position reporting under the name specified in
 // filename. The error, if non-nil, is guaranteed to be a scanner.ErrorList.
-func ParseChunk(mode Mode, fset *token.FileSet, filename string, src []byte) (*ast.Chunk, error) {
+func ParseChunk(ctx context.Context, mode Mode, fset *token.FileSet, filename string, src []byte) (*ast.Chunk, error) {
 	var p parser
 	p.parseComments = mode&Comments != 0
 	p.init(fset, filename, src)

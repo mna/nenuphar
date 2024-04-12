@@ -83,10 +83,10 @@ func (p *parser) parseAtomExpr() *ast.LiteralExpr {
 	}
 	lit := &ast.LiteralExpr{
 		Type:  p.tok,
-		Start: p.expect(p.tok),
 		Raw:   p.val.Raw,
 		Value: val,
 	}
+	lit.Start = p.expect(p.tok)
 	return lit
 }
 

@@ -26,6 +26,9 @@ Run '%[1]s --help' for details.
 Compiler and all-in-one tool for the %[1]s programming language.
 
 The <command> can be one of:
+       parse                     Execute the parser phase of the
+                                 compilation and print the resulting
+                                 abstract syntax tree (AST).
        tokenize                  Execute the scanner phase of the
                                  compilation and print the resulting
                                  tokens.
@@ -33,6 +36,10 @@ The <command> can be one of:
 Valid flag options are:
        -h --help                 Show this help and exit.
        -v --version              Print version and exit.
+
+Valid flag options for the <parse> command are:
+       --with-comments           Include comments in the AST (excluded
+                                 by default).
 
 More information on the %[1]s repository:
        https://github.com/mna/nenuphar
@@ -45,6 +52,8 @@ type Cmd struct {
 
 	Help    bool `flag:"h,help"`
 	Version bool `flag:"v,version"`
+
+	WithComments bool `flag:"with-comments"`
 
 	args  []string
 	flags map[string]bool
@@ -76,11 +85,15 @@ func (c *Cmd) Validate() error {
 		return fmt.Errorf("unknown command: %s", c.args[0])
 	}
 
-	if cmdName == "tokenize" {
-		// at least one file is required, or read from stdin
+	if cmdName == "tokenize" || cmdName == "parse" {
+		// at least one file is required, or TODO: read from stdin
 		if len(c.args[1:]) == 0 {
 			return fmt.Errorf("%s: at least one file must be provided", cmdName)
 		}
+	}
+
+	if c.flags["with-comments"] && cmdName != "parse" {
+		return fmt.Errorf("%s: invalid flag 'with-comments'", cmdName)
 	}
 
 	return nil

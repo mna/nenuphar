@@ -293,7 +293,6 @@ func (n *IndexExpr) Walk(v Visitor) {
 func (n *IndexExpr) expr() {}
 
 func (n *LiteralExpr) Format(f fmt.State, verb rune) {
-	format(f, verb, n, n.Type.String(), nil)
 	if n.Value == nil {
 		format(f, verb, n, n.Type.String(), nil)
 	} else {

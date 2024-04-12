@@ -1,0 +1,5 @@
+if a then
+	f()
+elseif b then
+	g()
+end

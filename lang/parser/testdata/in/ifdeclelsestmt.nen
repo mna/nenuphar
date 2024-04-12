@@ -1,0 +1,5 @@
+if const x = f() then
+	g()
+else
+	h()
+end

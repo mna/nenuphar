@@ -30,17 +30,22 @@ func (p *parser) parseDeclStmt() *ast.AssignStmt {
 	return &stmt
 }
 
-func (p *parser) parseIfStmt(topLevel bool) *ast.IfGuardStmt {
+func (p *parser) parseIfStmt(startPos token.Pos) *ast.IfGuardStmt {
 	var stmt ast.IfGuardStmt
-	if topLevel {
+
+	if !startPos.IsValid() {
+		// 'if' is not already consumed, do it now
 		stmt.Type = token.IF
+		stmt.Start = p.expect(token.IF)
 	} else {
+		// 'elseif' is already consumed in parent if/elseif, but record its
+		// position and type here
 		stmt.Type = token.ELSEIF
+		stmt.Start = startPos
 	}
-	stmt.Start = p.expect(p.tok)
 
 	expect := []token.Token{token.ELSE}
-	if tokenIn(p.tok, token.LET, token.CONST) {
+	if stmt.Type == token.IF && tokenIn(p.tok, token.LET, token.CONST) { // DeclStmt not valid in elseif
 		stmt.Decl = p.parseDeclStmt()
 	} else {
 		stmt.Cond = p.parseExpr()
@@ -52,10 +57,11 @@ func (p *parser) parseIfStmt(topLevel bool) *ast.IfGuardStmt {
 
 	if p.tok != token.END {
 		// there is an ELSE/ELSEIF, parse it
+		tok := p.tok
 		stmt.Else = p.expect(expect...)
-		if p.tok == token.ELSEIF {
+		if tok == token.ELSEIF {
 			var elseIfBlock ast.Block
-			elseIfStmt := p.parseIfStmt(false)
+			elseIfStmt := p.parseIfStmt(stmt.Else)
 			elseIfBlock.Start, elseIfBlock.End = elseIfStmt.Span()
 			elseIfBlock.Stmts = []ast.Stmt{elseIfStmt}
 			stmt.False = &elseIfBlock
@@ -63,7 +69,8 @@ func (p *parser) parseIfStmt(topLevel bool) *ast.IfGuardStmt {
 			stmt.False = p.parseBlock(token.END)
 		}
 	}
-	if topLevel {
+	if stmt.Type == token.IF {
+		// this is the top-level 'if', it owns the 'end' token
 		stmt.End = p.expect(token.END)
 	}
 	return &stmt
@@ -242,6 +249,7 @@ func (p *parser) parseSimpleStmt() *ast.SimpleBlockStmt {
 	stmt.Type = p.tok
 	stmt.Start = p.expect(p.tok)
 	stmt.Body = p.parseBlock(token.END)
+	stmt.End = p.expect(token.END)
 	return &stmt
 }
 

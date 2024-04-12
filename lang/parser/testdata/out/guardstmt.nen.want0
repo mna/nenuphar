@@ -1,0 +1,7 @@
+[0:27] chunk
+. [0:27] block {stmts=1}
+. . [0:26] guard else
+. . . [6:7] a
+. . . [14:23] block {stmts=1}
+. . . . [14:22] return {expr=1}
+. . . . . [21:22] int literal 1

@@ -1,0 +1,5 @@
+if ok then
+	f()
+else
+	g()
+end

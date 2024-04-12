@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/mna/nenuphar/internal/maincmd"
 	"github.com/mna/nenuphar/lang/parser"
 	"github.com/mna/nenuphar/lang/token"
+	"github.com/stretchr/testify/assert"
 )
 
 var testUpdateParserTests = flag.Bool("test.update-parser-tests", false, "If set, replace expected parser test results with actual results.")
@@ -40,6 +42,13 @@ func TestParser(t *testing.T) {
 					ext := fmt.Sprintf(".want%d", mode)
 					filetest.DiffCustom(t, fi, "output", ext, buf.String(), resultDir, testUpdateParserTests)
 					filetest.DiffErrors(t, fi, ebuf.String(), resultDir, testUpdateParserTests)
+
+					if t.Failed() && testing.Verbose() {
+						b, err := os.ReadFile(filepath.Join(srcDir, fi.Name()))
+						if assert.NoError(t, err) {
+							t.Logf("source file:\n%s\n", string(b))
+						}
+					}
 				})
 			}
 		})

@@ -67,6 +67,19 @@ type printer struct {
 }
 
 func (p *printer) Visit(n Node, dir VisitDirection) Visitor {
+	if b, ok := n.(*Block); ok {
+		// if the node is a block and it is the elseif of an if statement, bypass
+		// printing the block - the elseif statement is equivalent and helps indent
+		// things nicer.
+		if len(b.Stmts) == 1 {
+			if ei, ok := b.Stmts[0].(*IfGuardStmt); ok {
+				if ei.Type == token.ELSEIF {
+					return p
+				}
+			}
+		}
+	}
+
 	if dir == VisitExit || p.err != nil {
 		p.depth--
 		return nil

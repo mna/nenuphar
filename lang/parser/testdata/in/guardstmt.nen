@@ -1,0 +1,3 @@
+guard a else
+	return 1
+end

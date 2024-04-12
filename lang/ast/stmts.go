@@ -120,7 +120,7 @@ func (n *AssignStmt) Format(f fmt.State, verb rune) {
 	if n.DeclType > 0 {
 		lbl = n.DeclType.String() + " declaration"
 	} else if n.AssignTok != token.EQ {
-		lbl = "augmented assignment"
+		lbl = "augmented assignment " + n.AssignTok.GoString()
 	}
 	format(f, verb, n, lbl, map[string]int{"left": len(n.Left), "right": len(n.Right)})
 }
@@ -180,12 +180,24 @@ func (n *ClassStmt) Walk(v Visitor) {
 }
 func (n *ClassStmt) BlockEnding() bool { return false }
 
-func (n *ExprStmt) Format(f fmt.State, verb rune) { format(f, verb, n, "expr", nil) }
+func (n *ExprStmt) Format(f fmt.State, verb rune) { format(f, verb, n, "expr stmt", nil) }
 func (n *ExprStmt) Span() (start, end token.Pos)  { return n.Expr.Span() }
 func (n *ExprStmt) Walk(v Visitor)                { Walk(v, n.Expr) }
 func (n *ExprStmt) BlockEnding() bool             { return false }
 
-func (n *IfGuardStmt) Format(f fmt.State, verb rune) { format(f, verb, n, n.Type.String(), nil) }
+func (n *IfGuardStmt) Format(f fmt.State, verb rune) {
+	lbl := n.Type.String()
+	if n.Else.IsValid() {
+		kind := " else"
+		if n.False != nil && len(n.False.Stmts) == 1 {
+			if _, ok := n.False.Stmts[0].(*IfGuardStmt); ok {
+				kind = " elseif"
+			}
+		}
+		lbl += kind
+	}
+	format(f, verb, n, lbl, nil)
+}
 func (n *IfGuardStmt) Span() (start, end token.Pos) {
 	if n.True != nil {
 		_, end = n.True.Span()

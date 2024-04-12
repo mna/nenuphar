@@ -1,0 +1,3 @@
+guard const x = f() else
+	return true
+end

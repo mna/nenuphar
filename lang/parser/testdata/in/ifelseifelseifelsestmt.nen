@@ -1,0 +1,9 @@
+if a then
+	f()
+elseif b then
+	g()
+elseif c then
+	h()
+else
+	i()
+end

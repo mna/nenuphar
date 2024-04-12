@@ -1,0 +1,20 @@
+[0:21] chunk
+. [0:21] block {stmts=5}
+. . [0:3] expr stmt
+. . . [0:3] call {args=0}
+. . . . [0:1] f
+. . [4:6] expr stmt
+. . . [4:6] call {args=0}
+. . . . [4:5] g
+. . [7:10] expr stmt
+. . . [7:10] call {args=1}
+. . . . [7:8] h
+. . . . [8:10] map {keyvals=0}
+. . [11:14] expr stmt
+. . . [11:14] call {args=1}
+. . . . [11:12] i
+. . . . [12:14] string literal ""
+. . [15:20] expr stmt
+. . . [15:20] call {args=1}
+. . . . [15:16] j
+. . . . [16:20] string literal [[]]

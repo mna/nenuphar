@@ -76,7 +76,7 @@ func (p *parser) parseStmt() (stmt ast.Stmt) {
 		return p.parseDeclStmt()
 
 	case token.IF:
-		return p.parseIfStmt(true)
+		return p.parseIfStmt(token.Pos(0))
 
 	case token.FOR:
 		return p.parseForStmt()

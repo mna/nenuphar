@@ -1,0 +1,9 @@
+[0:22] chunk
+. [0:22] block {stmts=1}
+. . [0:21] for in {left=1, right=1}
+. . . [4:5] x
+. . . [9:10] y
+. . . [15:18] block {stmts=1}
+. . . . [15:17] expr stmt
+. . . . . [15:17] call {args=0}
+. . . . . . [15:16] f

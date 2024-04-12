@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/token"
 )
@@ -78,6 +80,7 @@ func (p *parser) parseIfStmt(startPos token.Pos) *ast.IfGuardStmt {
 
 func (p *parser) parseForStmt() ast.Stmt {
 	forPos := p.expect(token.FOR)
+	fmt.Println(">>> WHAT FOR ", p.tok)
 	switch p.tok {
 	case token.DO:
 		// for [ cond ] do, no condition (loop forever)
@@ -92,6 +95,9 @@ func (p *parser) parseForStmt() ast.Stmt {
 	default:
 		// parse the next node and decide
 		firstStmt := p.parseExprOrAssignStmt(false)
+		// TODO: bug here, both AssignStmt and for in start with comma-separated
+		// expressions and are disambiguated only at the '=' or 'in'.
+		fmt.Println(">>> WHAT FOR ", p.tok, firstStmt)
 		// next token disambiguates the statement
 		switch p.tok {
 		case token.DO:
@@ -149,6 +155,7 @@ func (p *parser) parseForInStmt(forPos token.Pos, firstExpr ast.Expr) *ast.ForIn
 		commas = append(commas, p.expect(token.COMMA))
 		left = append(left, p.parseExpr())
 	}
+	fmt.Println(">>>>> FORIN STMT BEFORE check left ", p.tok)
 
 	// left must be assignable
 	for _, e := range left {
@@ -160,6 +167,7 @@ func (p *parser) parseForInStmt(forPos token.Pos, firstExpr ast.Expr) *ast.ForIn
 
 	stmt.Left = left
 	stmt.LeftCommas = commas
+	fmt.Println(">>>>> FORIN STMT BEFORE IN ", p.tok)
 	stmt.In = p.expect(token.IN)
 	stmt.Right, stmt.RightCommas = p.parseExprList()
 	stmt.Do = p.expect(token.DO)
@@ -338,6 +346,7 @@ func (p *parser) parseLabelStmt() *ast.LabelStmt {
 
 func (p *parser) parseExprOrAssignStmt(validateExprStmt bool) ast.Stmt {
 	expr := p.parseExpr()
+	fmt.Println(">>> EXPR OR ASSIGN PARSED ", p.tok, expr)
 	if tokenIn(p.tok, token.COMMA, token.EQ) {
 		return p.parseAssignStmt(expr)
 	}

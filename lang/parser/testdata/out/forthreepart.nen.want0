@@ -1,0 +1,16 @@
+[0:37] chunk
+. [0:37] block {stmts=1}
+. . [0:36] for {clauses=3}
+. . . [4:9] assignment {left=1, right=1}
+. . . . [4:5] x
+. . . . [8:9] int literal 1
+. . . [11:17] binary '<'
+. . . . [11:12] x
+. . . . [15:17] int literal 10
+. . . [19:25] augmented assignment '+=' {left=1, right=1}
+. . . . [19:20] x
+. . . . [24:25] int literal 1
+. . . [30:33] block {stmts=1}
+. . . . [30:32] expr stmt
+. . . . . [30:32] call {args=0}
+. . . . . . [30:31] f

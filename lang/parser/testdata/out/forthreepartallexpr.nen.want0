@@ -1,0 +1,13 @@
+[0:24] chunk
+. [0:24] block {stmts=1}
+. . [0:23] for {clauses=2}
+. . . [4:6] expr stmt
+. . . . [4:6] call {args=0}
+. . . . . [4:5] x
+. . . [10:12] expr stmt
+. . . . [10:12] call {args=0}
+. . . . . [10:11] y
+. . . [17:20] block {stmts=1}
+. . . . [17:19] expr stmt
+. . . . . [17:19] call {args=0}
+. . . . . . [17:18] z

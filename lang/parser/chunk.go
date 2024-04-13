@@ -101,7 +101,7 @@ func (p *parser) parseStmt() (stmt ast.Stmt) {
 
 	default:
 		// can be func call, assign stmt, augassign stmt, try or must unop.
-		return p.parseExprOrAssignStmt(true)
+		return p.parseExprOrAssignStmt(nil, nil)
 	}
 }
 

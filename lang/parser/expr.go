@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/token"
 )
@@ -41,7 +39,6 @@ func (p *parser) parseSubExpr(priority int) ast.Expr {
 		unop.Right = p.parseSubExpr(unopPriority)
 		left = &unop
 	} else {
-		fmt.Println(">>>>> SUB EXPR ", priority, p.tok)
 		left = p.parseSimpleExpr()
 	}
 
@@ -53,7 +50,6 @@ func (p *parser) parseSubExpr(priority int) ast.Expr {
 		bin.Right = p.parseSubExpr(binopPriority[bin.Type].right)
 		left = &bin
 	}
-	fmt.Println(">>>>> SUB EXPR DONE ", priority, p.tok)
 
 	return left
 }
@@ -185,7 +181,6 @@ func (p *parser) parseTupleOrSuffixedExpr() ast.Expr {
 		return primary
 	}
 
-	fmt.Println(">>>>> SUFFIXED EXPR ", primary, p.tok)
 loop:
 	for p.tok != token.EOF {
 		switch p.tok {
@@ -268,7 +263,6 @@ func (p *parser) parseIndexExpr(prefix ast.Expr) *ast.IndexExpr {
 }
 
 func (p *parser) parseCallExpr(fn ast.Expr) *ast.CallExpr {
-	fmt.Println(">>>>> CALL EXPR ", fn, p.tok)
 	var expr ast.CallExpr
 	expr.Fn = fn
 	switch p.tok {

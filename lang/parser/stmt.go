@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/token"
 )
@@ -80,7 +78,6 @@ func (p *parser) parseIfStmt(startPos token.Pos) *ast.IfGuardStmt {
 
 func (p *parser) parseForStmt() ast.Stmt {
 	forPos := p.expect(token.FOR)
-	fmt.Println(">>> WHAT FOR ", p.tok)
 	switch p.tok {
 	case token.DO:
 		// for [ cond ] do, no condition (loop forever)
@@ -93,69 +90,36 @@ func (p *parser) parseForStmt() ast.Stmt {
 		declStmt := p.parseDeclStmt()
 		return p.parseForThreePartStmt(forPos, declStmt)
 	default:
-		// parse the next node and decide
-		firstStmt := p.parseExprOrAssignStmt(false)
-		// TODO: bug here, both AssignStmt and for in start with comma-separated
-		// expressions and are disambiguated only at the '=' or 'in'.
-		fmt.Println(">>> WHAT FOR ", p.tok, firstStmt)
-		// next token disambiguates the statement
-		switch p.tok {
-		case token.DO:
-			// for [ cond ] do, with condition - firstStmt must be ExprStmt
-			var firstExpr ast.Expr
-			es, ok := firstStmt.(*ast.ExprStmt)
-			if ok {
-				firstExpr = es.Expr
-			} else {
-				start, end := es.Span()
-				p.errorExpected(start, "expression")
-				firstExpr = &ast.BadExpr{Start: start, End: end}
-			}
-			return p.parseForCondStmt(forPos, firstExpr)
+		// parse the left expressions and decide
+		left, commas := p.parseDisambiguateSuffixedExprAssignStmt()
 
-		case token.SEMICOLON:
-			// for [ init ]; [ cond ]; [ post ] do, with init - if firstStmt is an
-			// ExprStmt it must be valid.
-			if es, ok := firstStmt.(*ast.ExprStmt); ok {
-				if !ast.IsValidStmt(es.Expr) {
-					start, end := es.Span()
-					p.errorExpected(start, "function call")
-					firstStmt = &ast.BadStmt{Start: start, End: end}
-				}
-			}
+		// next token disambiguates the statement
+		switch {
+		case p.tok == token.DO:
+			// for [ cond ] do, with condition
+			return p.parseForCondStmt(forPos, p.expectSingleExpr(left, commas))
+
+		case tokenIn(p.tok, token.SEMICOLON, token.EQ) || p.tok.IsAugBinop():
+			// for [ init ]; [ cond ]; [ post ] do, with init
+			firstStmt := p.parseExprOrAssignStmt(left, commas)
 			return p.parseForThreePartStmt(forPos, firstStmt)
 
-		case token.COMMA, token.IN:
-			// for expr in exprlist, firstStmt must be an ExprStmt
-			var firstExpr ast.Expr
-			es, ok := firstStmt.(*ast.ExprStmt)
-			if ok {
-				firstExpr = es.Expr
-			} else {
-				start, end := es.Span()
-				p.errorExpected(start, "expression")
-				firstExpr = &ast.BadExpr{Start: start, End: end}
-			}
-			return p.parseForInStmt(forPos, firstExpr)
+		case p.tok == token.IN:
+			// for expr in exprlist
+			return p.parseForInStmt(forPos, left, commas)
 
 		default:
-			p.expect(token.DO, token.SEMICOLON, token.COMMA, token.IN)
+			p.expect(token.DO, token.SEMICOLON, token.IN, token.EQ)
 			panic("unreachable")
 		}
 	}
 }
 
-func (p *parser) parseForInStmt(forPos token.Pos, firstExpr ast.Expr) *ast.ForInStmt {
+func (p *parser) parseForInStmt(forPos token.Pos, left []ast.Expr, commas []token.Pos) *ast.ForInStmt {
 	var stmt ast.ForInStmt
 	stmt.For = forPos
-
-	var commas []token.Pos
-	left := []ast.Expr{firstExpr}
-	for p.tok == token.COMMA {
-		commas = append(commas, p.expect(token.COMMA))
-		left = append(left, p.parseExpr())
-	}
-	fmt.Println(">>>>> FORIN STMT BEFORE check left ", p.tok)
+	stmt.Left = left
+	stmt.LeftCommas = commas
 
 	// left must be assignable
 	for _, e := range left {
@@ -165,9 +129,6 @@ func (p *parser) parseForInStmt(forPos token.Pos, firstExpr ast.Expr) *ast.ForIn
 		}
 	}
 
-	stmt.Left = left
-	stmt.LeftCommas = commas
-	fmt.Println(">>>>> FORIN STMT BEFORE IN ", p.tok)
 	stmt.In = p.expect(token.IN)
 	stmt.Right, stmt.RightCommas = p.parseExprList()
 	stmt.Do = p.expect(token.DO)
@@ -198,7 +159,7 @@ func (p *parser) parseForThreePartStmt(forPos token.Pos, init ast.Stmt) *ast.For
 	stmt.CondSemi = p.expect(token.SEMICOLON)
 
 	if p.tok != token.DO {
-		stmt.Post = p.parseExprOrAssignStmt(true)
+		stmt.Post = p.parseExprOrAssignStmt(nil, nil)
 	}
 
 	stmt.Do = p.expect(token.DO)
@@ -344,16 +305,37 @@ func (p *parser) parseLabelStmt() *ast.LabelStmt {
 	return &stmt
 }
 
-func (p *parser) parseExprOrAssignStmt(validateExprStmt bool) ast.Stmt {
-	expr := p.parseExpr()
-	fmt.Println(">>> EXPR OR ASSIGN PARSED ", p.tok, expr)
-	if tokenIn(p.tok, token.COMMA, token.EQ) {
-		return p.parseAssignStmt(expr)
+// parses expressions and commas until an EQ, IN or augmented assignment
+// operator. Returns the list of expressions and commas parsed, and the
+// current parser token indicates without ambiguity the nature of the current
+// statement:
+//   - EQ: AssignStmt
+//   - IN: for..in header statement
+//   - AugBinop: AugAssignStmt
+//   - Otherwise: ExprStmt (possibly an invalid one)
+func (p *parser) parseDisambiguateSuffixedExprAssignStmt() (left []ast.Expr, commas []token.Pos) {
+	left = []ast.Expr{p.parseExpr()}
+	for p.tok == token.COMMA {
+		commas = append(commas, p.expect(token.COMMA))
+		left = append(left, p.parseExpr())
+	}
+	return left, commas
+}
+
+func (p *parser) parseExprOrAssignStmt(left []ast.Expr, commas []token.Pos) ast.Stmt {
+	if left == nil {
+		left, commas = p.parseDisambiguateSuffixedExprAssignStmt()
+	}
+	if tokenIn(p.tok, token.EQ, token.IN) {
+		// parsing as AssignStmt even if p.tok == IN, will take care of error
+		return p.parseAssignStmt(left, commas)
 	}
 	if p.tok.IsAugBinop() {
-		return p.parseAugAssignStmt(expr)
+		return p.parseAugAssignStmt(p.expectSingleExpr(left, commas))
 	}
-	if validateExprStmt && !ast.IsValidStmt(expr) {
+
+	expr := p.expectSingleExpr(left, commas)
+	if !ast.IsValidStmt(expr) {
 		start, end := expr.Span()
 		p.errorExpected(start, "function call")
 		return &ast.BadStmt{Start: start, End: end}
@@ -361,15 +343,10 @@ func (p *parser) parseExprOrAssignStmt(validateExprStmt bool) ast.Stmt {
 	return &ast.ExprStmt{Expr: expr}
 }
 
-func (p *parser) parseAssignStmt(firstExpr ast.Expr) *ast.AssignStmt {
+func (p *parser) parseAssignStmt(left []ast.Expr, commas []token.Pos) *ast.AssignStmt {
 	var stmt ast.AssignStmt
-
-	var commas []token.Pos
-	left := []ast.Expr{firstExpr}
-	for p.tok == token.COMMA {
-		commas = append(commas, p.expect(token.COMMA))
-		left = append(left, p.parseExpr())
-	}
+	stmt.Left = left
+	stmt.LeftCommas = commas
 
 	// left must be assignable
 	for _, e := range left {
@@ -378,9 +355,6 @@ func (p *parser) parseAssignStmt(firstExpr ast.Expr) *ast.AssignStmt {
 			p.errorExpected(start, "assignable expression")
 		}
 	}
-
-	stmt.Left = left
-	stmt.LeftCommas = commas
 
 	stmt.AssignTok = token.EQ
 	stmt.AssignPos = p.expect(token.EQ)

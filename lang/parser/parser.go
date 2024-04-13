@@ -111,6 +111,16 @@ func (p *parser) advance() {
 
 var errPanicMode = errors.New("panic")
 
+func (p *parser) expectSingleExpr(exprs []ast.Expr, commas []token.Pos) ast.Expr {
+	if len(exprs) != 1 {
+		start, _ := exprs[0].Span()
+		p.error(start, "expected a single expression")
+	} else if len(commas) != 0 {
+		p.error(commas[0], "expected a single expression")
+	}
+	return exprs[0]
+}
+
 // expect returns the position of the current token and consumes it if it is
 // one of the expected tokens, otherwise it reports an error and panics with
 // errPanicMode which gets recovered at the statement level, resulting in a

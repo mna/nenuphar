@@ -1,0 +1,15 @@
+[0:60] chunk
+. [0:60] block {stmts=1}
+. . [0:59] let declaration {left=6, right=6}
+. . . [4:5] a
+. . . [7:8] b
+. . . [10:11] c
+. . . [13:14] d
+. . . [16:17] e
+. . . [19:20] f
+. . . [23:26] int literal 123
+. . . [28:34] float literal 3.1415
+. . . [36:40] string literal "ok"
+. . . [42:46] true
+. . . [48:53] false
+. . . [55:59] null

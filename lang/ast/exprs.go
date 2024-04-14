@@ -10,7 +10,7 @@ import (
 // recursively until it reaches a non-ParenExpr.
 func Unwrap(e Expr) Expr {
 	if pe, ok := e.(*ParenExpr); ok {
-		return Unwrap(pe)
+		return Unwrap(pe.Expr)
 	}
 	return e
 }
@@ -213,7 +213,7 @@ func (n *CallExpr) expr() {}
 
 func (n *ClassExpr) Format(f fmt.State, verb rune) {
 	var inheritsCount int
-	if n.Inherits != nil {
+	if n.Inherits != nil && n.Inherits.Expr != nil {
 		inheritsCount = 1
 	}
 	format(f, verb, n, "class", map[string]int{

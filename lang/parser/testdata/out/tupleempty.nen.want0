@@ -1,0 +1,5 @@
+[0:11] chunk
+. [0:11] block {stmts=1}
+. . [0:10] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:10] tuple {items=0}

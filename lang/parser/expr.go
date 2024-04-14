@@ -153,6 +153,8 @@ func (p *parser) parseArrayExpr() *ast.ArrayLikeExpr {
 			break
 		}
 	}
+	expr.Items = items
+	expr.Commas = commas
 
 	expr.Right = p.expect(token.RBRACK)
 	return &expr

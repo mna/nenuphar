@@ -1,0 +1,11 @@
+[0:22] chunk
+. [0:22] block {stmts=1}
+. . [0:21] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:21] expr[index]
+. . . . [8:18] expr[index]
+. . . . . [8:12] expr[index]
+. . . . . . [8:9] a
+. . . . . . [10:11] int literal 0
+. . . . . [13:17] string literal 'ok'
+. . . . [19:20] b

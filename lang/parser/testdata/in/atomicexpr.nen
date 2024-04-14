@@ -1,0 +1,1 @@
+let a, b, c, d, e, f = 123, 3.1415, "ok", true, false, null

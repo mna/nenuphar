@@ -1,0 +1,8 @@
+[0:31] chunk
+. [0:31] block {stmts=1}
+. . [0:30] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:30] tuple {items=3}
+. . . . [11:12] int literal 1
+. . . . [15:20] false
+. . . . [23:27] string literal 'ok'

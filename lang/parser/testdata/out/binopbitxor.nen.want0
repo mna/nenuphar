@@ -1,0 +1,7 @@
+[0:14] chunk
+. [0:14] block {stmts=1}
+. . [0:13] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:13] binary '~'
+. . . . [8:9] int literal 1
+. . . . [12:13] int literal 2

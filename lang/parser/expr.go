@@ -14,7 +14,7 @@ var (
 		token.OR:  {1, 1},
 		token.AND: {2, 2},
 		token.LT:  {3, 3}, token.LE: {3, 3}, token.GT: {3, 3},
-		token.GE: {3, 3}, token.EQ: {3, 3}, token.BANGEQ: {3, 3},
+		token.GE: {3, 3}, token.EQEQ: {3, 3}, token.BANGEQ: {3, 3},
 		token.PIPE:      {4, 4},
 		token.TILDE:     {5, 5},
 		token.AMPERSAND: {6, 6},

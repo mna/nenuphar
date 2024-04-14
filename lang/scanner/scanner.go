@@ -299,7 +299,7 @@ func (s *Scanner) Scan(tokVal *token.Value) (tok token.Token) {
 		case ':':
 			// colon or colon colon
 			tok = token.COLON
-			if s.advanceIf('.') {
+			if s.advanceIf(':') {
 				tok = token.COLONCOLON
 			}
 			*tokVal = token.Value{Raw: tok.String(), Pos: pos}

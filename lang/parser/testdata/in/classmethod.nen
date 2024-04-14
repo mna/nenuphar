@@ -1,0 +1,5 @@
+class X(g!)
+	fn x() end
+	fn y! end
+	fn z(a) end
+end

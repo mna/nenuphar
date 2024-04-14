@@ -1,0 +1,9 @@
+[0:20] chunk
+. [0:20] block {stmts=1}
+. . [0:19] let declaration {left=3, right=2}
+. . . [4:5] x
+. . . [7:8] y
+. . . [10:11] z
+. . . [14:15] int literal 1
+. . . [17:19] call {args=0}
+. . . . [17:18] g

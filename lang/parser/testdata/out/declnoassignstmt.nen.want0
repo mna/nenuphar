@@ -1,0 +1,5 @@
+[0:11] chunk
+. [0:11] block {stmts=1}
+. . [0:10] const declaration {left=2, right=0}
+. . . [6:7] x
+. . . [9:10] y

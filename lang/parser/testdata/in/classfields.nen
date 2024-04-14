@@ -1,0 +1,4 @@
+class X!
+	let x = 1
+	const y, z
+end

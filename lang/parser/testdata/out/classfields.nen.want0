@@ -1,0 +1,10 @@
+[0:36] chunk
+. [0:36] block {stmts=1}
+. . [0:35] class decl {fields=2, inherits=0, methods=0}
+. . . [6:7] X
+. . . [10:19] let declaration {left=1, right=1}
+. . . . [14:15] x
+. . . . [18:19] int literal 1
+. . . [21:31] const declaration {left=2, right=0}
+. . . . [27:28] y
+. . . . [30:31] z

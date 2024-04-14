@@ -212,14 +212,14 @@ var tokenNames = [...]string{
 var (
 	keywords = func() map[string]Token {
 		kw := make(map[string]Token)
-		for i := kwStart + 1; i < kwEnd; i++ {
+		for i := kwStart; i <= kwEnd; i++ {
 			kw[tokenNames[i]] = i
 		}
 		return kw
 	}()
 	punctuations = func() map[string]Token {
 		puncts := make(map[string]Token)
-		for i := punctStart + 1; i < punctEnd; i++ {
+		for i := punctStart; i <= punctEnd; i++ {
 			puncts[tokenNames[i]] = i
 		}
 		return puncts

@@ -1,0 +1,5 @@
+[0:15] chunk
+. [0:15] block {stmts=1}
+. . [0:14] class decl {fields=0, inherits=1, methods=0}
+. . . [6:7] X
+. . . [8:9] Y

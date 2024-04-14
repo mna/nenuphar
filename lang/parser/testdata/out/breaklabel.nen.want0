@@ -1,0 +1,6 @@
+[0:19] chunk
+. [0:19] block {stmts=2}
+. . [0:7] label
+. . . [2:5] lbl
+. . [9:18] break {expr=1}
+. . . [15:18] lbl

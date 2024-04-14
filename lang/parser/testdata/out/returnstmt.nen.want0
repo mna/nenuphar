@@ -1,0 +1,4 @@
+[0:12] chunk
+. [0:12] block {stmts=1}
+. . [0:11] return {expr=1}
+. . . [7:11] true

@@ -130,7 +130,11 @@ func (n *AssignStmt) Span() (start, end token.Pos) {
 	} else {
 		start, _ = n.Left[0].Span()
 	}
-	_, end = n.Right[len(n.Right)-1].Span()
+	if n.AssignPos.IsValid() {
+		_, end = n.Right[len(n.Right)-1].Span()
+	} else {
+		_, end = n.Left[len(n.Left)-1].Span()
+	}
 	return start, end
 }
 func (n *AssignStmt) Walk(v Visitor) {
@@ -154,7 +158,7 @@ func (n *BadStmt) BlockEnding() bool { return false }
 
 func (n *ClassStmt) Format(f fmt.State, verb rune) {
 	var inheritsCount int
-	if n.Inherits != nil {
+	if n.Inherits != nil && n.Inherits.Expr != nil {
 		inheritsCount = 1
 	}
 	format(f, verb, n, "class decl", map[string]int{

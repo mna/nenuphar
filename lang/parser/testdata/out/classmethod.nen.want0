@@ -1,0 +1,16 @@
+[0:52] chunk
+. [0:52] block {stmts=1}
+. . [0:51] class decl {fields=0, inherits=1, methods=3}
+. . . [6:7] X
+. . . [8:10] call {args=0}
+. . . . [8:9] g
+. . . [13:23] fn decl {params=0}
+. . . . [16:17] x
+. . . . [20:20] block {stmts=0}
+. . . [25:34] fn decl {params=0}
+. . . . [28:29] y
+. . . . [31:31] block {stmts=0}
+. . . [36:47] fn decl {params=1}
+. . . . [39:40] z
+. . . . [41:42] a
+. . . . [44:44] block {stmts=0}

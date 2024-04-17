@@ -1,0 +1,5 @@
+defer
+	-- detached
+
+	x = 1
+end

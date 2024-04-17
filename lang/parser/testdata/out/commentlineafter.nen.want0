@@ -1,0 +1,9 @@
+[0:40] chunk
+. [0:40] block {stmts=1}
+. . [0:39] if else
+. . . [3:4] x
+. . . [10:10] block {stmts=0}
+. . . [16:36] block {stmts=1}
+. . . . [16:21] assignment {left=1, right=1}
+. . . . . [16:17] y
+. . . . . [20:21] int literal 1

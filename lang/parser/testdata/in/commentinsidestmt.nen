@@ -1,0 +1,5 @@
+if x then
+	g()
+elseif y then
+	h.i.--[[inside]]j()
+end

@@ -12,7 +12,6 @@ func (p *parser) processComments(chunk *ast.Chunk) {
 		if c.Node == nil {
 			c.Node = chunk // should never happen, always a Block in a Chunk
 		}
-		ast.Walk(&av, c.Node)
 
 		av.init(c, p.file)
 		ast.Walk(&av, c.Node)

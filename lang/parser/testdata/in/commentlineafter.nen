@@ -1,0 +1,5 @@
+if x then
+else
+	y = 1
+	-- lineafter
+end

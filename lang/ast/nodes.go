@@ -57,7 +57,7 @@ func (n *Chunk) Walk(v Visitor) {
 	}
 }
 
-func (n *Comment) Format(f fmt.State, verb rune) { format(f, verb, n, n.Val, nil) }
+func (n *Comment) Format(f fmt.State, verb rune) { format(f, verb, n, "comment "+n.Val, nil) }
 func (n *Comment) Span() (start, end token.Pos)  { return n.Start, n.Start + token.Pos(len(n.Raw)) }
 func (n *Comment) Walk(_ Visitor)                {}
 

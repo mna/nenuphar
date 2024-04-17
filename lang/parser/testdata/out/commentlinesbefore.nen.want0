@@ -1,0 +1,7 @@
+[0:31] chunk
+. [0:31] block {stmts=1}
+. . [0:30] defer
+. . . [7:27] block {stmts=1}
+. . . . [21:26] assignment {left=1, right=1}
+. . . . . [21:22] x
+. . . . . [25:26] int literal 1

@@ -1,0 +1,11 @@
+[0:16] chunk
+. [0:16] block {stmts=1}
+. . [0:15] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:15] expr.ident
+. . . . [8:13] expr.ident
+. . . . . [8:11] expr.ident
+. . . . . . [8:9] a
+. . . . . . [10:11] b
+. . . . . [12:13] c
+. . . . [14:15] d

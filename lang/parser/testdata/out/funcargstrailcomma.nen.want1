@@ -1,0 +1,7 @@
+[0:26] chunk
+. [0:26] block {stmts=1}
+. . [0:25] fn decl {params=2}
+. . . [3:8] comma
+. . . [11:13] a0
+. . . [16:18] a1
+. . . [22:22] block {stmts=0}

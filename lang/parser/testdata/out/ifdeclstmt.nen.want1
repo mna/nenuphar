@@ -1,0 +1,11 @@
+[0:29] chunk
+. [0:29] block {stmts=1}
+. . [0:28] if
+. . . [3:14] let declaration {left=1, right=1}
+. . . . [7:8] x
+. . . . [11:14] call {args=0}
+. . . . . [11:12] f
+. . . [21:25] block {stmts=1}
+. . . . [21:24] expr stmt
+. . . . . [21:24] call {args=0}
+. . . . . . [21:22] g

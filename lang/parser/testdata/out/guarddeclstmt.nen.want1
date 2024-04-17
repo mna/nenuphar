@@ -1,0 +1,10 @@
+[0:42] chunk
+. [0:42] block {stmts=1}
+. . [0:41] guard else
+. . . [6:19] const declaration {left=1, right=1}
+. . . . [12:13] x
+. . . . [16:19] call {args=0}
+. . . . . [16:17] f
+. . . [26:38] block {stmts=1}
+. . . . [26:37] return {expr=1}
+. . . . . [33:37] true

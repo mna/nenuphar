@@ -1,0 +1,7 @@
+[0:11] chunk
+. [0:11] block {stmts=1}
+. . [0:10] do
+. . . [4:7] block {stmts=1}
+. . . . [4:6] expr stmt
+. . . . . [4:6] call {args=0}
+. . . . . . [4:5] x

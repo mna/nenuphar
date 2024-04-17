@@ -24,8 +24,8 @@ func TestParser(t *testing.T) {
 	srcDir, resultDir := filepath.Join("testdata", "in"), filepath.Join("testdata", "out")
 
 	modes := map[string]parser.Mode{
-		"default": parser.Mode(0),
-		// TODO: not implementd yet: "comments": parser.Comments,
+		"default":  parser.Mode(0),
+		"comments": parser.Comments,
 	}
 	for name, mode := range modes {
 		t.Run(name, func(t *testing.T) {

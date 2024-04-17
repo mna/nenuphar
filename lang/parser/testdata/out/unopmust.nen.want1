@@ -1,0 +1,8 @@
+[0:18] chunk
+. [0:18] block {stmts=1}
+. . [0:17] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:17] unary must
+. . . . [13:17] expr[index]
+. . . . . [13:14] y
+. . . . . [15:16] z

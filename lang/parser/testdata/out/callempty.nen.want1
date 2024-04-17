@@ -1,0 +1,5 @@
+[0:4] chunk
+. [0:4] block {stmts=1}
+. . [0:3] expr stmt
+. . . [0:3] call {args=0}
+. . . . [0:1] f

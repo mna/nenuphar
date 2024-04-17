@@ -1,0 +1,8 @@
+[0:15] chunk
+. [0:15] block {stmts=1}
+. . [0:14] fn decl {params=0}
+. . . [3:4] x
+. . . [7:11] block {stmts=1}
+. . . . [7:10] expr stmt
+. . . . . [7:10] call {args=0}
+. . . . . . [7:8] g

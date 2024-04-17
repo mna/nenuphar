@@ -1,0 +1,15 @@
+[0:41] chunk
+. [0:41] block {stmts=1}
+. . [0:40] if else
+. . . [3:16] const declaration {left=1, right=1}
+. . . . [9:10] x
+. . . . [13:16] call {args=0}
+. . . . . [13:14] f
+. . . [23:27] block {stmts=1}
+. . . . [23:26] expr stmt
+. . . . . [23:26] call {args=0}
+. . . . . . [23:24] g
+. . . [33:37] block {stmts=1}
+. . . . [33:36] expr stmt
+. . . . . [33:36] call {args=0}
+. . . . . . [33:34] h

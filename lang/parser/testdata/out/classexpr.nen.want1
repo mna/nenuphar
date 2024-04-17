@@ -1,0 +1,5 @@
+[0:20] chunk
+. [0:20] block {stmts=1}
+. . [0:19] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:19] class {fields=0, inherits=0, methods=0}

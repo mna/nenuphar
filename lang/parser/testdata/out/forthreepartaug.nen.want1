@@ -1,0 +1,13 @@
+[0:32] chunk
+. [0:32] block {stmts=1}
+. . [0:31] for {clauses=2}
+. . . [4:10] augmented assignment '+=' {left=1, right=1}
+. . . . [4:5] x
+. . . . [9:10] int literal 1
+. . . [14:20] augmented assignment '-=' {left=1, right=1}
+. . . . [14:15] x
+. . . . [19:20] int literal 2
+. . . [25:28] block {stmts=1}
+. . . . [25:27] expr stmt
+. . . . . [25:27] call {args=0}
+. . . . . . [25:26] f

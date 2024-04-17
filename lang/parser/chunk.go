@@ -20,7 +20,8 @@ func (p *parser) parseBlock(endToks ...token.Token) *ast.Block {
 	var block ast.Block
 	var list []ast.Stmt
 
-	block.Start = p.preCommentPos
+	p.enterBlock(&block)
+	defer func() { p.exitBlock(&block) }()
 
 	// EOF is always an end token
 	endToks = append(endToks, token.EOF)

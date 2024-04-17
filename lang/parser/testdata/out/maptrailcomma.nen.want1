@@ -1,0 +1,11 @@
+[0:43] chunk
+. [0:43] block {stmts=1}
+. . [0:42] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:42] map {keyvals=3}
+. . . . [11:13] f1
+. . . . [15:16] int literal 1
+. . . . [19:21] f2
+. . . . [23:28] false
+. . . . [31:33] f3
+. . . . [35:39] string literal "ok"

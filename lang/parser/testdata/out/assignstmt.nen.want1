@@ -1,0 +1,7 @@
+[0:12] chunk
+. [0:12] block {stmts=1}
+. . [0:11] assignment {left=2, right=2}
+. . . [0:1] x
+. . . [3:4] y
+. . . [7:8] int literal 1
+. . . [10:11] int literal 2

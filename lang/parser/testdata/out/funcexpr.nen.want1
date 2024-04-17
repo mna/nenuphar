@@ -1,0 +1,6 @@
+[0:17] chunk
+. [0:17] block {stmts=1}
+. . [0:16] let declaration {left=1, right=1}
+. . . [4:5] x
+. . . [8:16] fn {params=0}
+. . . . [13:13] block {stmts=0}

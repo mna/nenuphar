@@ -1,0 +1,2 @@
+-- correctly unpacks the result of the call
+let x = ...a.b[c].d()

@@ -5,6 +5,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package scanner implements the scanner that breaks the source code into its
+// atomic tokens, for processing by the parser.
 package scanner
 
 import (

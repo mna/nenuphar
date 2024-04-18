@@ -5,6 +5,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package machine implements the virtual machine that executes the
+// bytecode-compiled form of the source code. It also provides the runtime
+// representation of the various builtin values.
 package machine
 
 import (

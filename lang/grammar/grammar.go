@@ -25,6 +25,7 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************/
 
+// Package grammar contains the reference EBNF grammar of the language.
 package grammar
 
 // just so that test coverage for this package returns 100% and not [no statements]

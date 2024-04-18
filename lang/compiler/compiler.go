@@ -5,6 +5,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package compiler takes a parsed and resolved AST and compiles it to bytecode
+// that can be executed by the virtual machine. It also provides a
+// pseudo-assembly serialization and deserialization to encode in textual form
+// a program that closely matches the binary format of the compiled form.
 package compiler
 
 type insn struct {

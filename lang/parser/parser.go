@@ -1,3 +1,5 @@
+// Package parser implements the parser that transforms source code into an
+// abstract syntax tree (AST).
 package parser
 
 import (

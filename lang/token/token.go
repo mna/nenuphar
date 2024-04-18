@@ -1,3 +1,4 @@
+// Package token defines the tokens and source code position representation.
 package token
 
 import "strconv"
@@ -75,7 +76,7 @@ const (
 	// Keywords
 	FUNCTION
 	CLASS
-	NULL // TODO: use universe lookup to resolve null, true, false and import?
+	NULL
 	TRUE
 	FALSE
 	END

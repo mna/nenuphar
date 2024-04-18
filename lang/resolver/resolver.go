@@ -53,3 +53,17 @@
 //   - MethodDef: e.g. "fn Bar() .. end" inside a class. TBD.
 //   - FieldDef: e.g. "let x = 1" inside a class. TBD.
 package resolver
+
+type block struct {
+	parent *block // nil for file block
+	fn     *Function
+
+	// bindings maps a name to its binding. A local binding has an index
+	// into its innermost enclosing container's locals array. A free
+	// binding has an index into its innermost enclosing function's
+	// freevars array.
+	bindings map[string]*Binding
+
+	// children records the child blocks of the current one.
+	children []*block
+}

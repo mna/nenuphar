@@ -59,6 +59,7 @@ import (
 	"fmt"
 	"go/scanner"
 	"go/token"
+	"log"
 
 	"github.com/mna/nenuphar/lang/ast"
 )
@@ -84,7 +85,7 @@ func ResolveFiles(ctx context.Context, fset *token.FileSet, chunks []*ast.Chunk,
 	for _, ch := range chunks {
 		start, _ := ch.Span()
 		r.init(fset.File(start))
-		// TODO: r.block(ch.Block)
+		r.block(ch.Block, ch)
 	}
 	r.errors.Sort()
 	return r.errors.Err()
@@ -119,7 +120,13 @@ func (r *resolver) init(file *token.File) {
 }
 
 func (r *resolver) push(b *block) {
-	r.env.children = append(r.env.children, b)
+	if r.env != nil {
+		r.env.children = append(r.env.children, b)
+		if b.fn == nil {
+			// in same function as before
+			b.fn = r.env.fn
+		}
+	}
 	b.parent = r.env
 	r.env = b
 }
@@ -130,6 +137,89 @@ func (r *resolver) pop() {
 
 func (r *resolver) errorf(p token.Pos, format string, args ...interface{}) {
 	r.errors.Add(r.file.Position(p), fmt.Sprintf(format, args...))
+}
+
+func (r *resolver) block(b *ast.Block, from ast.Node) {
+	var blk block
+	switch v := from.(type) {
+	case *ast.Chunk:
+		blk.fn = &Function{Definition: v}
+	}
+
+	r.push(&blk)
+	for _, s := range b.Stmts {
+		r.stmt(s)
+	}
+	r.pop()
+}
+
+func (r *resolver) stmt(stmt ast.Stmt) {
+	switch stmt := stmt.(type) {
+	case *ast.AssignStmt:
+		//r.expr(stmt.RHS)
+		//isAugmented := stmt.Op != syntax.EQ
+		//r.assign(stmt.LHS, isAugmented)
+
+	case *ast.ClassStmt:
+
+	case *ast.ExprStmt:
+		//r.expr(stmt.Expr)
+
+	case *ast.ForInStmt:
+
+	case *ast.ForLoopStmt:
+		//if !r.options.TopLevelControl && r.container().function == nil {
+		//	r.errorf(stmt.For, "for loop not within a function")
+		//}
+		//r.expr(stmt.X)
+		//const isAugmented = false
+		//r.assign(stmt.Vars, isAugmented)
+		//r.loops++
+		//r.stmts(stmt.Body)
+		//r.loops--
+
+	case *ast.FuncStmt:
+		//r.bind(stmt.Name)
+		//fn := &Function{
+		//	Name:   stmt.Name.Name,
+		//	Pos:    stmt.Def,
+		//	Params: stmt.Params,
+		//	Body:   stmt.Body,
+		//}
+		//stmt.Function = fn
+		//r.function(fn, stmt.Def)
+
+	case *ast.IfGuardStmt:
+		//if !r.options.TopLevelControl && r.container().function == nil {
+		//	r.errorf(stmt.If, "if statement not within a function")
+		//}
+		//r.expr(stmt.Cond)
+		//r.ifstmts++
+		//r.stmts(stmt.True)
+		//r.stmts(stmt.False)
+		//r.ifstmts--
+
+	case *ast.LabelStmt:
+
+	case *ast.ReturnLikeStmt:
+		// break/continue:
+		//if r.loops == 0 && (stmt.Token == syntax.BREAK || stmt.Token == syntax.CONTINUE) {
+		//	r.errorf(stmt.TokenPos, "%s not in a loop", stmt.Token)
+		//}
+
+		// return:
+		//if r.container().function == nil {
+		//	r.errorf(stmt.Return, "return statement not within a function")
+		//}
+		//if stmt.Result != nil {
+		//	r.expr(stmt.Result)
+		//}
+
+	case *ast.SimpleBlockStmt:
+
+	default:
+		log.Panicf("unexpected stmt %T", stmt)
+	}
 }
 
 type block struct {

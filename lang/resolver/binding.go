@@ -49,7 +49,8 @@ type Binding struct {
 	// It is zero if Scope is Predeclared, Universal, or Undefined.
 	Index int
 
-	// Decl is the declaration node of this binding.
+	// Decl is the declaration node of this binding, or first reference for a
+	// global binding (predeclared or universal).
 	Decl *ast.IdentExpr
 }
 

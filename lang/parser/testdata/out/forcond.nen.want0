@@ -1,4 +1,4 @@
-[0:17] chunk
+[0:17] chunk testdata/in/forcond.nen
 . [0:17] block {stmts=1}
 . . [0:16] for {clauses=1}
 . . . [4:5] x

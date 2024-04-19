@@ -46,8 +46,10 @@ func ParseFiles(ctx context.Context, mode Mode, files ...string) (*token.FileSet
 
 		p.init(fs, file, b)
 		ch := p.parseChunk()
+		ch.Name = file
 		res = append(res, ch)
 	}
+	p.errors.Sort()
 	return fs, res, p.errors.Err()
 }
 
@@ -60,6 +62,7 @@ func ParseChunk(ctx context.Context, mode Mode, fset *token.FileSet, filename st
 	p.parseComments = mode&Comments != 0
 	p.init(fset, filename, src)
 	ch := p.parseChunk()
+	ch.Name = filename
 	return ch, p.errors.Err()
 }
 
@@ -100,6 +103,7 @@ func (p *parser) init(fset *token.FileSet, filename string, src []byte) {
 	p.file = fset.AddFile(filename, -1, len(src))
 	p.scanner.Init(p.file, src, p.errors.Add)
 	p.pendingComments = nil
+	p.blocksStack = p.blocksStack[:0]
 
 	// advance to first token
 	p.advance()

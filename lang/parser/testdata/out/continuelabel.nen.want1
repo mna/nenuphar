@@ -1,4 +1,4 @@
-[0:21] chunk
+[0:21] chunk testdata/in/continuelabel.nen
 . [0:21] block {stmts=2}
 . . [0:7] label
 . . . [2:5] lbl

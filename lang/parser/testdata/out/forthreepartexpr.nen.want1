@@ -1,4 +1,4 @@
-[0:23] chunk
+[0:23] chunk testdata/in/forthreepartexpr.nen
 . [0:23] block {stmts=1}
 . . [0:22] for {clauses=2}
 . . . [4:6] expr stmt

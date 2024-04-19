@@ -1,4 +1,4 @@
-[0:14] chunk
+[0:14] chunk testdata/in/throwstmt.nen
 . [0:14] block {stmts=1}
 . . [0:13] throw {expr=1}
 . . . [6:13] string literal "error"

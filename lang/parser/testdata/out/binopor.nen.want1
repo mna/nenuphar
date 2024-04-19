@@ -1,4 +1,4 @@
-[0:15] chunk
+[0:15] chunk testdata/in/binopor.nen
 . [0:15] block {stmts=1}
 . . [0:14] let declaration {left=1, right=1}
 . . . [4:5] x

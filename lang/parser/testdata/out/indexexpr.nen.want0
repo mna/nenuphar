@@ -1,4 +1,4 @@
-[0:22] chunk
+[0:22] chunk testdata/in/indexexpr.nen
 . [0:22] block {stmts=1}
 . . [0:21] let declaration {left=1, right=1}
 . . . [4:5] x

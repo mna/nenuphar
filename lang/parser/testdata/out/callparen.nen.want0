@@ -1,4 +1,4 @@
-[0:8] chunk
+[0:8] chunk testdata/in/callparen.nen
 . [0:8] block {stmts=1}
 . . [0:7] expr stmt
 . . . [0:7] (expr)

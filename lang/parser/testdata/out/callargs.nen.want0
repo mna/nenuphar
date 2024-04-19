@@ -1,4 +1,4 @@
-[0:11] chunk
+[0:11] chunk testdata/in/callargs.nen
 . [0:11] block {stmts=1}
 . . [0:10] expr stmt
 . . . [0:10] call {args=3}

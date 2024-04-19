@@ -1,4 +1,4 @@
-[0:7] chunk
+[0:7] chunk testdata/in/augassignstmt.nen
 . [0:7] block {stmts=1}
 . . [0:6] augmented assignment '+=' {left=1, right=1}
 . . . [0:1] x

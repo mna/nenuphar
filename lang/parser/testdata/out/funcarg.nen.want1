@@ -1,4 +1,4 @@
-[0:18] chunk
+[0:18] chunk testdata/in/funcarg.nen
 . [0:18] block {stmts=1}
 . . [0:17] fn decl {params=1}
 . . . [3:4] x

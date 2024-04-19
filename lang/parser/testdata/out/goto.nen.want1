@@ -1,4 +1,4 @@
-[0:18] chunk
+[0:18] chunk testdata/in/goto.nen
 . [0:18] block {stmts=2}
 . . [0:8] goto {expr=1}
 . . . [5:8] lbl

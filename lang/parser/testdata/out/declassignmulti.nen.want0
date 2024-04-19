@@ -1,4 +1,4 @@
-[0:20] chunk
+[0:20] chunk testdata/in/declassignmulti.nen
 . [0:20] block {stmts=1}
 . . [0:19] let declaration {left=3, right=2}
 . . . [4:5] x

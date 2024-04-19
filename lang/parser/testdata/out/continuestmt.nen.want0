@@ -1,3 +1,3 @@
-[0:9] chunk
+[0:9] chunk testdata/in/continuestmt.nen
 . [0:9] block {stmts=1}
 . . [0:8] continue {expr=0}

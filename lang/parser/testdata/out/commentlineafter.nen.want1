@@ -1,4 +1,4 @@
-[0:40] chunk
+[0:40] chunk testdata/in/commentlineafter.nen
 . [0:40] block {stmts=1}
 . . [0:39] if else
 . . . [3:4] x

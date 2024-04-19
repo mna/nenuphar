@@ -1,4 +1,4 @@
-[0:26] chunk
+[0:26] chunk testdata/in/funcargstrailcomma.nen
 . [0:26] block {stmts=1}
 . . [0:25] fn decl {params=2}
 . . . [3:8] comma

@@ -1,4 +1,4 @@
-[0:41] chunk
+[0:41] chunk testdata/in/ifdeclelsestmt.nen
 . [0:41] block {stmts=1}
 . . [0:40] if else
 . . . [3:16] const declaration {left=1, right=1}

@@ -1,4 +1,4 @@
-[0:30] chunk
+[0:30] chunk testdata/in/arraytrailcomma.nen
 . [0:30] block {stmts=1}
 . . [0:29] let declaration {left=1, right=1}
 . . . [4:5] x

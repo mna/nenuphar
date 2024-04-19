@@ -1,2 +1,2 @@
-[0:6] chunk
+[0:6] chunk testdata/in/comment.nen
 . [0:6] block {stmts=0}

@@ -1,4 +1,4 @@
-[0:112] chunk
+[0:112] chunk testdata/in/binopprecedence.nen
 . [0:112] block {stmts=1}
 . . [0:111] let declaration {left=1, right=1}
 . . . [4:5] x

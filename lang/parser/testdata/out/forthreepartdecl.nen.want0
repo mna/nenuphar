@@ -1,4 +1,4 @@
-[0:41] chunk
+[0:41] chunk testdata/in/forthreepartdecl.nen
 . [0:41] block {stmts=1}
 . . [0:40] for {clauses=3}
 . . . [4:13] let declaration {left=1, right=1}

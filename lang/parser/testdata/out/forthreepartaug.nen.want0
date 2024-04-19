@@ -1,4 +1,4 @@
-[0:32] chunk
+[0:32] chunk testdata/in/forthreepartaug.nen
 . [0:32] block {stmts=1}
 . . [0:31] for {clauses=2}
 . . . [4:10] augmented assignment '+=' {left=1, right=1}

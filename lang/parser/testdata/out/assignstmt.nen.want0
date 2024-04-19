@@ -1,4 +1,4 @@
-[0:12] chunk
+[0:12] chunk testdata/in/assignstmt.nen
 . [0:12] block {stmts=1}
 . . [0:11] assignment {left=2, right=2}
 . . . [0:1] x

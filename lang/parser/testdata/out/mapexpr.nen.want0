@@ -1,4 +1,4 @@
-[0:23] chunk
+[0:23] chunk testdata/in/mapexpr.nen
 . [0:23] block {stmts=1}
 . . [0:22] let declaration {left=1, right=1}
 . . . [4:5] x

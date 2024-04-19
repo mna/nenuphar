@@ -1,4 +1,4 @@
-[0:35] chunk
+[0:35] chunk testdata/in/funcargsvararg.nen
 . [0:35] block {stmts=1}
 . . [0:34] fn decl ... {params=4}
 . . . [3:11] catchall

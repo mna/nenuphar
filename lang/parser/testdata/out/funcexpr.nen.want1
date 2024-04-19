@@ -1,4 +1,4 @@
-[0:17] chunk
+[0:17] chunk testdata/in/funcexpr.nen
 . [0:17] block {stmts=1}
 . . [0:16] let declaration {left=1, right=1}
 . . . [4:5] x

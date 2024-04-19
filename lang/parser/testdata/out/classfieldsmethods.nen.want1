@@ -1,4 +1,4 @@
-[0:127] chunk
+[0:127] chunk testdata/in/classfieldsmethods.nen
 . [0:127] block {stmts=1}
 . . [0:126] class decl {fields=3, inherits=1, methods=2}
 . . . [6:7] X

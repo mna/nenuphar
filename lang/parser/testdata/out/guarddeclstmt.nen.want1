@@ -1,4 +1,4 @@
-[0:42] chunk
+[0:42] chunk testdata/in/guarddeclstmt.nen
 . [0:42] block {stmts=1}
 . . [0:41] guard else
 . . . [6:19] const declaration {left=1, right=1}

@@ -1,4 +1,4 @@
-[0:15] chunk
+[0:15] chunk testdata/in/funcbangstmt.nen
 . [0:15] block {stmts=1}
 . . [0:14] fn decl {params=0}
 . . . [3:4] x

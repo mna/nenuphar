@@ -1,4 +1,4 @@
-[0:12] chunk
+[0:12] chunk testdata/in/callmust.nen
 . [0:12] block {stmts=1}
 . . [0:11] expr stmt
 . . . [0:11] unary must

@@ -1,4 +1,4 @@
-[0:10] chunk
+[0:10] chunk testdata/in/deferstmt.nen
 . [0:10] block {stmts=1}
 . . [0:9] defer
 . . . [6:6] block {stmts=0}

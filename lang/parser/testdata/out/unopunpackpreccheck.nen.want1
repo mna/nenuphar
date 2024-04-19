@@ -1,4 +1,4 @@
-[0:66] chunk
+[0:66] chunk testdata/in/unopunpackpreccheck.nen
 . [0:66] block {stmts=1}
 . . [44:65] let declaration {left=1, right=1}
 . . . [0:43] comment  correctly unpacks the result of the call

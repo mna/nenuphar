@@ -1,4 +1,4 @@
-[0:27] chunk
+[0:27] chunk testdata/in/commentdodecl.nen
 . [0:27] block {stmts=1}
 . . [0:26] do
 . . . [4:23] block {stmts=1}

@@ -1,4 +1,4 @@
-[0:29] chunk
+[0:29] chunk testdata/in/ifdeclstmt.nen
 . [0:29] block {stmts=1}
 . . [0:28] if
 . . . [3:14] let declaration {left=1, right=1}

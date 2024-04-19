@@ -1,4 +1,4 @@
-[0:16] chunk
+[0:16] chunk testdata/in/dotexpr.nen
 . [0:16] block {stmts=1}
 . . [0:15] let declaration {left=1, right=1}
 . . . [4:5] x

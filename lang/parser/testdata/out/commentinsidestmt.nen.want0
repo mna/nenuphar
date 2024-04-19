@@ -1,4 +1,4 @@
-[0:54] chunk
+[0:54] chunk testdata/in/commentinsidestmt.nen
 . [0:54] block {stmts=1}
 . . [0:53] if elseif
 . . . [3:4] x

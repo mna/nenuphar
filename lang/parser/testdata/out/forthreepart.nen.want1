@@ -1,4 +1,4 @@
-[0:37] chunk
+[0:37] chunk testdata/in/forthreepart.nen
 . [0:37] block {stmts=1}
 . . [0:36] for {clauses=3}
 . . . [4:9] assignment {left=1, right=1}

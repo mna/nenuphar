@@ -1,4 +1,4 @@
-[0:36] chunk
+[0:36] chunk testdata/in/classfields.nen
 . [0:36] block {stmts=1}
 . . [0:35] class decl {fields=2, inherits=0, methods=0}
 . . . [6:7] X

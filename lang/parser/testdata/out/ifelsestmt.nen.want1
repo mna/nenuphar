@@ -1,4 +1,4 @@
-[0:30] chunk
+[0:30] chunk testdata/in/ifelsestmt.nen
 . [0:30] block {stmts=1}
 . . [0:29] if else
 . . . [3:5] ok

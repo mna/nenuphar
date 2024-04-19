@@ -1,4 +1,4 @@
-[0:12] chunk
+[0:12] chunk testdata/in/tupleparenexpr.nen
 . [0:12] block {stmts=1}
 . . [0:11] let declaration {left=1, right=1}
 . . . [4:5] x

@@ -2,6 +2,8 @@ package ast
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/mna/nenuphar/lang/token"
 )
@@ -44,7 +46,13 @@ type (
 	}
 )
 
-func (n *Chunk) Format(f fmt.State, verb rune) { format(f, verb, n, "chunk", nil) }
+func (n *Chunk) Format(f fmt.State, verb rune) {
+	lbl := "chunk"
+	if n.Name != "" {
+		lbl += " " + strings.ReplaceAll(n.Name, string(os.PathSeparator), "/")
+	}
+	format(f, verb, n, lbl, nil)
+}
 func (n *Chunk) Span() (start, end token.Pos) {
 	if n.Block != nil {
 		return n.Block.Span()

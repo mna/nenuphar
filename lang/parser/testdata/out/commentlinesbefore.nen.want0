@@ -1,4 +1,4 @@
-[0:31] chunk
+[0:31] chunk testdata/in/commentlinesbefore.nen
 . [0:31] block {stmts=1}
 . . [0:30] defer
 . . . [7:27] block {stmts=1}

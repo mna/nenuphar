@@ -1,4 +1,4 @@
-[0:32] chunk
+[0:32] chunk testdata/in/forinmulti.nen
 . [0:32] block {stmts=1}
 . . [0:31] for in {left=3, right=2}
 . . . [4:5] x

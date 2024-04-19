@@ -1,4 +1,4 @@
-[0:3] chunk
+[0:3] chunk testdata/in/callbang.nen
 . [0:3] block {stmts=1}
 . . [0:2] expr stmt
 . . . [0:2] call {args=0}

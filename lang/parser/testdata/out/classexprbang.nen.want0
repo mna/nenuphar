@@ -1,4 +1,4 @@
-[0:19] chunk
+[0:19] chunk testdata/in/classexprbang.nen
 . [0:19] block {stmts=1}
 . . [0:18] let declaration {left=1, right=1}
 . . . [4:5] x

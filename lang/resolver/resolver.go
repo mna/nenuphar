@@ -55,20 +55,47 @@
 package resolver
 
 import (
+	"context"
 	"fmt"
 	"go/scanner"
 	"go/token"
+
+	"github.com/mna/nenuphar/lang/ast"
 )
 
-func Resolve() {
-	// TODO: define public API...
+// ResolveFiles takes the file set and corresponding list of chunks from a
+// successful parse result and resolves the bindings used in the source code.
+// On success, the AST is enriched with binding resolution information and is
+// ready to be compiled to bytecode for virtual machine execution.
+//
+// An AST that resulted in errors in the parse phase should never be passed to
+// the resolver, the behavior is undefined.
+//
+// The returned error, if non-nil, is guaranteed to be a scanner.ErrorList.
+func ResolveFiles(ctx context.Context, fset *token.FileSet, chunks []*ast.Chunk,
+	isPredeclared, isUniversal func(name string) bool) error {
+	if len(chunks) == 0 {
+		return nil
+	}
+
+	var r resolver
+	r.isPredeclared = isPredeclared
+	r.isUniversal = isUniversal
+	for _, ch := range chunks {
+		start, _ := ch.Span()
+		r.init(fset.File(start))
+		// TODO: r.block(ch.Block)
+	}
+	r.errors.Sort()
+	return r.errors.Err()
 }
 
 type resolver struct {
-	file token.File
+	file *token.File
 
-	// env is the current local environment, a linked list of blocks, innermost
-	// first when resolving ends. The tail of the list is the file block.
+	// env is the current local environment, a linked list of blocks, with the
+	// current innermost block first and the tail of the list the file
+	// (top-level) block.
 	env *block
 
 	// globals saves the bindings of predeclared and universal names when they
@@ -82,6 +109,13 @@ type resolver struct {
 	loops int
 
 	errors scanner.ErrorList
+}
+
+func (r *resolver) init(file *token.File) {
+	r.file = file
+	r.env = nil
+	r.globals = make(map[string]*Binding)
+	r.loops = 0
 }
 
 func (r *resolver) push(b *block) {

@@ -1,4 +1,4 @@
-[0:16] chunk
+[0:16] chunk testdata/in/calliife.nen
 . [0:16] block {stmts=1}
 . . [0:15] expr stmt
 . . . [0:15] call {args=0}

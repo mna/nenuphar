@@ -1,4 +1,4 @@
-[0:60] chunk
+[0:60] chunk testdata/in/atomicexpr.nen
 . [0:60] block {stmts=1}
 . . [0:59] let declaration {left=6, right=6}
 . . . [4:5] a

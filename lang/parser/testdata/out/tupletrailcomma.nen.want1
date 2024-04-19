@@ -1,4 +1,4 @@
-[0:31] chunk
+[0:31] chunk testdata/in/tupletrailcomma.nen
 . [0:31] block {stmts=1}
 . . [0:30] let declaration {left=1, right=1}
 . . . [4:5] x

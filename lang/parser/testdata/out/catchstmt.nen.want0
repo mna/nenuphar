@@ -1,4 +1,4 @@
-[0:10] chunk
+[0:10] chunk testdata/in/catchstmt.nen
 . [0:10] block {stmts=1}
 . . [0:9] catch
 . . . [6:6] block {stmts=0}

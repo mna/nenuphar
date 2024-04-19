@@ -2,7 +2,8 @@ package resolver
 
 import (
 	"fmt"
-	"go/ast"
+
+	"github.com/mna/nenuphar/lang/ast"
 )
 
 // The Scope of Binding indicates what kind of scope it has.
@@ -15,6 +16,7 @@ const (
 	Free                     // name is cell of some enclosing function
 	Predeclared              // name is predeclared for this module (provided to its environment)
 	Universal                // name is universal (a language built-in)
+	Label                    // name is a label
 )
 
 var scopeNames = [...]string{
@@ -24,6 +26,7 @@ var scopeNames = [...]string{
 	Free:        "free",
 	Predeclared: "predeclared",
 	Universal:   "universal",
+	Label:       "label",
 }
 
 func (s Scope) String() string {
@@ -42,15 +45,31 @@ type Binding struct {
 	// Index records the index into the enclosing
 	// - function's Locals, if Scope==Local
 	// - function's FreeVars, if Scope==Free
+	// - function's Labels, if Scope==Label
 	// It is zero if Scope is Predeclared, Universal, or Undefined.
 	Index int
 
-	// Decl is the statement that declares this binding.
-	Decl ast.Stmt
+	// Decl is the declaration node of this binding.
+	Decl *ast.IdentExpr
 }
 
 type Function struct {
 	Definition ast.Node   // can be *Chunk, *ClassStmt, *ClassExpr, *FuncStmt or *FuncExpr
+	HasVarArg  bool       // for function, if last parameter is vararg
 	Locals     []*Binding // this function's local/cell variables, parameters first
 	FreeVars   []*Binding // enclosing cells to capture in closure
+	Labels     []*Binding // the labels defined in this function
+}
+
+// IsClass indicates if the function is a class, which has different scoping
+// rules (TODO: ?).
+func (f *Function) IsClass() bool {
+	switch f.Definition.(type) {
+	case *ast.ClassStmt:
+		return true
+	case *ast.ClassExpr:
+		return true
+	default:
+		return false
+	}
 }

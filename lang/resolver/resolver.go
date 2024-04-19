@@ -54,6 +54,50 @@
 //   - FieldDef: e.g. "let x = 1" inside a class. TBD.
 package resolver
 
+import (
+	"fmt"
+	"go/scanner"
+	"go/token"
+)
+
+func Resolve() {
+	// TODO: define public API...
+}
+
+type resolver struct {
+	file token.File
+
+	// env is the current local environment, a linked list of blocks, innermost
+	// first when resolving ends. The tail of the list is the file block.
+	env *block
+
+	// globals saves the bindings of predeclared and universal names when they
+	// are first referenced.
+	globals map[string]*Binding
+
+	// predicates to check if an unresolved name is predeclared or universal.
+	isPredeclared, isUniversal func(name string) bool
+
+	// number of enclosing for loops
+	loops int
+
+	errors scanner.ErrorList
+}
+
+func (r *resolver) push(b *block) {
+	r.env.children = append(r.env.children, b)
+	b.parent = r.env
+	r.env = b
+}
+
+func (r *resolver) pop() {
+	r.env = r.env.parent
+}
+
+func (r *resolver) errorf(p token.Pos, format string, args ...interface{}) {
+	r.errors.Add(r.file.Position(p), fmt.Sprintf(format, args...))
+}
+
 type block struct {
 	parent *block // nil for file block
 	fn     *Function

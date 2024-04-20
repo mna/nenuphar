@@ -108,6 +108,9 @@ type (
 	IdentExpr struct {
 		Start token.Pos
 		Lit   string
+
+		// filled by the resolver
+		Binding any // *resolver.Binding, 'any' to avoid cycles
 	}
 
 	// IndexExpr represents an index expression e.g. x[y].

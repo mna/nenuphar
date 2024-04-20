@@ -205,7 +205,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		//r.ifstmts--
 
 	case *ast.LabelStmt:
-		r.label(stmt.Name)
+		r.bindLabel(stmt.Name)
 
 	case *ast.ReturnLikeStmt:
 		// break, continue and goto must refer to a valid label
@@ -276,12 +276,72 @@ func (r *resolver) expr(expr ast.Expr) {
 }
 
 func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
+	if _, ok := r.env.bindings[ident.Lit]; ok {
+		// rule: can only shadow in a child block
+		r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)
+		return
+	}
+
+	bdg := &Binding{Scope: Local, Const: isConst, Decl: ident}
+	ix := len(r.env.fn.Locals)
+	bdg.Index = ix
+	r.env.fn.Locals = append(r.env.fn.Locals, bdg)
+	r.env.bindings[ident.Lit] = bdg
+
+	ident.Binding = bdg
 }
 
-func (r *resolver) label(ident *ast.IdentExpr) {
+func (r *resolver) bindLabel(ident *ast.IdentExpr) {
 }
 
 func (r *resolver) use(ident *ast.IdentExpr) {
+	startFn := r.env.fn
+	for env := r.env; env != nil; env = env.parent {
+		if bdg := env.bindings[ident.Lit]; bdg != nil {
+			if env.fn != startFn {
+				// Found in a parent block which belongs to enclosing function. Add the
+				// parent's binding to the function's freevars, and add a new 'free'
+				// binding to the inner function's block, and turn the parent's local
+				// into cell.
+				if bdg.Scope == Local {
+					bdg.Scope = Cell
+				}
+				ix := len(r.env.fn.FreeVars)
+				r.env.fn.FreeVars = append(r.env.fn.FreeVars, bdg)
+
+				bdg = &Binding{
+					Decl:  bdg.Decl,
+					Const: bdg.Const,
+					Scope: Free,
+					Index: ix,
+				}
+				r.env.bindings[ident.Lit] = bdg
+			}
+			ident.Binding = bdg
+			return
+		}
+	}
+
+	// look for a predeclared or universal binding
+	if r.isPredeclared != nil && r.isPredeclared(ident.Lit) {
+		bdg, ok := r.globals[ident.Lit]
+		if !ok {
+			bdg = &Binding{Scope: Predeclared, Decl: ident}
+			r.globals[ident.Lit] = bdg
+		}
+		ident.Binding = bdg
+		return
+	}
+	if r.isUniversal != nil && r.isUniversal(ident.Lit) {
+		bdg, ok := r.globals[ident.Lit]
+		if !ok {
+			bdg = &Binding{Scope: Universal, Decl: ident}
+			r.globals[ident.Lit] = bdg
+		}
+		ident.Binding = bdg
+		return
+	}
+	r.errorf(ident.Start, "undefined: %s", ident.Lit)
 }
 
 func (r *resolver) useLabel(ident *ast.IdentExpr) {
@@ -296,7 +356,7 @@ type block struct {
 	isDeferCatch bool
 
 	// bindings maps a name to its binding. A local binding has an index
-	// into its innermost enclosing container's locals array. A free
+	// into its innermost enclosing function's locals array. A free
 	// binding has an index into its innermost enclosing function's
 	// freevars array.
 	bindings map[string]*Binding

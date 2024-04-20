@@ -42,6 +42,9 @@ func (s Scope) String() string {
 type Binding struct {
 	Scope Scope
 
+	// Const is true if the binding is a constant.
+	Const bool
+
 	// Index records the index into the enclosing
 	// - function's Locals, if Scope==Local
 	// - function's FreeVars, if Scope==Free
@@ -60,6 +63,13 @@ type Function struct {
 	Locals     []*Binding // this function's local/cell variables, parameters first
 	FreeVars   []*Binding // enclosing cells to capture in closure
 	Labels     []*Binding // the labels defined in this function
+
+	// number of enclosing for loops
+	loops int
+	// number of enclosing catch blocks
+	catches int
+	// number of enclosing defer blocks
+	defers int
 }
 
 // IsClass indicates if the function is a class, which has different scoping

@@ -9,7 +9,7 @@ import (
 type (
 	// AssignStmt represents an assignment statement, e.g. x = y + z which may
 	// also be a, b, c = 1, 2, 3 or an AugAssignStmt x += 2. It is also used to
-	// represent DeclStmt.
+	// represent DeclStmt, e.g. let x = 1.
 	AssignStmt struct {
 		DeclType    token.Token // zero if not a DeclStmt
 		DeclStart   token.Pos   // zero if not a DeclStmt

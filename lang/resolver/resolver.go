@@ -57,11 +57,10 @@ package resolver
 import (
 	"context"
 	"fmt"
-	"go/scanner"
-	"go/token"
-	"log"
 
 	"github.com/mna/nenuphar/lang/ast"
+	"github.com/mna/nenuphar/lang/scanner"
+	"github.com/mna/nenuphar/lang/token"
 )
 
 // ResolveFiles takes the file set and corresponding list of chunks from a
@@ -106,9 +105,6 @@ type resolver struct {
 	// predicates to check if an unresolved name is predeclared or universal.
 	isPredeclared, isUniversal func(name string) bool
 
-	// number of enclosing for loops
-	loops int
-
 	errors scanner.ErrorList
 }
 
@@ -116,7 +112,6 @@ func (r *resolver) init(file *token.File) {
 	r.file = file
 	r.env = nil
 	r.globals = make(map[string]*Binding)
-	r.loops = 0
 }
 
 func (r *resolver) push(b *block) {
@@ -156,14 +151,24 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 func (r *resolver) stmt(stmt ast.Stmt) {
 	switch stmt := stmt.(type) {
 	case *ast.AssignStmt:
-		//r.expr(stmt.RHS)
-		//isAugmented := stmt.Op != syntax.EQ
-		//r.assign(stmt.LHS, isAugmented)
+		// resolve the rhs first
+		for _, e := range stmt.Right {
+			r.expr(e)
+		}
+
+		for _, e := range stmt.Left {
+			if stmt.DeclType != token.ILLEGAL {
+				// this is a declaration, create a new binding
+				r.bind(e.(*ast.IdentExpr), stmt.DeclType == token.CONST)
+			} else {
+				r.expr(e)
+			}
+		}
 
 	case *ast.ClassStmt:
 
 	case *ast.ExprStmt:
-		//r.expr(stmt.Expr)
+		r.expr(stmt.Expr)
 
 	case *ast.ForInStmt:
 
@@ -200,26 +205,86 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		//r.ifstmts--
 
 	case *ast.LabelStmt:
+		r.label(stmt.Name)
 
 	case *ast.ReturnLikeStmt:
-		// break/continue:
-		//if r.loops == 0 && (stmt.Token == syntax.BREAK || stmt.Token == syntax.CONTINUE) {
-		//	r.errorf(stmt.TokenPos, "%s not in a loop", stmt.Token)
-		//}
+		// break, continue and goto must refer to a valid label
+		if stmt.Type == token.BREAK || stmt.Type == token.CONTINUE || stmt.Type == token.GOTO {
+			if stmt.Expr != nil {
+				r.useLabel(stmt.Expr.(*ast.IdentExpr))
+			}
+			break
+		}
 
-		// return:
-		//if r.container().function == nil {
-		//	r.errorf(stmt.Return, "return statement not within a function")
-		//}
-		//if stmt.Result != nil {
-		//	r.expr(stmt.Result)
-		//}
+		// return or throw is a standard expression
+		// TODO: return cannot be in a defer, throw without expression must be in a
+		// catch
 
 	case *ast.SimpleBlockStmt:
 
 	default:
-		log.Panicf("unexpected stmt %T", stmt)
+		panic(fmt.Sprintf("unexpected stmt %T", stmt))
 	}
+}
+
+func (r *resolver) expr(expr ast.Expr) {
+	switch expr := expr.(type) {
+	case *ast.ArrayLikeExpr:
+		for _, e := range expr.Items {
+			r.expr(e)
+		}
+
+	case *ast.BinOpExpr:
+		r.expr(expr.Left)
+		r.expr(expr.Right)
+
+	case *ast.CallExpr:
+
+	case *ast.ClassExpr:
+
+	case *ast.DotExpr:
+		// ignore right, can be anything (runtime lookup)
+		r.expr(expr.Left)
+
+	case *ast.FuncExpr:
+
+	case *ast.IdentExpr:
+		r.use(expr)
+
+	case *ast.IndexExpr:
+		r.expr(expr.Prefix)
+		r.expr(expr.Index)
+
+	case *ast.LiteralExpr:
+		// nothing to do
+
+	case *ast.MapExpr:
+		for _, it := range expr.Items {
+			r.expr(it.Key)
+			r.expr(it.Value)
+		}
+
+	case *ast.ParenExpr:
+		r.expr(expr.Expr)
+
+	case *ast.UnaryOpExpr:
+		r.expr(expr.Right)
+
+	default:
+		panic(fmt.Sprintf("unexpected expr %T", expr))
+	}
+}
+
+func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
+}
+
+func (r *resolver) label(ident *ast.IdentExpr) {
+}
+
+func (r *resolver) use(ident *ast.IdentExpr) {
+}
+
+func (r *resolver) useLabel(ident *ast.IdentExpr) {
 }
 
 type block struct {

@@ -28,6 +28,7 @@ func (p *parser) parseBlock(endToks ...token.Token) *ast.Block {
 
 	var ending ast.Stmt
 	var endingReported bool
+	var prevLabel *ast.LabelStmt
 	for !tokenIn(p.tok, endToks...) {
 		if stmt := p.parseStmt(); stmt != nil {
 			if ending != nil {
@@ -40,6 +41,14 @@ func (p *parser) parseBlock(endToks ...token.Token) *ast.Block {
 				ending = stmt
 			}
 			list = append(list, stmt)
+			if prevLabel != nil {
+				prevLabel.Next = stmt
+			}
+			if ls, ok := stmt.(*ast.LabelStmt); ok {
+				prevLabel = ls
+			} else {
+				prevLabel = nil
+			}
 		}
 	}
 

@@ -56,6 +56,9 @@ type Stmt interface {
 	// BlockEnding returns true if the statement should only appear as the last
 	// statement in a block (return, break, continue, goto and throw).
 	BlockEnding() bool
+
+	// IsLoop returns true if the statement is a loop.
+	IsLoop() bool
 }
 
 type (

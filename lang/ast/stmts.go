@@ -96,6 +96,15 @@ type (
 		Lcolon token.Pos // start '::'
 		Name   *IdentExpr
 		Rcolon token.Pos // end '::'
+
+		// Next is the statement that follows the label in the same block. It is
+		// filled by the parser but is used by the resolver, to determine the loop
+		// that this label refers to (if Next is a loop). Labels that are not
+		// followed by a loop cannot be used in a break or continue statement.
+		//
+		// Can be nil if the label is at the end of a block (no next statement in
+		// the same block).
+		Next Stmt
 	}
 
 	// ReturnLikeStmt represents a return, break, continue, goto or throw.
@@ -146,6 +155,7 @@ func (n *AssignStmt) Walk(v Visitor) {
 	}
 }
 func (n *AssignStmt) BlockEnding() bool { return false }
+func (n *AssignStmt) IsLoop() bool      { return false }
 
 func (n *BadStmt) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "!bad stmt!", nil)
@@ -155,6 +165,7 @@ func (n *BadStmt) Span() (start, end token.Pos) {
 }
 func (n *BadStmt) Walk(v Visitor)    {}
 func (n *BadStmt) BlockEnding() bool { return false }
+func (n *BadStmt) IsLoop() bool      { return false }
 
 func (n *ClassStmt) Format(f fmt.State, verb rune) {
 	var inheritsCount int
@@ -183,11 +194,13 @@ func (n *ClassStmt) Walk(v Visitor) {
 	}
 }
 func (n *ClassStmt) BlockEnding() bool { return false }
+func (n *ClassStmt) IsLoop() bool      { return false }
 
 func (n *ExprStmt) Format(f fmt.State, verb rune) { format(f, verb, n, "expr stmt", nil) }
 func (n *ExprStmt) Span() (start, end token.Pos)  { return n.Expr.Span() }
 func (n *ExprStmt) Walk(v Visitor)                { Walk(v, n.Expr) }
 func (n *ExprStmt) BlockEnding() bool             { return false }
+func (n *ExprStmt) IsLoop() bool                  { return false }
 
 func (n *IfGuardStmt) Format(f fmt.State, verb rune) {
 	lbl := n.Type.String()
@@ -229,6 +242,7 @@ func (n *IfGuardStmt) Walk(v Visitor) {
 	}
 }
 func (n *IfGuardStmt) BlockEnding() bool { return false }
+func (n *IfGuardStmt) IsLoop() bool      { return false }
 
 func (n *ForLoopStmt) Format(f fmt.State, verb rune) {
 	var clauses int
@@ -262,6 +276,7 @@ func (n *ForLoopStmt) Walk(v Visitor) {
 	}
 }
 func (n *ForLoopStmt) BlockEnding() bool { return false }
+func (n *ForLoopStmt) IsLoop() bool      { return true }
 
 func (n *ForInStmt) Format(f fmt.State, verb rune) {
 	format(f, verb, n, "for in", map[string]int{"left": len(n.Left), "right": len(n.Right)})
@@ -282,6 +297,7 @@ func (n *ForInStmt) Walk(v Visitor) {
 	}
 }
 func (n *ForInStmt) BlockEnding() bool { return false }
+func (n *ForInStmt) IsLoop() bool      { return true }
 
 func (n *FuncStmt) Format(f fmt.State, verb rune) {
 	lbl := "fn decl"
@@ -301,6 +317,7 @@ func (n *FuncStmt) Walk(v Visitor) {
 	Walk(v, n.Body)
 }
 func (n *FuncStmt) BlockEnding() bool { return false }
+func (n *FuncStmt) IsLoop() bool      { return false }
 
 func (n *LabelStmt) Format(f fmt.State, verb rune) { format(f, verb, n, "label", nil) }
 func (n *LabelStmt) Span() (start, end token.Pos) {
@@ -310,6 +327,7 @@ func (n *LabelStmt) Walk(v Visitor) {
 	Walk(v, n.Name)
 }
 func (n *LabelStmt) BlockEnding() bool { return false }
+func (n *LabelStmt) IsLoop() bool      { return false }
 
 func (n *ReturnLikeStmt) Format(f fmt.State, verb rune) {
 	var exprCount int
@@ -331,6 +349,7 @@ func (n *ReturnLikeStmt) Walk(v Visitor) {
 	}
 }
 func (n *ReturnLikeStmt) BlockEnding() bool { return true }
+func (n *ReturnLikeStmt) IsLoop() bool      { return false }
 
 func (n *SimpleBlockStmt) Format(f fmt.State, verb rune) { format(f, verb, n, n.Type.String(), nil) }
 func (n *SimpleBlockStmt) Span() (start, end token.Pos) {
@@ -343,3 +362,4 @@ func (n *SimpleBlockStmt) Walk(v Visitor) {
 	}
 }
 func (n *SimpleBlockStmt) BlockEnding() bool { return false }
+func (n *SimpleBlockStmt) IsLoop() bool      { return false }

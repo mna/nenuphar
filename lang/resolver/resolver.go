@@ -206,6 +206,8 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 
 	case *ast.LabelStmt:
 		r.bindLabel(stmt.Name)
+		// TODO: must keep the associated loop, if there is one (otherwise, only
+		// valid as a goto target).
 
 	case *ast.ReturnLikeStmt:
 		// break, continue and goto must refer to a valid label
@@ -292,6 +294,11 @@ func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
 }
 
 func (r *resolver) bindLabel(ident *ast.IdentExpr) {
+	if _, ok := r.env.bindings[ident.Lit]; ok {
+		// rule: can only shadow in a child block
+		r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)
+		return
+	}
 }
 
 func (r *resolver) use(ident *ast.IdentExpr) {
@@ -309,6 +316,8 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 				ix := len(r.env.fn.FreeVars)
 				r.env.fn.FreeVars = append(r.env.fn.FreeVars, bdg)
 
+				// TODO: must the freevar be defined in every enclosing function up to
+				// the cell? Currently only in the function that references the cell.
 				bdg = &Binding{
 					Decl:  bdg.Decl,
 					Const: bdg.Const,

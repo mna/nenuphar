@@ -213,14 +213,26 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		// break, continue and goto must refer to a valid label
 		if stmt.Type == token.BREAK || stmt.Type == token.CONTINUE || stmt.Type == token.GOTO {
 			if stmt.Expr != nil {
-				r.useLabel(stmt.Expr.(*ast.IdentExpr))
+				requireLoopLabel := stmt.Type != token.GOTO
+				r.useLabel(stmt.Expr.(*ast.IdentExpr), requireLoopLabel)
 			}
 			break
 		}
 
 		// return or throw is a standard expression
-		// TODO: return cannot be in a defer, throw without expression must be in a
-		// catch
+		if stmt.Type == token.RETURN {
+			if r.env.fn.defers > 0 {
+				// TODO: return cannot be in a defer
+			}
+		} else if stmt.Type == token.THROW {
+			if stmt.Expr == nil && r.env.fn.catches == 0 {
+				// TODO: cannot throw without expression outside of a catch
+			}
+		}
+
+		if stmt.Expr != nil {
+			r.expr(stmt.Expr)
+		}
 
 	case *ast.SimpleBlockStmt:
 
@@ -294,11 +306,11 @@ func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
 }
 
 func (r *resolver) bindLabel(ident *ast.IdentExpr) {
-	if _, ok := r.env.bindings[ident.Lit]; ok {
-		// rule: can only shadow in a child block
-		r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)
-		return
-	}
+	// rule: labels cannot be shadowed, and a label cannot shadow a variable.
+	//	if _, ok := r.env.bindings[ident.Lit]; ok {
+	//		r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)
+	//		return
+	//	}
 }
 
 func (r *resolver) use(ident *ast.IdentExpr) {
@@ -353,7 +365,33 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 	r.errorf(ident.Start, "undefined: %s", ident.Lit)
 }
 
-func (r *resolver) useLabel(ident *ast.IdentExpr) {
+func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
+	// labels in current or any parent block are visible, but only inside the
+	// current function, and not across defer/catch blocks (i.e. a break,
+	// continue or goto in a defer cannot target a label outside that defer).
+	curFn := r.env.fn
+	for env := r.env; env != nil && env.fn == curFn; env = env.parent {
+		bdg := env.bindings[ident.Lit]
+		if bdg != nil {
+			// binding found, must be a label, and may need to be associated with a
+			// loop
+			if bdg.Scope != Label {
+				r.errorf(ident.Start, "label %s not defined", ident.Lit)
+				return
+			}
+
+			if requireLoopLabel {
+				// TODO: check if associated to loop
+			}
+			ident.Binding = bdg
+			return
+		}
+
+		if env.isDeferCatch {
+			break // cannot continue looking in parent block
+		}
+	}
+	r.errorf(ident.Start, "label %s not defined", ident.Lit)
 }
 
 type block struct {

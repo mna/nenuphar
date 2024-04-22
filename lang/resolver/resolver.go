@@ -205,9 +205,8 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		//r.ifstmts--
 
 	case *ast.LabelStmt:
-		r.bindLabel(stmt.Name)
-		// TODO: must keep the associated loop, if there is one (otherwise, only
-		// valid as a goto target).
+		loop := stmt.Next != nil && stmt.Next.IsLoop()
+		r.bindLabel(stmt.Name, loop)
 
 	case *ast.ReturnLikeStmt:
 		// break, continue and goto must refer to a valid label
@@ -253,6 +252,11 @@ func (r *resolver) expr(expr ast.Expr) {
 		r.expr(expr.Right)
 
 	case *ast.CallExpr:
+		r.expr(expr.Fn)
+		for _, e := range expr.Args {
+			r.expr(e)
+		}
+		// TODO: fail gracefully when > max args?
 
 	case *ast.ClassExpr:
 
@@ -305,7 +309,7 @@ func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
 	ident.Binding = bdg
 }
 
-func (r *resolver) bindLabel(ident *ast.IdentExpr) {
+func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 	// rule: labels cannot be shadowed, and a label cannot shadow a variable.
 	//	if _, ok := r.env.bindings[ident.Lit]; ok {
 	//		r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)
@@ -316,7 +320,7 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr) {
 func (r *resolver) use(ident *ast.IdentExpr) {
 	startFn := r.env.fn
 	for env := r.env; env != nil; env = env.parent {
-		if bdg := env.bindings[ident.Lit]; bdg != nil {
+		if bdg := env.bindings[ident.Lit]; bdg != nil && bdg.Scope != Label && bdg.Scope != LoopLabel {
 			if env.fn != startFn {
 				// Found in a parent block which belongs to enclosing function. Add the
 				// parent's binding to the function's freevars, and add a new 'free'
@@ -344,6 +348,7 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 	}
 
 	// look for a predeclared or universal binding
+	// TODO: should save those bindings in the r.env to shortcut subsequent lookups?
 	if r.isPredeclared != nil && r.isPredeclared(ident.Lit) {
 		bdg, ok := r.globals[ident.Lit]
 		if !ok {
@@ -375,13 +380,14 @@ func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
 		if bdg != nil {
 			// binding found, must be a label, and may need to be associated with a
 			// loop
-			if bdg.Scope != Label {
+			if bdg.Scope != Label && bdg.Scope != LoopLabel {
 				r.errorf(ident.Start, "label %s not defined", ident.Lit)
 				return
 			}
 
-			if requireLoopLabel {
-				// TODO: check if associated to loop
+			if requireLoopLabel && bdg.Scope != LoopLabel {
+				r.errorf(ident.Start, "label %s not associated with a loop", ident.Lit)
+				return
 			}
 			ident.Binding = bdg
 			return

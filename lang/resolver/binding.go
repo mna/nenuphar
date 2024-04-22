@@ -17,6 +17,7 @@ const (
 	Predeclared              // name is predeclared for this module (provided to its environment)
 	Universal                // name is universal (a language built-in)
 	Label                    // name is a label
+	LoopLabel                // name is a label associated with a loop
 )
 
 var scopeNames = [...]string{
@@ -27,6 +28,7 @@ var scopeNames = [...]string{
 	Predeclared: "predeclared",
 	Universal:   "universal",
 	Label:       "label",
+	LoopLabel:   "loop label",
 }
 
 func (s Scope) String() string {

@@ -123,6 +123,7 @@ func (r *resolver) push(b *block) {
 		}
 	}
 	b.parent = r.env
+	b.bindings = make(map[string]*Binding)
 	r.env = b
 }
 
@@ -139,6 +140,8 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 	switch v := from.(type) {
 	case *ast.Chunk:
 		blk.fn = &Function{Definition: v}
+	case *ast.SimpleBlockStmt:
+		blk.isDeferCatch = v.Type == token.DEFER || v.Type == token.CATCH
 	}
 
 	r.push(&blk)
@@ -195,14 +198,74 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		//r.function(fn, stmt.Def)
 
 	case *ast.IfGuardStmt:
-		//if !r.options.TopLevelControl && r.container().function == nil {
-		//	r.errorf(stmt.If, "if statement not within a function")
-		//}
-		//r.expr(stmt.Cond)
-		//r.ifstmts++
-		//r.stmts(stmt.True)
-		//r.stmts(stmt.False)
-		//r.ifstmts--
+		// regardless of whether this is an if, elseif or guard, the condition
+		// resolves in the enclosing environment.
+		if stmt.Cond != nil {
+			r.expr(stmt.Cond)
+			if stmt.True != nil {
+				r.block(stmt.True, stmt)
+			}
+			if stmt.False != nil {
+				// do not create a new block for an elseif, process it as an if
+				if len(stmt.False.Stmts) == 1 {
+					if ifst, ok := stmt.False.Stmts[0].(*ast.IfGuardStmt); ok {
+						if ifst.Type == token.ELSEIF {
+							r.stmt(ifst)
+							break
+						}
+					}
+				}
+				// otherwise create a block for the false block
+				r.block(stmt.False, stmt)
+			}
+			break
+		}
+
+		// if this is a declaration (if-bind or guard-bind), the rhs resolves in the
+		// enclosing environment, the lhs is defined inside the if-true block for if,
+		// and in the enclosing environment (but _after_ the false block) for guard.
+		if stmt.Decl != nil {
+			for _, e := range stmt.Decl.Right {
+				r.expr(e)
+			}
+
+			switch stmt.Type {
+			case token.GUARD:
+				// first resolve the false block
+				r.block(stmt.False, stmt)
+				// then define the lhs of the declaration in the enclosing block
+				for _, e := range stmt.Decl.Left {
+					r.bind(e.(*ast.IdentExpr), stmt.Decl.DeclType == token.CONST)
+				}
+
+			case token.IF, token.ELSEIF:
+				// define the lhs of the declaration in the true block (in a synthetic
+				// block that only encloses the true block)
+				r.push(new(block))
+				for _, e := range stmt.Decl.Left {
+					r.bind(e.(*ast.IdentExpr), stmt.Decl.DeclType == token.CONST)
+				}
+				r.block(stmt.True, stmt)
+				r.pop()
+
+				if stmt.False != nil {
+					// do not create a new block for an elseif, process it as an if
+					if len(stmt.False.Stmts) == 1 {
+						if ifst, ok := stmt.False.Stmts[0].(*ast.IfGuardStmt); ok {
+							if ifst.Type == token.ELSEIF {
+								r.stmt(ifst)
+								break
+							}
+						}
+					}
+					// otherwise create a block for the false block
+					r.block(stmt.False, stmt)
+				}
+
+			default:
+				panic(fmt.Sprintf("unexpected if statement type: %v", stmt.Type))
+			}
+		}
 
 	case *ast.LabelStmt:
 		loop := stmt.Next != nil && stmt.Next.IsLoop()
@@ -221,11 +284,11 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		// return or throw is a standard expression
 		if stmt.Type == token.RETURN {
 			if r.env.fn.defers > 0 {
-				// TODO: return cannot be in a defer
+				r.errorf(stmt.Start, "invalid return inside defer block")
 			}
 		} else if stmt.Type == token.THROW {
 			if stmt.Expr == nil && r.env.fn.catches == 0 {
-				// TODO: cannot throw without expression outside of a catch
+				r.errorf(stmt.Start, "invalid re-throw: not inside a catch block")
 			}
 		}
 
@@ -234,6 +297,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		}
 
 	case *ast.SimpleBlockStmt:
+		r.block(stmt.Body, stmt)
 
 	default:
 		panic(fmt.Sprintf("unexpected stmt %T", stmt))

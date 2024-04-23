@@ -142,6 +142,9 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 		blk.fn = &Function{Definition: v}
 	case *ast.SimpleBlockStmt:
 		blk.isDeferCatch = v.Type == token.DEFER || v.Type == token.CATCH
+	case *ast.FuncExpr:
+		// function is already assigned in a parent (synthetic) block around the
+		// body
 	}
 
 	r.push(&blk)
@@ -323,12 +326,30 @@ func (r *resolver) expr(expr ast.Expr) {
 		// TODO: fail gracefully when > max args?
 
 	case *ast.ClassExpr:
+		if expr.Inherits != nil && expr.Inherits.Expr != nil {
+			r.expr(expr.Inherits.Expr)
+		}
+		// TODO: finish class body...
 
 	case *ast.DotExpr:
 		// ignore right, can be anything (runtime lookup)
 		r.expr(expr.Left)
 
 	case *ast.FuncExpr:
+		// bind the parameters in the function's block (in a synthetic block that
+		// only encloses the function body)
+		blk := &block{
+			fn: &Function{
+				Definition: expr,
+				HasVarArg:  expr.Sig.DotDotDot.IsValid(),
+			},
+		}
+		r.push(blk)
+		for _, e := range expr.Sig.Params {
+			r.bind(e, false)
+		}
+		r.block(expr.Body, expr)
+		r.pop()
 
 	case *ast.IdentExpr:
 		r.use(expr)

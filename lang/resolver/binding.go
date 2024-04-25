@@ -74,8 +74,7 @@ type Function struct {
 	defers int
 }
 
-// IsClass indicates if the function is a class, which has different scoping
-// rules (TODO: ?).
+// IsClass indicates if the function is a class.
 func (f *Function) IsClass() bool {
 	switch f.Definition.(type) {
 	case *ast.ClassStmt:
@@ -85,4 +84,22 @@ func (f *Function) IsClass() bool {
 	default:
 		return false
 	}
+}
+
+type block struct {
+	parent *block // nil for file block
+	fn     *Function
+
+	// indicates if this is the top-level block of a defer or a catch, which
+	// cannot "see" labels in the parent blocks.
+	isDeferCatch bool
+
+	// bindings maps a name to its binding. A local binding has an index
+	// into its innermost enclosing function's locals array. A free
+	// binding has an index into its innermost enclosing function's
+	// freevars array.
+	bindings map[string]*Binding
+
+	// children records the child blocks of the current one.
+	children []*block
 }

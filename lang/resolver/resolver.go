@@ -136,22 +136,47 @@ func (r *resolver) errorf(p token.Pos, format string, args ...interface{}) {
 }
 
 func (r *resolver) block(b *ast.Block, from ast.Node) {
-	var blk block
+	var (
+		blk     block
+		isLoop  bool
+		isDefer bool
+		isCatch bool
+	)
+
 	switch v := from.(type) {
 	case *ast.Chunk:
 		blk.fn = &Function{Definition: v}
 	case *ast.SimpleBlockStmt:
-		blk.isDeferCatch = v.Type == token.DEFER || v.Type == token.CATCH
-	case *ast.FuncExpr:
-		// function is already assigned in a parent (synthetic) block around the
-		// body
+		isDefer = v.Type == token.DEFER
+		isCatch = v.Type == token.CATCH
+		blk.isDeferCatch = isDefer || isCatch
+	case ast.Stmt:
+		isLoop = v.IsLoop()
 	}
 
 	r.push(&blk)
+	switch {
+	case isLoop:
+		blk.fn.loops++
+	case isDefer:
+		blk.fn.defers++
+	case isCatch:
+		blk.fn.catches++
+	}
+
 	for _, s := range b.Stmts {
 		r.stmt(s)
 	}
+
 	r.pop()
+	switch {
+	case isLoop:
+		blk.fn.loops--
+	case isDefer:
+		blk.fn.defers--
+	case isCatch:
+		blk.fn.catches--
+	}
 }
 
 func (r *resolver) stmt(stmt ast.Stmt) {
@@ -172,16 +197,27 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		}
 
 	case *ast.ClassStmt:
+		// resolve the inherits clause first
+		if stmt.Inherits != nil && stmt.Inherits.Expr != nil {
+			r.expr(stmt.Inherits.Expr)
+		}
+
+		// bind the name before the body, as it can be used by itself
+		// TODO: double-check that this works once machine is implemented
+		r.bind(stmt.Name, true)
+		r.class(stmt, stmt.Body)
 
 	case *ast.ExprStmt:
 		r.expr(stmt.Expr)
 
 	case *ast.ForInStmt:
+		// resolve the rhs first
+		for _, e := range stmt.Right {
+			r.expr(e)
+		}
+		// TODO: finish...
 
 	case *ast.ForLoopStmt:
-		//if !r.options.TopLevelControl && r.container().function == nil {
-		//	r.errorf(stmt.For, "for loop not within a function")
-		//}
 		//r.expr(stmt.X)
 		//const isAugmented = false
 		//r.assign(stmt.Vars, isAugmented)
@@ -190,15 +226,8 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		//r.loops--
 
 	case *ast.FuncStmt:
-		//r.bind(stmt.Name)
-		//fn := &Function{
-		//	Name:   stmt.Name.Name,
-		//	Pos:    stmt.Def,
-		//	Params: stmt.Params,
-		//	Body:   stmt.Body,
-		//}
-		//stmt.Function = fn
-		//r.function(fn, stmt.Def)
+		r.bind(stmt.Name, true)
+		r.function(stmt, stmt.Sig, stmt.Body)
 
 	case *ast.IfGuardStmt:
 		// regardless of whether this is an if, elseif or guard, the condition
@@ -329,56 +358,14 @@ func (r *resolver) expr(expr ast.Expr) {
 		if expr.Inherits != nil && expr.Inherits.Expr != nil {
 			r.expr(expr.Inherits.Expr)
 		}
-
-		// all class members are scoped to the class's body, but we don't call
-		// r.block() as we have some special processing of the fields and methods
-		// to do.
-		blk := &block{fn: &Function{Definition: expr}}
-		r.push(blk)
-
-		// fields get declared first, they are all available to methods and to
-		// subsequent fields.
-		for _, f := range expr.Body.Fields {
-			// resolve the rhs of the declarations first
-			for _, e := range f.Right {
-				r.expr(e)
-			}
-
-			for _, e := range f.Left {
-				r.bind(e.(*ast.IdentExpr), f.DeclType == token.CONST)
-			}
-		}
-
-		// methods get declared next, they are visible to all other methods
-		// regardless of order of declaration.
-		for _, m := range expr.Body.Methods {
-			r.bind(m.Name, true)
-		}
-		// finally, resolve the methods' bodies
-		for _, m := range expr.Body.Methods {
-		}
-
-		r.pop()
+		r.class(expr, expr.Body)
 
 	case *ast.DotExpr:
 		// ignore right, can be anything (runtime lookup)
 		r.expr(expr.Left)
 
 	case *ast.FuncExpr:
-		// bind the parameters in the function's block (in a synthetic block that
-		// only encloses the function body)
-		blk := &block{
-			fn: &Function{
-				Definition: expr,
-				HasVarArg:  expr.Sig.DotDotDot.IsValid(),
-			},
-		}
-		r.push(blk)
-		for _, e := range expr.Sig.Params {
-			r.bind(e, false)
-		}
-		r.block(expr.Body, expr)
-		r.pop()
+		r.function(expr, expr.Sig, expr.Body)
 
 	case *ast.IdentExpr:
 		r.use(expr)
@@ -405,6 +392,56 @@ func (r *resolver) expr(expr ast.Expr) {
 	default:
 		panic(fmt.Sprintf("unexpected expr %T", expr))
 	}
+}
+
+func (r *resolver) function(fn ast.Node, sig *ast.FuncSignature, body *ast.Block) {
+	// bind the parameters in the function's block (in a synthetic block that
+	// only encloses the function body)
+	blk := &block{
+		fn: &Function{
+			Definition: fn,
+			HasVarArg:  sig.DotDotDot.IsValid(),
+		},
+	}
+	r.push(blk)
+	for _, e := range sig.Params {
+		r.bind(e, false)
+	}
+	r.block(body, fn)
+	r.pop()
+}
+
+func (r *resolver) class(cl ast.Node, body *ast.ClassBody) {
+	// all class members are scoped to the class's body, but we don't call
+	// r.block() as we have some special processing of the fields and methods
+	// to do.
+	blk := &block{fn: &Function{Definition: cl}}
+	r.push(blk)
+
+	// fields get declared first, they are all available to methods and to
+	// subsequent fields.
+	for _, f := range body.Fields {
+		// resolve the rhs of the declarations first
+		for _, e := range f.Right {
+			r.expr(e)
+		}
+
+		for _, e := range f.Left {
+			r.bind(e.(*ast.IdentExpr), f.DeclType == token.CONST)
+		}
+	}
+
+	// methods get declared next, they are visible to all other methods
+	// regardless of order of declaration.
+	for _, m := range body.Methods {
+		r.bind(m.Name, true)
+	}
+	// finally, resolve the methods' bodies
+	for _, m := range body.Methods {
+		r.function(m, m.Sig, m.Body)
+	}
+
+	r.pop()
 }
 
 func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
@@ -512,22 +549,4 @@ func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
 		}
 	}
 	r.errorf(ident.Start, "label %s not defined", ident.Lit)
-}
-
-type block struct {
-	parent *block // nil for file block
-	fn     *Function
-
-	// indicates if this is the top-level block of a defer or a catch, which
-	// cannot "see" labels in the parent blocks.
-	isDeferCatch bool
-
-	// bindings maps a name to its binding. A local binding has an index
-	// into its innermost enclosing function's locals array. A free
-	// binding has an index into its innermost enclosing function's
-	// freevars array.
-	bindings map[string]*Binding
-
-	// children records the child blocks of the current one.
-	children []*block
 }

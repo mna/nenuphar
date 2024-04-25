@@ -329,7 +329,36 @@ func (r *resolver) expr(expr ast.Expr) {
 		if expr.Inherits != nil && expr.Inherits.Expr != nil {
 			r.expr(expr.Inherits.Expr)
 		}
-		// TODO: finish class body...
+
+		// all class members are scoped to the class's body, but we don't call
+		// r.block() as we have some special processing of the fields and methods
+		// to do.
+		blk := &block{fn: &Function{Definition: expr}}
+		r.push(blk)
+
+		// fields get declared first, they are all available to methods and to
+		// subsequent fields.
+		for _, f := range expr.Body.Fields {
+			// resolve the rhs of the declarations first
+			for _, e := range f.Right {
+				r.expr(e)
+			}
+
+			for _, e := range f.Left {
+				r.bind(e.(*ast.IdentExpr), f.DeclType == token.CONST)
+			}
+		}
+
+		// methods get declared next, they are visible to all other methods
+		// regardless of order of declaration.
+		for _, m := range expr.Body.Methods {
+			r.bind(m.Name, true)
+		}
+		// finally, resolve the methods' bodies
+		for _, m := range expr.Body.Methods {
+		}
+
+		r.pop()
 
 	case *ast.DotExpr:
 		// ignore right, can be anything (runtime lookup)

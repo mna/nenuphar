@@ -494,12 +494,36 @@ func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
 }
 
 func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
-	// TODO: implement...
-	// rule: labels cannot be shadowed, and a label cannot shadow a variable.
-	//	if _, ok := r.env.bindings[ident.Lit]; ok {
-	//		r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)
-	//		return
-	//	}
+	// rule: labels cannot be shadowed, and a label cannot shadow a variable
+	// inside the scope frontiers of the label.
+	curFn := r.env.fn
+	for env := r.env; env != nil && env.fn == curFn; env = env.parent {
+		bdg := env.bindings[ident.Lit]
+		if bdg != nil {
+			if env == r.env {
+				r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)
+			} else {
+				r.errorf(ident.Start, "already declared in an outer block: %s", ident.Lit)
+			}
+			return
+		}
+
+		if env.isDeferCatch {
+			break // defer/catch is a scope frontier for labels
+		}
+	}
+
+	scope := Label
+	if loop {
+		scope = LoopLabel
+	}
+	bdg := &Binding{Scope: scope, Decl: ident}
+	ix := len(r.env.fn.Labels)
+	bdg.Index = ix
+	r.env.fn.Labels = append(r.env.fn.Labels, bdg)
+	r.env.bindings[ident.Lit] = bdg
+
+	ident.Binding = bdg
 }
 
 func (r *resolver) use(ident *ast.IdentExpr) {

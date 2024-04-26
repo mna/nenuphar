@@ -215,15 +215,48 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		for _, e := range stmt.Right {
 			r.expr(e)
 		}
-		// TODO: finish...
+
+		// lhs are implicit declarations if identifiers, otherwise must be resolved
+		// TODO: that's not super clean, think about using for let x, y in z()..
+		// instead.
+		var toBind []*ast.IdentExpr
+		for _, e := range stmt.Left {
+			if id, ok := e.(*ast.IdentExpr); ok {
+				toBind = append(toBind, id)
+			} else {
+				r.expr(e)
+			}
+		}
+		// if there are loop-scoped identifiers, create a synthetic block to hold them
+		if len(toBind) > 0 {
+			r.push(new(block))
+			for _, e := range toBind {
+				r.bind(e, false)
+			}
+		}
+		r.block(stmt.Body, stmt)
+		if len(toBind) > 0 {
+			r.pop()
+		}
 
 	case *ast.ForLoopStmt:
-		//r.expr(stmt.X)
-		//const isAugmented = false
-		//r.assign(stmt.Vars, isAugmented)
-		//r.loops++
-		//r.stmts(stmt.Body)
-		//r.loops--
+		// everything in the 3-part for loop is in a synthetic block around the
+		// body, so if the init part declares any variables, they are scoped to the
+		// loop. Cond and Post may use the Init-declared variables.
+		r.push(new(block))
+
+		if stmt.Init != nil {
+			r.stmt(stmt.Init)
+		}
+		if stmt.Cond != nil {
+			r.expr(stmt.Cond)
+		}
+		if stmt.Post != nil {
+			r.stmt(stmt.Post)
+		}
+		r.block(stmt.Body, stmt)
+
+		r.pop()
 
 	case *ast.FuncStmt:
 		r.bind(stmt.Name, true)
@@ -461,6 +494,7 @@ func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
 }
 
 func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
+	// TODO: implement...
 	// rule: labels cannot be shadowed, and a label cannot shadow a variable.
 	//	if _, ok := r.env.bindings[ident.Lit]; ok {
 	//		r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)

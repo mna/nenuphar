@@ -29,6 +29,10 @@ The <command> can be one of:
        parse                     Execute the parser phase of the
                                  compilation and print the resulting
                                  abstract syntax tree (AST).
+       resolve                   Execute the resolver phase of the
+                                 compilation and print the resulting
+                                 abstract syntax tree (AST) with symbol
+                                 resolution information.
        tokenize                  Execute the scanner phase of the
                                  compilation and print the resulting
                                  tokens.
@@ -92,7 +96,7 @@ func (c *Cmd) Validate() error {
 		}
 	}
 
-	if c.flags["with-comments"] && cmdName != "parse" {
+	if c.flags["with-comments"] && cmdName != "parse" && cmdName != "resolve" {
 		return fmt.Errorf("%s: invalid flag 'with-comments'", cmdName)
 	}
 

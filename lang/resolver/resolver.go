@@ -1,3 +1,10 @@
+// Much of the resolver package is adapted from the Starlark source code:
+// https://github.com/google/starlark-go/tree/ee8ed142361c69d52fe8e9fb5e311d2a0a7c02de
+//
+// Copyright 2017 The Bazel Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // Package resolver implements the resolver that takes a parsed abstract syntax
 // tree and resolves the identifiers to bindings.
 //
@@ -32,14 +39,14 @@
 // The following statements define new bindings:
 //   - BindIfStmt: e.g. "if let x = 1 then .. end". The scope of the
 //     bindings are limited to the "true" block of the "if" statement.
-//   - BindGuardStmt: e.g. "guard let x = 1 else .. end". The scope of
-//     the bindings the enclosing block of the guard statement (from that
-//     point on).
+//   - BindGuardStmt: e.g. "guard let x = 1 else .. end". The scope of the
+//     bindings is the enclosing block of the guard statement (from that point
+//     on).
 //   - ThreePartForStmt: e.g. "for let x = 1; .. end". The scope of the
 //     bindings are limited to the body of the "for" loop.
-//   - ForInStmt: e.g. "for x, y, x in .. end". The scope of the
-//     bindings are limited to the body of the "for" loop. New bindings
-//     are always defined for this syntax (implicit "let").
+//   - ForInStmt: e.g. "for x, y, x in .. end". The scope of the bindings are
+//     limited to the body of the "for" loop. New bindings are always defined for
+//     this syntax when identifiers are used (implicit "let").
 //   - FuncStmt: e.g. "fn foo() .. end". The scope of the name of the
 //     function is the enclosing block (from this point on). The scope of
 //     the parameters of the function are limited to the body of the
@@ -50,8 +57,10 @@
 //     enclosing block (from this point on).
 //   - ClassStmt: e.g. "class Foo .. end". The scope of the name of the
 //     class is the enclosing block (from this point on).
-//   - MethodDef: e.g. "fn Bar() .. end" inside a class. TBD.
-//   - FieldDef: e.g. "let x = 1" inside a class. TBD.
+//   - MethodDef: e.g. "fn Bar() .. end" inside a class. Visible to all class
+//     methods.
+//   - FieldDef: e.g. "let x = 1" inside a class. Visible to subsequent fields
+//     and all methods.
 package resolver
 
 import (
@@ -61,6 +70,16 @@ import (
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/scanner"
 	"github.com/mna/nenuphar/lang/token"
+)
+
+// Mode is a set of bit flags that configures the resolving. By default (0),
+// the symbols are resolved, all errors are reported and blocks are not given
+// unique names.
+type Mode uint
+
+// List of supported resolver modes, which can be combined with bitwise or.
+const (
+	NameBlocks Mode = 1 << iota // give unique names to blocks, useful for printing the resolved AST.
 )
 
 // ResolveFiles takes the file set and corresponding list of chunks from a
@@ -73,18 +92,29 @@ import (
 //
 // The returned error, if non-nil, is guaranteed to be a scanner.ErrorList.
 func ResolveFiles(ctx context.Context, fset *token.FileSet, chunks []*ast.Chunk,
-	isPredeclared, isUniversal func(name string) bool) error {
+	mode Mode, isPredeclared, isUniversal func(name string) bool) error {
 	if len(chunks) == 0 {
 		return nil
 	}
 
 	var r resolver
 	r.isPredeclared = isPredeclared
+	if isPredeclared == nil {
+		r.isPredeclared = func(name string) bool { return false }
+	}
 	r.isUniversal = isUniversal
+	if isUniversal == nil {
+		r.isUniversal = func(name string) bool { return false }
+	}
+
 	for _, ch := range chunks {
 		start, _ := ch.Span()
 		r.init(fset.File(start))
 		r.block(ch.Block, ch)
+
+		if mode&NameBlocks != 0 {
+			r.nameBlocks()
+		}
 	}
 	r.errors.Sort()
 	return r.errors.Err()
@@ -454,7 +484,7 @@ func (r *resolver) class(cl ast.Node, body *ast.ClassBody) {
 	// fields get declared first, they are all available to methods and to
 	// subsequent fields.
 	for _, f := range body.Fields {
-		// resolve the rhs of the declarations first
+		// resolve the rhs of the declarations first, which cannot refer to methods
 		for _, e := range f.Right {
 			r.expr(e)
 		}
@@ -513,6 +543,8 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 		}
 	}
 
+	// TODO: add validation that label is not a target in a local variable
+	// declaration
 	scope := Label
 	if loop {
 		scope = LoopLabel
@@ -558,7 +590,7 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 
 	// look for a predeclared or universal binding
 	// TODO: should save those bindings in the r.env to shortcut subsequent lookups?
-	if r.isPredeclared != nil && r.isPredeclared(ident.Lit) {
+	if r.isPredeclared(ident.Lit) {
 		bdg, ok := r.globals[ident.Lit]
 		if !ok {
 			bdg = &Binding{Scope: Predeclared, Decl: ident}
@@ -567,7 +599,7 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 		ident.Binding = bdg
 		return
 	}
-	if r.isUniversal != nil && r.isUniversal(ident.Lit) {
+	if r.isUniversal(ident.Lit) {
 		bdg, ok := r.globals[ident.Lit]
 		if !ok {
 			bdg = &Binding{Scope: Universal, Decl: ident}
@@ -576,7 +608,10 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 		ident.Binding = bdg
 		return
 	}
+
+	// TODO: maybe add a spell checker? (did you mean...)
 	r.errorf(ident.Start, "undefined: %s", ident.Lit)
+	ident.Binding = &Binding{Scope: Undefined}
 }
 
 func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
@@ -607,4 +642,5 @@ func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
 		}
 	}
 	r.errorf(ident.Start, "label %s not defined", ident.Lit)
+	ident.Binding = &Binding{Scope: Undefined}
 }

@@ -63,6 +63,49 @@ type Binding struct {
 	BlockName string
 }
 
+func (b *Binding) FormatFor(id *ast.IdentExpr) string {
+	var s string
+	if b.Decl == id {
+		s = "++ "
+	} else {
+		s = "-> "
+	}
+	switch b.Scope {
+	case Undefined:
+		s += "undef"
+	case Local:
+		if b.Const {
+			s += "const"
+		} else {
+			s += "let"
+		}
+	case Free:
+		if b.Const {
+			s += "free const"
+		} else {
+			s += "free let"
+		}
+	case Cell:
+		if b.Const {
+			s += "cell const"
+		} else {
+			s += "cell let"
+		}
+	case Predeclared:
+		s += "pre"
+	case Universal:
+		s += "univ"
+	case Label:
+		s += "label"
+	case LoopLabel:
+		s += "loop label"
+	}
+	if b.BlockName != "" {
+		s += " (" + b.BlockName + ")"
+	}
+	return s
+}
+
 type Function struct {
 	Definition ast.Node   // can be *Chunk, *ClassStmt, *ClassExpr, *FuncStmt or *FuncExpr
 	HasVarArg  bool       // for function, if last parameter is vararg

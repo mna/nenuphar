@@ -48,6 +48,10 @@ func IsAssignable(e Expr) bool {
 	}
 }
 
+type bindingFormatter interface {
+	FormatFor(id *IdentExpr) string
+}
+
 type (
 	// ArrayLikeExpr represents an array or tuple literal.
 	ArrayLikeExpr struct {
@@ -110,7 +114,7 @@ type (
 		Lit   string
 
 		// filled by the resolver
-		Binding any // *resolver.Binding, 'any' to avoid cycles
+		Binding bindingFormatter // *resolver.Binding, indirect interface to avoid cycles
 	}
 
 	// IndexExpr represents an index expression e.g. x[y].
@@ -276,10 +280,7 @@ func (n *FuncExpr) expr() {}
 func (n *IdentExpr) Format(f fmt.State, verb rune) {
 	lbl := n.Lit
 	if n.Binding != nil {
-		// TODO: define a method on Binding and pass the IdentExpr to it, format
-		// differently if it declares vs if it uses, and if label or not, const or
-		// not.
-		lbl += fmt.Sprintf(" %s", n.Binding)
+		lbl += fmt.Sprintf(" | %s", n.Binding.FormatFor(n))
 	}
 	format(f, verb, n, lbl, nil)
 }

@@ -1,0 +1,9 @@
+[0:33] chunk testdata/in/return_in_defer.nen
+. [0:33] block {stmts=1}
+. . [0:32] fn decl {params=0}
+. . . [3:4] a | ++ const (_)
+. . . [7:29] block {stmts=1}
+. . . . [7:28] defer
+. . . . . [15:25] block {stmts=1}
+. . . . . . [15:23] return {expr=1}
+. . . . . . . [22:23] int literal 1

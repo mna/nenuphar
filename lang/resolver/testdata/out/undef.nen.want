@@ -1,0 +1,5 @@
+[0:6] chunk testdata/in/undef.nen
+. [0:6] block {stmts=1}
+. . [0:5] assignment {left=1, right=1}
+. . . [0:1] a | -> undef
+. . . [4:5] int literal 1

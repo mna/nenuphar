@@ -1,0 +1,1 @@
+testdata/in/return_in_defer.nen:3:3: invalid return inside defer block

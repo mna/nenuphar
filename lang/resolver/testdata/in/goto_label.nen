@@ -1,0 +1,5 @@
+do
+	goto l1
+end
+
+::l1::

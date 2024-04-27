@@ -1,0 +1,6 @@
+fn a(b)
+	catch
+		return b
+	end
+	b = 2
+end

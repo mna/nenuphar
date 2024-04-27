@@ -622,6 +622,10 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 }
 
 func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
+	// TODO: labels may be declared after use (forward goto), and maybe outside
+	// the current block, so we must resolve them only on function/defer/catch
+	// exit.
+
 	// labels in current or any parent block are visible, but only inside the
 	// current function, and not across defer/catch blocks (i.e. a break,
 	// continue or goto in a defer cannot target a label outside that defer).

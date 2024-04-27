@@ -1,0 +1,5 @@
+let x = 1
+do
+	let y = 2
+end
+x = y

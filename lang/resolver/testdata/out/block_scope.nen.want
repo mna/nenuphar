@@ -1,0 +1,13 @@
+[0:34] chunk testdata/in/block_scope.nen
+. [0:34] block {stmts=3}
+. . [0:9] let declaration {left=1, right=1}
+. . . [4:5] x | ++ let (_)
+. . . [8:9] int literal 1
+. . [10:27] do
+. . . [14:24] block {stmts=1}
+. . . . [14:23] let declaration {left=1, right=1}
+. . . . . [18:19] y | ++ let (_a)
+. . . . . [22:23] int literal 2
+. . [28:33] assignment {left=1, right=1}
+. . . [28:29] x | -> let (_)
+. . . [32:33] y | -> undef

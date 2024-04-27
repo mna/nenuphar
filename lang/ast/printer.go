@@ -24,10 +24,13 @@ type Printer struct {
 	NodeFmt string
 }
 
-// Print pretty-prints the AST node n from the specified file. If n is an
-// *ast.Chunk and it has comments, they will be printed along with their
-// associated node. The file argument is only required for printing positions,
-// if p.Pos == token.PosNone, it does not have to be provided.
+// Print pretty-prints the AST node n from the specified file.
+//
+// If n is an *ast.Chunk and it has comments, they will be printed along with
+// their associated node. The file argument is only required for printing
+// positions, if p.Pos == token.PosNone, it does not have to be provided.
+//
+// If the AST is resolved, bindings are printed alongside the identifiers.
 func (p *Printer) Print(n Node, file *token.File) error {
 	if file == nil && p.Pos != token.PosNone {
 		return errors.New("file must be provided to print positions")

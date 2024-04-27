@@ -274,7 +274,14 @@ func (n *FuncExpr) Walk(v Visitor) {
 func (n *FuncExpr) expr() {}
 
 func (n *IdentExpr) Format(f fmt.State, verb rune) {
-	format(f, verb, n, n.Lit, nil)
+	lbl := n.Lit
+	if n.Binding != nil {
+		// TODO: define a method on Binding and pass the IdentExpr to it, format
+		// differently if it declares vs if it uses, and if label or not, const or
+		// not.
+		lbl += fmt.Sprintf(" %s", n.Binding)
+	}
+	format(f, verb, n, lbl, nil)
 }
 func (n *IdentExpr) Span() (start, end token.Pos) {
 	return n.Start, n.Start + token.Pos(len(n.Lit))

@@ -89,7 +89,7 @@ func (c *Cmd) Validate() error {
 		return fmt.Errorf("unknown command: %s", c.args[0])
 	}
 
-	if cmdName == "tokenize" || cmdName == "parse" {
+	if cmdName == "tokenize" || cmdName == "parse" || cmdName == "resolve" {
 		// at least one file is required, or TODO: read from stdin
 		if len(c.args[1:]) == 0 {
 			return fmt.Errorf("%s: at least one file must be provided", cmdName)

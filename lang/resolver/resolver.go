@@ -130,6 +130,8 @@ type resolver struct {
 	// current innermost block first and the tail of the list the file
 	// (top-level) block.
 	env *block
+	// root keeps a reference to the root block
+	root *block
 
 	// globals saves the bindings of predeclared and universal names when they
 	// are first referenced.
@@ -142,11 +144,15 @@ type resolver struct {
 func (r *resolver) init(file *token.File) {
 	r.file = file
 	r.env = nil
+	r.root = nil
 	r.globals = make(map[string]*Binding)
 }
 
 func (r *resolver) push(b *block) {
-	if r.env != nil {
+	if r.env == nil {
+		// this is the root block
+		r.root = b
+	} else {
 		r.env.children = append(r.env.children, b)
 		if b.fn == nil {
 			// in same function as before

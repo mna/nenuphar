@@ -113,6 +113,8 @@ func ResolveFiles(ctx context.Context, fset *token.FileSet, chunks []*ast.Chunk,
 		r.block(ch.Block, ch)
 
 		if mode&NameBlocks != 0 {
+			// assign all names in one go at the end, so that performance is not
+			// impacted at all if this option is not set.
 			r.nameBlocks()
 		}
 	}
@@ -121,7 +123,8 @@ func ResolveFiles(ctx context.Context, fset *token.FileSet, chunks []*ast.Chunk,
 }
 
 type resolver struct {
-	file *token.File
+	file   *token.File
+	errors scanner.ErrorList
 
 	// env is the current local environment, a linked list of blocks, with the
 	// current innermost block first and the tail of the list the file
@@ -134,8 +137,6 @@ type resolver struct {
 
 	// predicates to check if an unresolved name is predeclared or universal.
 	isPredeclared, isUniversal func(name string) bool
-
-	errors scanner.ErrorList
 }
 
 func (r *resolver) init(file *token.File) {

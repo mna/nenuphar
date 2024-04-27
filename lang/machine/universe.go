@@ -5,3 +5,8 @@ package machine
 // are always available. Use the Thread.Predeclared to add to the set of
 // built-ins available to a program.
 var Universe map[string]Value
+
+func IsUniverse(name string) bool {
+	_, ok := Universe[name]
+	return ok
+}

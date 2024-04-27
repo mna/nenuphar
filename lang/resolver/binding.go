@@ -57,6 +57,10 @@ type Binding struct {
 	// Decl is the declaration node of this binding, or first reference for a
 	// global binding (predeclared or universal).
 	Decl *ast.IdentExpr
+
+	// BlockName uniquely identifies the block where this binding is defined.
+	// Only set if the resolver is done with tne NameBlocks option.
+	BlockName string
 }
 
 type Function struct {
@@ -89,6 +93,7 @@ func (f *Function) IsClass() bool {
 type block struct {
 	parent *block // nil for file block
 	fn     *Function
+	name   string // set only if NameBlocks option is set
 
 	// indicates if this is the top-level block of a defer or a catch, which
 	// cannot "see" labels in the parent blocks.

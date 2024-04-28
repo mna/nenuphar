@@ -1,0 +1,8 @@
+[0:24] chunk testdata/in/goto_label.nen
+. [0:24] block {stmts=2}
+. . [0:15] do
+. . . [4:12] block {stmts=1}
+. . . . [4:11] goto {expr=1}
+. . . . . [9:11] l1 | -> label (_)
+. . [17:23] label
+. . . [19:21] l1 | ++ label (_)

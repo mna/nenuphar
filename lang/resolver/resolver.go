@@ -179,9 +179,23 @@ func (r *resolver) push(b *block) {
 }
 
 func (r *resolver) pop() {
-	// TODO: if the block being exited is in a different fn than the parent, or
-	// if it is a defer/catch, all pending labels must generate an undefined
-	// error. Otherwise, collect the pending labels to the parent block.
+	// if the block being exited is in a different fn than the parent, or if it
+	// is a defer/catch, all pending labels must generate an undefined error.
+	// Otherwise, collect the pending labels to the parent block.
+	if r.env.parent == nil || r.env.parent.fn != r.env.fn || r.env.isDeferCatch {
+		// exiting a label frontier, all pending labels must be resolved or error
+		for lit, bdg := range r.env.pendingLabels {
+			r.errorf(bdg.Decl.Start, "undefined label: %s", lit)
+		}
+	} else if len(r.env.pendingLabels) > 0 {
+		// transfer pending labels to parent
+		if r.env.parent.pendingLabels == nil {
+			r.env.parent.pendingLabels = make(map[string]*Binding)
+		}
+		for lit, bdg := range r.env.pendingLabels {
+			r.env.parent.pendingLabels[lit] = bdg
+		}
+	}
 
 	r.env = r.env.parent
 }
@@ -573,11 +587,28 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 
 	// TODO: add validation that label does not jump into a new local variable
 	// declaration's scope.
+
+	// resolve from pending labels if present
+	pbdg := r.env.pendingLabels[ident.Lit]
+	if pbdg != nil {
+		delete(r.env.pendingLabels, ident.Lit)
+		if pbdg.Scope == LoopLabel && !loop {
+			r.errorf(pbdg.Decl.Start, "label %s not associated with a loop", ident.Lit)
+		}
+	}
+
+	var bdg *Binding
 	scope := Label
 	if loop {
 		scope = LoopLabel
 	}
-	bdg := &Binding{Scope: scope, Decl: ident}
+	if pbdg != nil {
+		bdg = pbdg
+		bdg.Scope = scope
+		bdg.Decl = ident
+	} else {
+		bdg = &Binding{Scope: scope, Decl: ident}
+	}
 	ix := len(r.env.fn.Labels)
 	bdg.Index = ix
 	r.env.fn.Labels = append(r.env.fn.Labels, bdg)
@@ -586,7 +617,6 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 		r.env.lbindings = make(map[string]*Binding)
 	}
 	r.env.lbindings[ident.Lit] = bdg
-
 	ident.Binding = bdg
 }
 
@@ -643,6 +673,7 @@ func (r *resolver) use(ident *ast.IdentExpr, isAssign bool) {
 		ident.Binding = bdg
 		return
 	}
+
 	if r.isUniversal(ident.Lit) {
 		if isAssign {
 			r.errorf(ident.Start, "assignment to immutable variable: %s", ident.Lit)
@@ -663,20 +694,25 @@ func (r *resolver) use(ident *ast.IdentExpr, isAssign bool) {
 }
 
 func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
-	// TODO: labels may be declared after use (forward goto), and maybe outside
-	// the current block, so we must resolve them only on function/defer/catch
-	// exit.
-
 	// labels in current or any parent block are visible, but only inside the
 	// current function, and not across defer/catch blocks (i.e. a break,
 	// continue or goto in a defer cannot target a label outside that defer).
 	curFn := r.env.fn
 	for env := r.env; env != nil && env.fn == curFn; env = env.parent {
-		bdg := env.lbindings[ident.Lit]
-		if bdg != nil {
+		// look for a defined label
+		if bdg := env.lbindings[ident.Lit]; bdg != nil {
 			if requireLoopLabel && bdg.Scope != LoopLabel {
 				r.errorf(ident.Start, "label %s not associated with a loop", ident.Lit)
-				return
+			}
+			ident.Binding = bdg
+			return
+		}
+
+		// look for a pending label, if it is in pending it will not exist as
+		// defined higher up.
+		if bdg := r.env.pendingLabels[ident.Lit]; bdg != nil {
+			if bdg.Scope == Label && requireLoopLabel {
+				bdg.Scope = LoopLabel
 			}
 			ident.Binding = bdg
 			return
@@ -687,8 +723,16 @@ func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
 		}
 	}
 
-	// TODO: collect pending label, keep track if it was required as a loop label
-	// or not.
-	r.errorf(ident.Start, "label %s not defined", ident.Lit)
-	ident.Binding = &Binding{Scope: Undefined}
+	// temporarily create the pending label with this first-use identifier as
+	// Decl, to have the position to report the undefined error if needed.
+	scope := Label
+	if requireLoopLabel {
+		scope = LoopLabel
+	}
+	bdg := &Binding{Scope: scope, Decl: ident}
+	if r.env.pendingLabels == nil {
+		r.env.pendingLabels = make(map[string]*Binding)
+	}
+	r.env.pendingLabels[ident.Lit] = bdg
+	ident.Binding = bdg
 }

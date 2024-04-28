@@ -1,0 +1,11 @@
+fn a!
+	catch
+		::lbl1::
+		do
+			catch
+				goto lbl1
+			end
+			goto lbl1
+		end
+	end
+end

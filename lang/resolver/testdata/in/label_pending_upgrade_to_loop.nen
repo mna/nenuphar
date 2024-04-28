@@ -1,0 +1,8 @@
+do
+	goto lbl1
+end
+
+::lbl1::
+for do
+	break lbl1
+end

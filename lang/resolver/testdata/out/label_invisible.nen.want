@@ -1,0 +1,8 @@
+[0:27] chunk testdata/in/label_invisible.nen
+. [0:27] block {stmts=2}
+. . [0:16] do
+. . . [4:13] block {stmts=1}
+. . . . [4:12] label
+. . . . . [6:10] lbl1 | ++ label (_a)
+. . [17:26] goto {expr=1}
+. . . [22:26] lbl1 | -> undef (_)

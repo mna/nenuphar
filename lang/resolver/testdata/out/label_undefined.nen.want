@@ -1,0 +1,4 @@
+[0:10] chunk testdata/in/label_undefined.nen
+. [0:10] block {stmts=1}
+. . [0:9] goto {expr=1}
+. . . [5:9] lbl1 | -> undef (_)

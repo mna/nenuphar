@@ -1,0 +1,4 @@
+::lbl1::
+for true do
+	break lbl1
+end

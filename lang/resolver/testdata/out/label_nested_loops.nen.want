@@ -1,0 +1,18 @@
+[0:102] chunk testdata/in/label_nested_loops.nen
+. [0:102] block {stmts=2}
+. . [0:8] label
+. . . [2:6] lbl1 | ++ loop label (_)
+. . [9:101] for {clauses=0}
+. . . [17:98] block {stmts=2}
+. . . . [17:25] label
+. . . . . [19:23] lbl2 | ++ loop label (_aa)
+. . . . [27:97] for {clauses=0}
+. . . . . [36:94] block {stmts=1}
+. . . . . . [36:92] if else
+. . . . . . . [39:43] true
+. . . . . . . [52:65] block {stmts=1}
+. . . . . . . . [52:62] break {expr=1}
+. . . . . . . . . [58:62] lbl1 | -> loop label (_)
+. . . . . . . [73:89] block {stmts=1}
+. . . . . . . . [73:86] continue {expr=1}
+. . . . . . . . . [82:86] lbl2 | -> loop label (_aa)

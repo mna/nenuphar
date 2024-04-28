@@ -1,0 +1,11 @@
+::lbl1::
+for do
+	::lbl2::
+	for do
+		if true then
+			break lbl1
+		else
+			continue lbl2
+		end
+	end
+end

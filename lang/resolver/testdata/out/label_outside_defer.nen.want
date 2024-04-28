@@ -1,0 +1,11 @@
+[0:44] chunk testdata/in/label_outside_defer.nen
+. [0:44] block {stmts=1}
+. . [0:43] fn decl {params=0}
+. . . [3:4] a | ++ const (_)
+. . . [7:40] block {stmts=2}
+. . . . [7:29] defer
+. . . . . [15:26] block {stmts=1}
+. . . . . . [15:24] goto {expr=1}
+. . . . . . . [20:24] lbl1 | -> undef (_aaa)
+. . . . [31:39] label
+. . . . . [33:37] lbl1 | ++ label (_aa)

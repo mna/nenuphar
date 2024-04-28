@@ -1,0 +1,6 @@
+fn a!
+	defer
+		goto lbl1
+	end
+	::lbl1::
+end

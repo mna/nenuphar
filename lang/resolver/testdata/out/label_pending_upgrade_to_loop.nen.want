@@ -1,0 +1,12 @@
+[0:51] chunk testdata/in/label_pending_upgrade_to_loop.nen
+. [0:51] block {stmts=3}
+. . [0:17] do
+. . . [4:14] block {stmts=1}
+. . . . [4:13] goto {expr=1}
+. . . . . [9:13] lbl1 | -> loop label (_)
+. . [19:27] label
+. . . [21:25] lbl1 | ++ loop label (_)
+. . [28:50] for {clauses=0}
+. . . [36:47] block {stmts=1}
+. . . . [36:46] break {expr=1}
+. . . . . [42:46] lbl1 | -> loop label (_)

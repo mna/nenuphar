@@ -186,6 +186,8 @@ func (r *resolver) pop() {
 		// exiting a label frontier, all pending labels must be resolved or error
 		for lit, bdg := range r.env.pendingLabels {
 			r.errorf(bdg.Decl.Start, "undefined label: %s", lit)
+			bdg.Scope = Undefined
+			bdg.Decl = nil
 		}
 	} else if len(r.env.pendingLabels) > 0 {
 		// transfer pending labels to parent

@@ -11,6 +11,9 @@ func (r *resolver) nameBlocks() {
 	for _, bdg := range root.lbindings {
 		bdg.BlockName = root.name
 	}
+	for _, bdg := range root.pendingLabels {
+		bdg.BlockName = root.name
+	}
 	nameBlock(root)
 }
 
@@ -23,6 +26,11 @@ func nameBlock(b *block) {
 			}
 		}
 		for _, bdg := range cb.lbindings {
+			if bdg.BlockName == "" {
+				bdg.BlockName = cb.name
+			}
+		}
+		for _, bdg := range cb.pendingLabels {
 			if bdg.BlockName == "" {
 				bdg.BlockName = cb.name
 			}

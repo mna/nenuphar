@@ -1,0 +1,4 @@
+do
+	::lbl1::
+end
+goto lbl1

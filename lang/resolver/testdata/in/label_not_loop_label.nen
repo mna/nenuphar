@@ -1,0 +1,5 @@
+for true do
+	continue lbl1
+end
+
+::lbl1::

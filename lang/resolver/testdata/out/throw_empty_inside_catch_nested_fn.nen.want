@@ -1,0 +1,10 @@
+[0:32] chunk testdata/in/throw_empty_inside_catch_nested_fn.nen
+. [0:32] block {stmts=1}
+. . [0:31] catch
+. . . [7:28] block {stmts=1}
+. . . . [7:27] expr stmt
+. . . . . [7:27] call {args=0}
+. . . . . . [7:25] (expr)
+. . . . . . . [8:24] fn {params=0}
+. . . . . . . . [14:21] block {stmts=1}
+. . . . . . . . . [14:19] throw {expr=0}

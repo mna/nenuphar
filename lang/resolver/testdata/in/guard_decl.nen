@@ -1,0 +1,7 @@
+let before = a
+
+guard let a = 1 else
+	return a
+end
+
+const b = a

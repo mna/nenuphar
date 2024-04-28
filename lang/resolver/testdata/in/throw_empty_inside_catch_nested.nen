@@ -1,0 +1,9 @@
+catch
+	do
+		for do
+			defer
+				throw
+			end
+		end
+	end
+end

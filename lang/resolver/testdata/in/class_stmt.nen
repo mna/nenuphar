@@ -1,0 +1,4 @@
+class A!
+end
+
+let a = A!

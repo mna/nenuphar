@@ -1,0 +1,53 @@
+[0:144] chunk testdata/in/if_elseif_else.nen
+. [0:144] block {stmts=3}
+. . [0:9] let declaration {left=1, right=1}
+. . . [4:5] x | ++ let (_)
+. . . [8:9] int literal 0
+. . [10:128] if elseif
+. . . [13:18] binary '>'
+. . . . [13:14] x | -> let (_)
+. . . . [17:18] int literal 0
+. . . [25:50] block {stmts=2}
+. . . . [25:34] let declaration {left=1, right=1}
+. . . . . [29:30] b | ++ let (_a)
+. . . . . [33:34] int literal 2
+. . . . [36:49] assignment {left=1, right=1}
+. . . . . [36:37] x | -> let (_)
+. . . . . [40:49] binary '+'
+. . . . . . [40:45] binary '+'
+. . . . . . . [40:41] b | -> let (_a)
+. . . . . . . [44:45] c | -> undef
+. . . . . . [48:49] d | -> undef
+. . . [50:125] elseif else
+. . . . [57:62] binary '<'
+. . . . . [57:58] x | -> let (_)
+. . . . . [61:62] int literal 0
+. . . . [69:94] block {stmts=2}
+. . . . . [69:78] let declaration {left=1, right=1}
+. . . . . . [73:74] c | ++ let (_b)
+. . . . . . [77:78] int literal 3
+. . . . . [80:93] assignment {left=1, right=1}
+. . . . . . [80:81] x | -> let (_)
+. . . . . . [84:93] binary '+'
+. . . . . . . [84:89] binary '+'
+. . . . . . . . [84:85] b | -> undef
+. . . . . . . . [88:89] c | -> let (_b)
+. . . . . . . [92:93] d | -> undef
+. . . . [100:125] block {stmts=2}
+. . . . . [100:109] let declaration {left=1, right=1}
+. . . . . . [104:105] d | ++ let (_c)
+. . . . . . [108:109] int literal 4
+. . . . . [111:124] assignment {left=1, right=1}
+. . . . . . [111:112] x | -> let (_)
+. . . . . . [115:124] binary '+'
+. . . . . . . [115:120] binary '+'
+. . . . . . . . [115:116] b | -> undef
+. . . . . . . . [119:120] c | -> undef
+. . . . . . . [123:124] d | -> let (_c)
+. . [130:143] assignment {left=1, right=1}
+. . . [130:131] x | -> let (_)
+. . . [134:143] binary '+'
+. . . . [134:139] binary '+'
+. . . . . [134:135] b | -> undef
+. . . . . [138:139] c | -> undef
+. . . . [142:143] d | -> undef

@@ -1,0 +1,25 @@
+[0:112] chunk testdata/in/class_refer_to_itself.nen
+. [0:112] block {stmts=2}
+. . [0:13] class decl {fields=0, inherits=0, methods=0}
+. . . [6:7] A | ++ const (_)
+. . [15:111] class decl {fields=2, inherits=1, methods=2}
+. . . [21:22] B | ++ cell const (_)
+. . . [23:24] A | -> const (_)
+. . . [27:38] let declaration {left=1, right=1}
+. . . . [31:33] f1 | ++ let (_b)
+. . . . [36:38] f2 | -> undef
+. . . [40:53] const declaration {left=1, right=1}
+. . . . [46:48] f2 | ++ const (_b)
+. . . . [51:53] f1 | -> let (_b)
+. . . [56:80] fn decl {params=0}
+. . . . [59:61] m1 | ++ const (_b)
+. . . . [65:77] block {stmts=1}
+. . . . . [65:75] return {expr=1}
+. . . . . . [72:75] call {args=0}
+. . . . . . . [72:74] m2 | -> free const (_baa)
+. . . [83:107] fn decl {params=0}
+. . . . [86:88] m2 | ++ cell const (_b)
+. . . . [92:104] block {stmts=1}
+. . . . . [92:102] return {expr=1}
+. . . . . . [99:102] call {args=0}
+. . . . . . . [99:100] B | -> free const (_bba)

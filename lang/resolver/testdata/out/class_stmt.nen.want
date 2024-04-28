@@ -1,0 +1,8 @@
+[0:25] chunk testdata/in/class_stmt.nen
+. [0:25] block {stmts=2}
+. . [0:12] class decl {fields=0, inherits=0, methods=0}
+. . . [6:7] A | ++ const (_)
+. . [14:24] let declaration {left=1, right=1}
+. . . [18:19] a | ++ let (_)
+. . . [22:24] call {args=0}
+. . . . [22:23] A | -> const (_)

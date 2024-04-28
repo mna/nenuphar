@@ -1,0 +1,5 @@
+if let a = 1 then
+	return a
+else
+	return a
+end

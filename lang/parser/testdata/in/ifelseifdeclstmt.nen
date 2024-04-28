@@ -1,0 +1,5 @@
+if a then
+	f()
+elseif let b = 1 then
+	g()
+end

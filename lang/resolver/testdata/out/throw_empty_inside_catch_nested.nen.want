@@ -1,0 +1,11 @@
+[0:60] chunk testdata/in/throw_empty_inside_catch_nested.nen
+. [0:60] block {stmts=1}
+. . [0:59] catch
+. . . [7:56] block {stmts=1}
+. . . . [7:55] do
+. . . . . [12:52] block {stmts=1}
+. . . . . . [12:50] for {clauses=0}
+. . . . . . . [22:47] block {stmts=1}
+. . . . . . . . [22:44] defer
+. . . . . . . . . [32:41] block {stmts=1}
+. . . . . . . . . . [32:37] throw {expr=0}

@@ -1,0 +1,15 @@
+[0:64] chunk testdata/in/guard_decl.nen
+. [0:64] block {stmts=3}
+. . [0:14] let declaration {left=1, right=1}
+. . . [4:10] before | ++ let (_)
+. . . [13:14] a | -> undef
+. . [16:50] guard else
+. . . [22:31] let declaration {left=1, right=1}
+. . . . [26:27] a | ++ let (_)
+. . . . [30:31] int literal 1
+. . . [38:47] block {stmts=1}
+. . . . [38:46] return {expr=1}
+. . . . . [45:46] a | -> undef
+. . [52:63] const declaration {left=1, right=1}
+. . . [58:59] b | ++ const (_)
+. . . [62:63] a | -> let (_)

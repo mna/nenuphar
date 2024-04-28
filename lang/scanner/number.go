@@ -31,6 +31,9 @@ func (s *Scanner) number() (tok token.Token, base int, lit string) {
 			case 'b':
 				s.advance()
 				base, prefix = 2, 'b'
+			default:
+				// '0' is the first digit
+				digsep |= 1
 			}
 		}
 		digsep |= s.digits(base, &invalid)

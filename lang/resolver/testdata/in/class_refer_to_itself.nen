@@ -1,0 +1,15 @@
+class A()
+end
+
+class B(A)
+	let f1 = f2
+	const f2 = f1
+
+	fn m1!
+		return m2!
+	end
+
+	fn m2!
+		return B()
+	end
+end

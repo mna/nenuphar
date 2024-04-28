@@ -1,0 +1,9 @@
+testdata/in/if_elseif_else.nen:4:10: undefined: c
+testdata/in/if_elseif_else.nen:4:14: undefined: d
+testdata/in/if_elseif_else.nen:7:6: undefined: b
+testdata/in/if_elseif_else.nen:7:14: undefined: d
+testdata/in/if_elseif_else.nen:10:6: undefined: b
+testdata/in/if_elseif_else.nen:10:10: undefined: c
+testdata/in/if_elseif_else.nen:13:5: undefined: b
+testdata/in/if_elseif_else.nen:13:9: undefined: c
+testdata/in/if_elseif_else.nen:13:13: undefined: d

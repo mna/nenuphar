@@ -1,0 +1,3 @@
+do
+	throw 1
+end

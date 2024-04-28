@@ -1,0 +1,6 @@
+[0:16] chunk testdata/in/throw_outside_catch.nen
+. [0:16] block {stmts=1}
+. . [0:15] do
+. . . [4:12] block {stmts=1}
+. . . . [4:11] throw {expr=1}
+. . . . . [10:11] int literal 1

@@ -1,0 +1,13 @@
+let x = 0
+if x > 0 then
+	let b = 2
+	x = b + c + d
+elseif x < 0 then
+	let c = 3
+	x = b + c + d
+else
+	let d = 4
+	x = b + c + d
+end
+
+x = b + c + d

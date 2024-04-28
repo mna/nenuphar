@@ -1,0 +1,5 @@
+[0:17] chunk testdata/in/throw_empty_inside_catch.nen
+. [0:17] block {stmts=1}
+. . [0:16] catch
+. . . [7:13] block {stmts=1}
+. . . . [7:12] throw {expr=0}

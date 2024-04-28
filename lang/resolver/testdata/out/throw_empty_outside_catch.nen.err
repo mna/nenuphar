@@ -1,0 +1,1 @@
+testdata/in/throw_empty_outside_catch.nen:2:2: invalid re-throw: not inside a catch block

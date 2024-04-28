@@ -1,0 +1,5 @@
+catch
+	(fn!
+		throw
+	end)()
+end

@@ -8,6 +8,9 @@ func (r *resolver) nameBlocks() {
 	for _, bdg := range root.bindings {
 		bdg.BlockName = root.name
 	}
+	for _, bdg := range root.lbindings {
+		bdg.BlockName = root.name
+	}
 	nameBlock(root)
 }
 
@@ -15,6 +18,11 @@ func nameBlock(b *block) {
 	for i, cb := range b.children {
 		cb.name = b.name + letterFor(i)
 		for _, bdg := range cb.bindings {
+			if bdg.BlockName == "" {
+				bdg.BlockName = cb.name
+			}
+		}
+		for _, bdg := range cb.lbindings {
 			if bdg.BlockName == "" {
 				bdg.BlockName = cb.name
 			}

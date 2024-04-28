@@ -43,6 +43,8 @@ func IsAssignable(e Expr) bool {
 	case *IndexExpr:
 		left := Unwrap(e.Prefix)
 		return IsAssignable(left)
+	case *ParenExpr:
+		return IsAssignable(Unwrap(e))
 	default:
 		return false
 	}

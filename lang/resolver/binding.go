@@ -142,11 +142,12 @@ type block struct {
 	// cannot "see" labels in the parent blocks.
 	isDeferCatch bool
 
-	// bindings maps a name to its binding. A local binding has an index
-	// into its innermost enclosing function's locals array. A free
-	// binding has an index into its innermost enclosing function's
-	// freevars array.
-	bindings map[string]*Binding
+	// bindings and lbindings maps a name to its binding (for variables and
+	// labels, respectively). A local binding has an index into its innermost
+	// enclosing function's locals array. A free binding has an index into its
+	// innermost enclosing function's freevars array.
+	bindings  map[string]*Binding
+	lbindings map[string]*Binding
 
 	// children records the child blocks of the current one.
 	children []*block

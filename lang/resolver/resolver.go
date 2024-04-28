@@ -29,6 +29,10 @@
 // where a label with the same name is visible, even if this other label
 // has been declared in an enclosing block.
 //
+// Labels live in a separate namespace from the rest of the value identifiers
+// ("variables"), so a label may have the same name as a variable since their
+// use are never ambiguous.
+//
 // A break or continue statement can only reference a label associated with a
 // loop, and respectively breaks out or starts next iteration of the referenced
 // loop. A label is associated with a loop if it immediately precedes the loop
@@ -160,7 +164,6 @@ func (r *resolver) push(b *block) {
 		}
 	}
 	b.parent = r.env
-	b.bindings = make(map[string]*Binding)
 	r.env = b
 }
 
@@ -217,6 +220,12 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 }
 
 func (r *resolver) stmt(stmt ast.Stmt) {
+	// TODO: validate that lhs identifiers are not constants. This only applies
+	// module-locally, because a module exports a single value and that value is
+	// imported as const or let and how it was defined inside the imported module
+	// does not apply anymore (the variable itself is const or let, not the
+	// value).
+
 	switch stmt := stmt.(type) {
 	case *ast.AssignStmt:
 		// resolve the rhs first
@@ -229,7 +238,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 				// this is a declaration, create a new binding
 				r.bind(e.(*ast.IdentExpr), stmt.DeclType == token.CONST)
 			} else {
-				r.expr(e)
+				r.expr(e /*, true - being assigned to */)
 			}
 		}
 
@@ -525,17 +534,20 @@ func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
 	ix := len(r.env.fn.Locals)
 	bdg.Index = ix
 	r.env.fn.Locals = append(r.env.fn.Locals, bdg)
+
+	if r.env.bindings == nil {
+		r.env.bindings = make(map[string]*Binding)
+	}
 	r.env.bindings[ident.Lit] = bdg
 
 	ident.Binding = bdg
 }
 
 func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
-	// rule: labels cannot be shadowed, and a label cannot shadow a variable
-	// inside the scope frontiers of the label.
+	// rule: labels cannot be shadowed.
 	curFn := r.env.fn
 	for env := r.env; env != nil && env.fn == curFn; env = env.parent {
-		bdg := env.bindings[ident.Lit]
+		bdg := env.lbindings[ident.Lit]
 		if bdg != nil {
 			if env == r.env {
 				r.errorf(ident.Start, "already declared in this block: %s", ident.Lit)
@@ -560,7 +572,11 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 	ix := len(r.env.fn.Labels)
 	bdg.Index = ix
 	r.env.fn.Labels = append(r.env.fn.Labels, bdg)
-	r.env.bindings[ident.Lit] = bdg
+
+	if r.env.lbindings == nil {
+		r.env.lbindings = make(map[string]*Binding)
+	}
+	r.env.lbindings[ident.Lit] = bdg
 
 	ident.Binding = bdg
 }
@@ -587,6 +603,10 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 					Const: bdg.Const,
 					Scope: Free,
 					Index: ix,
+				}
+
+				if r.env.bindings == nil {
+					r.env.bindings = make(map[string]*Binding)
 				}
 				r.env.bindings[ident.Lit] = bdg
 			}
@@ -631,7 +651,7 @@ func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
 	// continue or goto in a defer cannot target a label outside that defer).
 	curFn := r.env.fn
 	for env := r.env; env != nil && env.fn == curFn; env = env.parent {
-		bdg := env.bindings[ident.Lit]
+		bdg := env.lbindings[ident.Lit]
 		if bdg != nil {
 			// binding found, must be a label, and may need to be associated with a
 			// loop

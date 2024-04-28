@@ -38,6 +38,17 @@
 // loop. A label is associated with a loop if it immediately precedes the loop
 // statement (ignoring whitespace and comments).
 //
+// # Const
+//
+// Constant variable cannot be assigned after declaration. Names declared in
+// function, class and method statements are constants, as well as predeclared
+// and universal bindings.
+//
+// This constraint only applies module-locally, because when a module exports a
+// value, that value is then imported as const or let by the importing module
+// and how it was defined inside the exporting module does not apply anymore
+// (the variable itself is const or let, not the value).
+//
 // # Bindings
 //
 // The following statements define new bindings:
@@ -168,6 +179,10 @@ func (r *resolver) push(b *block) {
 }
 
 func (r *resolver) pop() {
+	// TODO: if the block being exited is in a different fn than the parent, or
+	// if it is a defer/catch, all pending labels must generate an undefined
+	// error. Otherwise, collect the pending labels to the parent block.
+
 	r.env = r.env.parent
 }
 
@@ -220,17 +235,11 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 }
 
 func (r *resolver) stmt(stmt ast.Stmt) {
-	// TODO: validate that lhs identifiers are not constants. This only applies
-	// module-locally, because a module exports a single value and that value is
-	// imported as const or let and how it was defined inside the imported module
-	// does not apply anymore (the variable itself is const or let, not the
-	// value).
-
 	switch stmt := stmt.(type) {
 	case *ast.AssignStmt:
 		// resolve the rhs first
 		for _, e := range stmt.Right {
-			r.expr(e)
+			r.expr(e, false)
 		}
 
 		for _, e := range stmt.Left {
@@ -238,14 +247,14 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 				// this is a declaration, create a new binding
 				r.bind(e.(*ast.IdentExpr), stmt.DeclType == token.CONST)
 			} else {
-				r.expr(e /*, true - being assigned to */)
+				r.expr(e, true)
 			}
 		}
 
 	case *ast.ClassStmt:
 		// resolve the inherits clause first
 		if stmt.Inherits != nil && stmt.Inherits.Expr != nil {
-			r.expr(stmt.Inherits.Expr)
+			r.expr(stmt.Inherits.Expr, false)
 		}
 
 		// bind the name before the body, as it can be used by itself
@@ -254,12 +263,12 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		r.class(stmt, stmt.Body)
 
 	case *ast.ExprStmt:
-		r.expr(stmt.Expr)
+		r.expr(stmt.Expr, false)
 
 	case *ast.ForInStmt:
 		// resolve the rhs first
 		for _, e := range stmt.Right {
-			r.expr(e)
+			r.expr(e, false)
 		}
 
 		// lhs are implicit declarations if identifiers, otherwise must be resolved
@@ -270,7 +279,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 			if id, ok := e.(*ast.IdentExpr); ok {
 				toBind = append(toBind, id)
 			} else {
-				r.expr(e)
+				r.expr(e, false) // assigns, but not to an ident
 			}
 		}
 		// if there are loop-scoped identifiers, create a synthetic block to hold them
@@ -295,7 +304,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 			r.stmt(stmt.Init)
 		}
 		if stmt.Cond != nil {
-			r.expr(stmt.Cond)
+			r.expr(stmt.Cond, false)
 		}
 		if stmt.Post != nil {
 			r.stmt(stmt.Post)
@@ -312,7 +321,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		// regardless of whether this is an if, elseif or guard, the condition
 		// resolves in the enclosing environment.
 		if stmt.Cond != nil {
-			r.expr(stmt.Cond)
+			r.expr(stmt.Cond, false)
 			if stmt.True != nil {
 				r.block(stmt.True, stmt)
 			}
@@ -337,7 +346,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		// and in the enclosing environment (but _after_ the false block) for guard.
 		if stmt.Decl != nil {
 			for _, e := range stmt.Decl.Right {
-				r.expr(e)
+				r.expr(e, false)
 			}
 
 			switch stmt.Type {
@@ -404,7 +413,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		}
 
 		if stmt.Expr != nil {
-			r.expr(stmt.Expr)
+			r.expr(stmt.Expr, false)
 		}
 
 	case *ast.SimpleBlockStmt:
@@ -415,58 +424,58 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 	}
 }
 
-func (r *resolver) expr(expr ast.Expr) {
+func (r *resolver) expr(expr ast.Expr, assignsToIdent bool) {
 	switch expr := expr.(type) {
 	case *ast.ArrayLikeExpr:
 		for _, e := range expr.Items {
-			r.expr(e)
+			r.expr(e, false)
 		}
 
 	case *ast.BinOpExpr:
-		r.expr(expr.Left)
-		r.expr(expr.Right)
+		r.expr(expr.Left, false)
+		r.expr(expr.Right, false)
 
 	case *ast.CallExpr:
-		r.expr(expr.Fn)
+		r.expr(expr.Fn, false)
 		for _, e := range expr.Args {
-			r.expr(e)
+			r.expr(e, false)
 		}
 		// TODO: fail gracefully when > max args?
 
 	case *ast.ClassExpr:
 		if expr.Inherits != nil && expr.Inherits.Expr != nil {
-			r.expr(expr.Inherits.Expr)
+			r.expr(expr.Inherits.Expr, false)
 		}
 		r.class(expr, expr.Body)
 
 	case *ast.DotExpr:
 		// ignore right, can be anything (runtime lookup)
-		r.expr(expr.Left)
+		r.expr(expr.Left, false) // even if left is an ident, we're not assigning to it, only to its field
 
 	case *ast.FuncExpr:
 		r.function(expr, expr.Sig, expr.Body)
 
 	case *ast.IdentExpr:
-		r.use(expr)
+		r.use(expr, assignsToIdent)
 
 	case *ast.IndexExpr:
-		r.expr(expr.Prefix)
-		r.expr(expr.Index)
+		r.expr(expr.Prefix, false) // even if prefix is an ident, we're not assigning to it, only to its index
+		r.expr(expr.Index, false)
 
 	case *ast.LiteralExpr:
 		// nothing to do
 
 	case *ast.MapExpr:
 		for _, it := range expr.Items {
-			r.expr(it.Key)
-			r.expr(it.Value)
+			r.expr(it.Key, false)
+			r.expr(it.Value, false)
 		}
 
 	case *ast.ParenExpr:
-		r.expr(expr.Expr)
+		r.expr(expr.Expr, assignsToIdent)
 
 	case *ast.UnaryOpExpr:
-		r.expr(expr.Right)
+		r.expr(expr.Right, false)
 
 	default:
 		panic(fmt.Sprintf("unexpected expr %T", expr))
@@ -502,7 +511,7 @@ func (r *resolver) class(cl ast.Node, body *ast.ClassBody) {
 	for _, f := range body.Fields {
 		// resolve the rhs of the declarations first, which cannot refer to methods
 		for _, e := range f.Right {
-			r.expr(e)
+			r.expr(e, false)
 		}
 
 		for _, e := range f.Left {
@@ -562,8 +571,8 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 		}
 	}
 
-	// TODO: add validation that label is not a target in a local variable
-	// declaration
+	// TODO: add validation that label does not jump into a new local variable
+	// declaration's scope.
 	scope := Label
 	if loop {
 		scope = LoopLabel
@@ -581,10 +590,14 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 	ident.Binding = bdg
 }
 
-func (r *resolver) use(ident *ast.IdentExpr) {
+func (r *resolver) use(ident *ast.IdentExpr, isAssign bool) {
 	startFn := r.env.fn
 	for env := r.env; env != nil; env = env.parent {
-		if bdg := env.bindings[ident.Lit]; bdg != nil && bdg.Scope != Label && bdg.Scope != LoopLabel {
+		if bdg := env.bindings[ident.Lit]; bdg != nil {
+			if isAssign && bdg.Const {
+				r.errorf(ident.Start, "assignment to immutable variable: %s", ident.Lit)
+			}
+
 			if env.fn != startFn {
 				// Found in a parent block which belongs to enclosing function. Add the
 				// parent's binding to the function's freevars, and add a new 'free'
@@ -618,18 +631,26 @@ func (r *resolver) use(ident *ast.IdentExpr) {
 	// look for a predeclared or universal binding
 	// TODO: should save those bindings in the r.env to shortcut subsequent lookups?
 	if r.isPredeclared(ident.Lit) {
+		if isAssign {
+			r.errorf(ident.Start, "assignment to immutable variable: %s", ident.Lit)
+		}
+
 		bdg, ok := r.globals[ident.Lit]
 		if !ok {
-			bdg = &Binding{Scope: Predeclared, Decl: ident}
+			bdg = &Binding{Scope: Predeclared, Decl: ident, Const: true}
 			r.globals[ident.Lit] = bdg
 		}
 		ident.Binding = bdg
 		return
 	}
 	if r.isUniversal(ident.Lit) {
+		if isAssign {
+			r.errorf(ident.Start, "assignment to immutable variable: %s", ident.Lit)
+		}
+
 		bdg, ok := r.globals[ident.Lit]
 		if !ok {
-			bdg = &Binding{Scope: Universal, Decl: ident}
+			bdg = &Binding{Scope: Universal, Decl: ident, Const: true}
 			r.globals[ident.Lit] = bdg
 		}
 		ident.Binding = bdg
@@ -653,13 +674,6 @@ func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
 	for env := r.env; env != nil && env.fn == curFn; env = env.parent {
 		bdg := env.lbindings[ident.Lit]
 		if bdg != nil {
-			// binding found, must be a label, and may need to be associated with a
-			// loop
-			if bdg.Scope != Label && bdg.Scope != LoopLabel {
-				r.errorf(ident.Start, "label %s not defined", ident.Lit)
-				return
-			}
-
 			if requireLoopLabel && bdg.Scope != LoopLabel {
 				r.errorf(ident.Start, "label %s not associated with a loop", ident.Lit)
 				return
@@ -672,6 +686,9 @@ func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
 			break // cannot continue looking in parent block
 		}
 	}
+
+	// TODO: collect pending label, keep track if it was required as a loop label
+	// or not.
 	r.errorf(ident.Start, "label %s not defined", ident.Lit)
 	ident.Binding = &Binding{Scope: Undefined}
 }

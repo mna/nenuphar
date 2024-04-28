@@ -44,7 +44,9 @@ func (s Scope) String() string {
 type Binding struct {
 	Scope Scope
 
-	// Const is true if the binding is a constant.
+	// Const is true if the binding is a constant. In addition to explicit const
+	// variables, function and class names are constant, and so are predeclared
+	// and universal identifiers.
 	Const bool
 
 	// Index records the index into the enclosing
@@ -148,6 +150,11 @@ type block struct {
 	// innermost enclosing function's freevars array.
 	bindings  map[string]*Binding
 	lbindings map[string]*Binding
+
+	// pendingLabels are labels that have been used but have yet to be defined.
+	// On function or defer/catch exit, all pending labels must have been
+	// defined, otherwise it is an undefined label error at the point of use.
+	pendingLabels map[string]*Binding
 
 	// children records the child blocks of the current one.
 	children []*block

@@ -1,0 +1,8 @@
+[0:18] chunk testdata/in/const_simple_assign.nen
+. [0:18] block {stmts=2}
+. . [0:11] const declaration {left=1, right=1}
+. . . [6:7] x | ++ const (_)
+. . . [10:11] int literal 1
+. . [12:17] assignment {left=1, right=1}
+. . . [12:13] x | -> const (_)
+. . . [16:17] int literal 2

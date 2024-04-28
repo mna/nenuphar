@@ -374,7 +374,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 					r.bind(e.(*ast.IdentExpr), stmt.Decl.DeclType == token.CONST)
 				}
 
-			case token.IF, token.ELSEIF:
+			case token.IF: // no ELSEIF possible for if-bind statement
 				// define the lhs of the declaration in the true block (in a synthetic
 				// block that only encloses the true block)
 				r.push(new(block))
@@ -385,16 +385,6 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 				r.pop()
 
 				if stmt.False != nil {
-					// do not create a new block for an elseif, process it as an if
-					if len(stmt.False.Stmts) == 1 {
-						if ifst, ok := stmt.False.Stmts[0].(*ast.IfGuardStmt); ok {
-							if ifst.Type == token.ELSEIF {
-								r.stmt(ifst)
-								break
-							}
-						}
-					}
-					// otherwise create a block for the false block
 					r.block(stmt.False, stmt)
 				}
 

@@ -1,0 +1,1 @@
+testdata/in/const_simple_assign.nen:2:1: assignment to immutable variable: x

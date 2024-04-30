@@ -1,0 +1,5 @@
+testdata/in/number_no_digits.nen:1:3: '_' must separate successive digits
+testdata/in/number_no_digits.nen:1:4: hexadecimal literal has no digits
+testdata/in/number_no_digits.nen:2:4: hexadecimal literal has no digits
+testdata/in/number_no_digits.nen:2:5: exponent has no digits
+testdata/in/number_no_digits.nen:3:3: octal literal has no digits

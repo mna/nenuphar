@@ -1,0 +1,2 @@
+testdata/in/float_invalid_exponent.nen:1:4: 'e' exponent requires decimal mantissa
+testdata/in/float_invalid_exponent.nen:2:4: 'p' exponent requires hexadecimal mantissa

@@ -1,0 +1,2 @@
+testdata/in/float_invalid_radix.nen:1:5: invalid radix point in binary literal
+testdata/in/float_invalid_radix.nen:2:6: invalid radix point in octal literal

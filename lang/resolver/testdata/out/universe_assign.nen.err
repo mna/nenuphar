@@ -1,0 +1,1 @@
+testdata/in/universe_assign.nen:1:1: assignment to immutable variable: _G

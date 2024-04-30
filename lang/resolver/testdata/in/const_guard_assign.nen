@@ -1,0 +1,5 @@
+guard const x = 1 else
+	return
+end
+
+x = 2

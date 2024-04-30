@@ -1,0 +1,9 @@
+[0:24] chunk testdata/in/const_fn_name_assign.nen
+. [0:24] block {stmts=2}
+. . [0:9] fn decl {params=0}
+. . . [3:4] a | ++ const (_)
+. . . [6:6] block {stmts=0}
+. . [11:23] assignment {left=1, right=1}
+. . . [11:12] a | -> const (_)
+. . . [15:23] fn {params=0}
+. . . . [20:20] block {stmts=0}

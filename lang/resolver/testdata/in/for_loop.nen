@@ -1,0 +1,4 @@
+for let x = 0; x < 10; x += 1 do
+	let y = x
+end
+let z = x

@@ -1,0 +1,1 @@
+testdata/in/const_guard_assign.nen:5:1: assignment to immutable variable: x

@@ -1,0 +1,4 @@
+for x, y in 'abc' do
+	let z = x + y
+end
+let a = x + y + z

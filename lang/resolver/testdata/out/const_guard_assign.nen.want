@@ -1,0 +1,11 @@
+[0:42] chunk testdata/in/const_guard_assign.nen
+. [0:42] block {stmts=2}
+. . [0:34] guard else
+. . . [6:17] const declaration {left=1, right=1}
+. . . . [12:13] x | ++ const (_)
+. . . . [16:17] int literal 1
+. . . [24:31] block {stmts=1}
+. . . . [24:30] return {expr=0}
+. . [36:41] assignment {left=1, right=1}
+. . . [36:37] x | -> const (_)
+. . . [40:41] int literal 2

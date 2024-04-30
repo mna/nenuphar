@@ -11,6 +11,7 @@ import (
 	"github.com/mna/mainer"
 	"github.com/mna/nenuphar/internal/filetest"
 	"github.com/mna/nenuphar/internal/maincmd"
+	"github.com/mna/nenuphar/lang/machine"
 	"github.com/mna/nenuphar/lang/resolver"
 	"github.com/mna/nenuphar/lang/token"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,10 @@ var testUpdateResolverTests = flag.Bool("test.update-resolver-tests", false, "If
 func TestResolver(t *testing.T) {
 	ctx := context.Background()
 	srcDir, resultDir := filepath.Join("testdata", "in"), filepath.Join("testdata", "out")
+
+	// for this test and this test only, add a _G symbol to the universe.
+	machine.Universe["_G"] = machine.Nil
+	t.Cleanup(func() { delete(machine.Universe, "_G") })
 
 	for _, fi := range filetest.SourceFiles(t, srcDir, ".nen") {
 		t.Run(fi.Name(), func(t *testing.T) {

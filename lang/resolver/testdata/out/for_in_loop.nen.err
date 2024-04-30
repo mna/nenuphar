@@ -1,0 +1,3 @@
+testdata/in/for_in_loop.nen:4:9: undefined: x
+testdata/in/for_in_loop.nen:4:13: undefined: y
+testdata/in/for_in_loop.nen:4:17: undefined: z

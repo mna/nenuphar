@@ -1,0 +1,4 @@
+let x = {}
+for x.f, x.g in _G do
+end
+let y = x.f

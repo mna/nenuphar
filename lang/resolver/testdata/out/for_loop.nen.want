@@ -1,0 +1,19 @@
+[0:58] chunk testdata/in/for_loop.nen
+. [0:58] block {stmts=2}
+. . [0:47] for {clauses=3}
+. . . [4:13] let declaration {left=1, right=1}
+. . . . [8:9] x | ++ let (_a)
+. . . . [12:13] int literal 0
+. . . [15:21] binary '<'
+. . . . [15:16] x | -> let (_a)
+. . . . [19:21] int literal 10
+. . . [23:29] augmented assignment '+=' {left=1, right=1}
+. . . . [23:24] x | -> let (_a)
+. . . . [28:29] int literal 1
+. . . [34:44] block {stmts=1}
+. . . . [34:43] let declaration {left=1, right=1}
+. . . . . [38:39] y | ++ let (_aa)
+. . . . . [42:43] x | -> let (_a)
+. . [48:57] let declaration {left=1, right=1}
+. . . [52:53] z | ++ let (_)
+. . . [56:57] x | -> undef

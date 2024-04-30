@@ -1,0 +1,1 @@
+testdata/in/const_for_loop.nen:1:26: assignment to immutable variable: x

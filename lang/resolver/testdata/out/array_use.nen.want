@@ -1,0 +1,16 @@
+[0:48] chunk testdata/in/array_use.nen
+. [0:48] block {stmts=3}
+. . [0:15] let declaration {left=2, right=2}
+. . . [4:5] x | ++ let (_)
+. . . [7:8] y | ++ let (_)
+. . . [11:12] int literal 1
+. . . [14:15] int literal 2
+. . [16:27] const declaration {left=1, right=1}
+. . . [22:23] z | ++ const (_)
+. . . [26:27] int literal 3
+. . [29:47] let declaration {left=1, right=1}
+. . . [33:35] ar | ++ let (_)
+. . . [36:47] array {items=3}
+. . . . [39:40] x | -> let (_)
+. . . . [42:43] y | -> let (_)
+. . . . [45:46] z | -> const (_)

@@ -1,0 +1,1 @@
+testdata/in/const_class_name_assign.nen:4:1: assignment to immutable variable: A

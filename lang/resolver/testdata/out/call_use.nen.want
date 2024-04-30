@@ -1,0 +1,28 @@
+[0:75] chunk testdata/in/call_use.nen
+. [0:75] block {stmts=4}
+. . [0:35] fn decl {params=3}
+. . . [3:4] f | ++ const (_)
+. . . [5:6] a | ++ let (_a)
+. . . [8:9] b | ++ let (_a)
+. . . [11:12] c | ++ let (_a)
+. . . [15:32] block {stmts=1}
+. . . . [15:31] return {expr=1}
+. . . . . [22:31] binary '+'
+. . . . . . [22:27] binary '+'
+. . . . . . . [22:23] a | -> let (_a)
+. . . . . . . [26:27] b | -> let (_a)
+. . . . . . [30:31] c | -> let (_a)
+. . [36:51] let declaration {left=2, right=2}
+. . . [40:41] x | ++ let (_)
+. . . [43:44] y | ++ let (_)
+. . . [47:48] int literal 1
+. . . [50:51] int literal 2
+. . [52:63] const declaration {left=1, right=1}
+. . . [58:59] z | ++ const (_)
+. . . [62:63] int literal 3
+. . [64:74] expr stmt
+. . . [64:74] call {args=3}
+. . . . [64:65] f | -> const (_)
+. . . . [66:67] x | -> let (_)
+. . . . [69:70] y | -> let (_)
+. . . . [72:73] z | -> const (_)

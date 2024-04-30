@@ -1,0 +1,5 @@
+[0:11] chunk testdata/in/universe_use.nen
+. [0:11] block {stmts=1}
+. . [0:10] let declaration {left=1, right=1}
+. . . [4:5] x | ++ let (_)
+. . . [8:10] _G | -> univ

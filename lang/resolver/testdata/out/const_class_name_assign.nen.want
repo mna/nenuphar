@@ -1,0 +1,8 @@
+[0:22] chunk testdata/in/const_class_name_assign.nen
+. [0:22] block {stmts=2}
+. . [0:12] class decl {fields=0, inherits=0, methods=0}
+. . . [6:7] A | ++ const (_)
+. . [14:21] assignment {left=1, right=1}
+. . . [14:15] A | -> const (_)
+. . . [18:21] call {args=0}
+. . . . [18:19] A | -> const (_)

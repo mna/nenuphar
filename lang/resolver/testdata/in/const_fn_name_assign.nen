@@ -1,0 +1,4 @@
+fn a!
+end
+
+a = fn() end

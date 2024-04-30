@@ -1,0 +1,13 @@
+[0:40] chunk testdata/in/const_for_loop.nen
+. [0:40] block {stmts=1}
+. . [0:39] for {clauses=3}
+. . . [4:15] const declaration {left=1, right=1}
+. . . . [10:11] x | ++ const (_a)
+. . . . [14:15] int literal 1
+. . . [17:23] binary '<'
+. . . . [17:18] x | -> const (_a)
+. . . . [21:23] int literal 10
+. . . [25:31] augmented assignment '+=' {left=1, right=1}
+. . . . [25:26] x | -> const (_a)
+. . . . [30:31] int literal 1
+. . . [36:36] block {stmts=0}

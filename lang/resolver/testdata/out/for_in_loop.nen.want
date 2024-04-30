@@ -1,0 +1,19 @@
+[0:58] chunk testdata/in/for_in_loop.nen
+. [0:58] block {stmts=2}
+. . [0:39] for in {left=2, right=1}
+. . . [4:5] x | ++ let (_a)
+. . . [7:8] y | ++ let (_a)
+. . . [12:17] string literal 'abc'
+. . . [22:36] block {stmts=1}
+. . . . [22:35] let declaration {left=1, right=1}
+. . . . . [26:27] z | ++ let (_aa)
+. . . . . [30:35] binary '+'
+. . . . . . [30:31] x | -> let (_a)
+. . . . . . [34:35] y | -> let (_a)
+. . [40:57] let declaration {left=1, right=1}
+. . . [44:45] a | ++ let (_)
+. . . [48:57] binary '+'
+. . . . [48:53] binary '+'
+. . . . . [48:49] x | -> undef
+. . . . . [52:53] y | -> undef
+. . . . [56:57] z | -> undef

@@ -67,7 +67,7 @@ type Binding struct {
 
 func (b *Binding) FormatFor(id *ast.IdentExpr) string {
 	var s string
-	if b.Decl == id {
+	if b.Decl == id && b.Scope != Universal && b.Scope != Predeclared {
 		s = "++ "
 	} else {
 		s = "-> "

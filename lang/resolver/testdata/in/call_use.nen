@@ -1,0 +1,6 @@
+fn f(a, b, c)
+	return a + b + c
+end
+let x, y = 1, 2
+const z = 3
+f(x, y, z)

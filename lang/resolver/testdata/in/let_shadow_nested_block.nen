@@ -1,0 +1,8 @@
+let x = 1
+do
+	let x = 2
+	let y = x
+end
+do
+	let y = x
+end

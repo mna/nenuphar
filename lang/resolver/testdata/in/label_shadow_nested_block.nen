@@ -1,0 +1,6 @@
+::lbl::
+do
+	if true then
+		::lbl::
+	end
+end

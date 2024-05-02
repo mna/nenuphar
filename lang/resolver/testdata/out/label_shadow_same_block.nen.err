@@ -1,0 +1,1 @@
+testdata/in/label_shadow_same_block.nen:2:3: already declared in this block: lbl

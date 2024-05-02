@@ -1,0 +1,18 @@
+[0:57] chunk testdata/in/let_shadow_nested_block.nen
+. [0:57] block {stmts=3}
+. . [0:9] let declaration {left=1, right=1}
+. . . [4:5] x | ++ let (_)
+. . . [8:9] int literal 1
+. . [10:38] do
+. . . [14:35] block {stmts=2}
+. . . . [14:23] let declaration {left=1, right=1}
+. . . . . [18:19] x | ++ let (_a)
+. . . . . [22:23] int literal 2
+. . . . [25:34] let declaration {left=1, right=1}
+. . . . . [29:30] y | ++ let (_a)
+. . . . . [33:34] x | -> let (_a)
+. . [39:56] do
+. . . [43:53] block {stmts=1}
+. . . . [43:52] let declaration {left=1, right=1}
+. . . . . [47:48] y | ++ let (_b)
+. . . . . [51:52] x | -> let (_)

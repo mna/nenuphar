@@ -1,0 +1,6 @@
+::lbl::
+if true then
+	for do
+		break lbl
+	end
+end

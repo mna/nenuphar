@@ -1,0 +1,14 @@
+[0:43] chunk testdata/in/map_expr.nen
+. [0:43] block {stmts=2}
+. . [0:19] let declaration {left=2, right=2}
+. . . [4:5] a | ++ let (_)
+. . . [7:8] b | ++ let (_)
+. . . [11:14] string literal "a"
+. . . [16:19] string literal "b"
+. . [20:42] let declaration {left=1, right=1}
+. . . [24:25] m | ++ let (_)
+. . . [28:42] map {keyvals=2}
+. . . . [29:30] a
+. . . . [32:33] b | -> let (_)
+. . . . [36:37] a | -> let (_)
+. . . . [40:41] c | -> undef

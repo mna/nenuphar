@@ -1,0 +1,7 @@
+::lbl::
+for do
+end
+
+for do
+	break lbl
+end

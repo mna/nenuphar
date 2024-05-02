@@ -1,0 +1,11 @@
+[0:44] chunk testdata/in/label_shadow_nested_block.nen
+. [0:44] block {stmts=2}
+. . [0:7] label
+. . . [2:5] lbl | ++ label (_)
+. . [8:43] do
+. . . [12:40] block {stmts=1}
+. . . . [12:39] if
+. . . . . [15:19] true
+. . . . . [27:36] block {stmts=1}
+. . . . . . [27:34] label
+. . . . . . . [29:32] lbl

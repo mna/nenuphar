@@ -1,0 +1,1 @@
+testdata/in/let_shadow_same_block.nen:2:7: already declared in this block: x

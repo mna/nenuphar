@@ -1,0 +1,2 @@
+let x = {}
+let y, z = x[_G], x[y]

@@ -473,7 +473,13 @@ func (r *resolver) expr(expr ast.Expr, assignsToIdent bool) {
 
 	case *ast.MapExpr:
 		for _, it := range expr.Items {
-			r.expr(it.Key, false)
+			// an *IdentExpr in Key is translated to a string of the same value as
+			// the identifier, _not_ to a reference to the symbol of that identifier.
+			// For binding resolution, simply skip the key if it is an identifier
+			// (same no-op as if it was a literal string).
+			if _, ok := it.Key.(*ast.IdentExpr); it.Lbrack.IsValid() || !ok {
+				r.expr(it.Key, false)
+			}
 			r.expr(it.Value, false)
 		}
 
@@ -686,6 +692,9 @@ func (r *resolver) use(ident *ast.IdentExpr, isAssign bool) {
 }
 
 func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
+	// TODO: break/continue must refer to a label that applies to the current
+	// loop or one of its enclosing loops, not any label loop!
+
 	// labels in current or any parent block are visible, but only inside the
 	// current function, and not across defer/catch blocks (i.e. a break,
 	// continue or goto in a defer cannot target a label outside that defer).

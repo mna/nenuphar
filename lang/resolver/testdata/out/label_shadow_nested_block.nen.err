@@ -1,0 +1,1 @@
+testdata/in/label_shadow_nested_block.nen:4:5: already declared in an outer block: lbl

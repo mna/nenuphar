@@ -1,0 +1,14 @@
+[0:34] chunk testdata/in/index_expr.nen
+. [0:34] block {stmts=2}
+. . [0:10] let declaration {left=1, right=1}
+. . . [4:5] x | ++ let (_)
+. . . [8:10] map {keyvals=0}
+. . [11:33] let declaration {left=2, right=2}
+. . . [15:16] y | ++ let (_)
+. . . [18:19] z | ++ let (_)
+. . . [22:27] expr[index]
+. . . . [22:23] x | -> let (_)
+. . . . [24:26] _G | -> univ
+. . . [29:33] expr[index]
+. . . . [29:30] x | -> let (_)
+. . . . [31:32] y | -> undef

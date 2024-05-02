@@ -1,0 +1,8 @@
+[0:22] chunk testdata/in/let_shadow_same_block.nen
+. [0:22] block {stmts=2}
+. . [0:9] let declaration {left=1, right=1}
+. . . [4:5] x | ++ let (_)
+. . . [8:9] int literal 1
+. . [10:21] const declaration {left=1, right=1}
+. . . [16:17] x
+. . . [20:21] int literal 2

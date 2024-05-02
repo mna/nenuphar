@@ -1,0 +1,15 @@
+[0:57] chunk testdata/in/class_expr.nen
+. [0:57] block {stmts=1}
+. . [0:56] let declaration {left=1, right=1}
+. . . [4:5] C | ++ let (_)
+. . . [8:56] class {fields=2, inherits=1, methods=1}
+. . . . [14:16] _G | -> univ
+. . . . [19:28] let declaration {left=1, right=1}
+. . . . . [23:24] a | ++ let (_a)
+. . . . . [27:28] int literal 1
+. . . . [30:41] const declaration {left=1, right=1}
+. . . . . [36:37] b | ++ const (_a)
+. . . . . [40:41] int literal 2
+. . . . [43:52] fn decl {params=0}
+. . . . . [46:47] c | ++ const (_a)
+. . . . . [49:49] block {stmts=0}

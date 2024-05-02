@@ -398,8 +398,20 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		r.bindLabel(stmt.Name, loop)
 
 	case *ast.ReturnLikeStmt:
+		// TODO: break and continue without label should not work in a defer/catch
+		// inside a loop. Keep a stack of loop/defer/catch instead of distinct
+		// counts? Could also help with loop labels for break/continue.
+
+		// Note that break and continue inside a defer cannot refer to a loop label
+		// outside that defer (or catch), this is by design because it cannot see
+		// any label outside its defer/catch. That may be a bit strict for catch
+		// blocks, can be relaxed later.
+
 		// break, continue and goto must refer to a valid label
 		if stmt.Type == token.BREAK || stmt.Type == token.CONTINUE || stmt.Type == token.GOTO {
+			if (stmt.Type == token.BREAK || stmt.Type == token.CONTINUE) && r.env.fn.loops == 0 {
+				r.errorf(stmt.Start, fmt.Sprintf("invalid %s outside a loop", stmt.Type))
+			}
 			if stmt.Expr != nil {
 				requireLoopLabel := stmt.Type != token.GOTO
 				r.useLabel(stmt.Expr.(*ast.IdentExpr), requireLoopLabel)
@@ -409,6 +421,8 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 
 		// return or throw is a standard expression
 		if stmt.Type == token.RETURN {
+			// note that GOTO inside a defer is ok because it will only see labels
+			// nested in that defer, not outside of it.
 			if r.env.fn.defers > 0 {
 				r.errorf(stmt.Start, "invalid return inside defer block")
 			}
@@ -584,7 +598,8 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 	}
 
 	// TODO: add validation that label does not jump into a new local variable
-	// declaration's scope.
+	// declaration's scope. It's the _use_ of a label that determines if it does
+	// this or not, the same label can be valid depending on where it is used.
 
 	// resolve from pending labels if present
 	pbdg := r.env.pendingLabels[ident.Lit]

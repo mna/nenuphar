@@ -1,0 +1,1 @@
+testdata/in/goto_jump_into_var.nen:2:7: goto lbl jumps into the scope of local variable x

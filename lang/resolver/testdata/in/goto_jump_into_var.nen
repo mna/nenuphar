@@ -1,0 +1,7 @@
+if true then
+	goto lbl
+end
+
+let x = 1
+::lbl::
+

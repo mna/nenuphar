@@ -1,0 +1,15 @@
+[0:55] chunk testdata/in/goto_correct_var.nen
+. [0:55] block {stmts=4}
+. . [0:9] let declaration {left=1, right=1}
+. . . [4:5] x | ++ let (_)
+. . . [8:9] int literal 1
+. . [10:36] if
+. . . [13:17] true
+. . . [24:33] block {stmts=1}
+. . . . [24:32] goto {expr=1}
+. . . . . [29:32] lbl | -> label (_)
+. . [37:44] label
+. . . [39:42] lbl | ++ label (_)
+. . [45:54] let declaration {left=1, right=1}
+. . . [49:50] y | ++ let (_)
+. . . [53:54] x | -> let (_)

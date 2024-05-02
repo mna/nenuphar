@@ -607,26 +607,35 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr) {
 		}
 	}
 
-	// TODO: add validation that label does not jump into a new local variable
-	// declaration's scope. It's the _use_ of a label that determines if it does
-	// this or not, the same label can be valid depending on where it is used. Do
-	// this by checking if, in the block immediately containing the label, there
-	// is a new variable declaration between the position of the goto statement
-	// and the position of the label. This is only possible for a forward jump.
-
 	// resolve from pending labels if present
+	var bdg *Binding
 	pbdg := r.env.pendingLabels[ident.Lit]
 	if pbdg != nil {
 		delete(r.env.pendingLabels, ident.Lit)
-	}
 
-	var bdg *Binding
-	if pbdg != nil {
+		firstUse := pbdg.Decl
 		bdg = pbdg
 		bdg.Decl = ident
+
+		// validate that a goto to the label does not jump into a new local variable
+		// declaration's scope. It's the _use_ of a label that determines if it does
+		// this or not, the same label can be valid depending on where it is used. We
+		// validate this by checking if, in the block immediately containing the
+		// label, there is a new variable declaration between the position of the
+		// goto statement and the position of the label. This is only possible for a
+		// forward jump.
+		from := firstUse.Start
+		for _, bdg := range r.env.bindings {
+			if bdg.Decl.Start > from {
+				// reporting the error at the position of the goto, since this is what
+				// causes the issue.
+				r.errorf(from, "goto %s jumps into the scope of local variable %s", ident.Lit, bdg.Decl.Lit)
+			}
+		}
 	} else {
 		bdg = &Binding{Scope: Label, Decl: ident}
 	}
+
 	ix := len(r.env.fn.Labels)
 	bdg.Index = ix
 	r.env.fn.Labels = append(r.env.fn.Labels, bdg)

@@ -1,0 +1,12 @@
+[0:47] chunk testdata/in/goto_jump_into_var.nen
+. [0:47] block {stmts=3}
+. . [0:26] if
+. . . [3:7] true
+. . . [14:23] block {stmts=1}
+. . . . [14:22] goto {expr=1}
+. . . . . [19:22] lbl | -> label (_)
+. . [28:37] let declaration {left=1, right=1}
+. . . [32:33] x | ++ let (_)
+. . . [36:37] int literal 1
+. . [38:45] label
+. . . [40:43] lbl | ++ label (_)

@@ -4,6 +4,6 @@
 . . . [4:8] true
 . . . [13:27] block {stmts=1}
 . . . . [13:26] continue {expr=1}
-. . . . . [22:26] lbl1 | -> label (_)
+. . . . . [22:26] lbl1 | -> undef
 . . [32:40] label
 . . . [34:38] lbl1 | ++ label (_)

@@ -1,0 +1,7 @@
+[0:31] chunk testdata/in/break_in_catch.nen
+. [0:31] block {stmts=1}
+. . [0:30] for {clauses=0}
+. . . [8:27] block {stmts=1}
+. . . . [8:26] catch
+. . . . . [16:23] block {stmts=1}
+. . . . . . [16:21] break {expr=0}

@@ -5,37 +5,33 @@ func (r *resolver) nameBlocks() {
 	// 'b', 'c', etc. with children appending their corresponding letter.
 	root := r.root
 	root.name = "_"
-	for _, bdg := range root.bindings {
-		bdg.BlockName = root.name
-	}
-	for _, bdg := range root.lbindings {
-		bdg.BlockName = root.name
-	}
-	for _, bdg := range root.pendingLabels {
-		bdg.BlockName = root.name
-	}
+	assignBlockNames(root)
 	nameBlock(root)
 }
 
 func nameBlock(b *block) {
 	for i, cb := range b.children {
 		cb.name = b.name + letterFor(i)
-		for _, bdg := range cb.bindings {
-			if bdg.BlockName == "" {
-				bdg.BlockName = cb.name
-			}
-		}
-		for _, bdg := range cb.lbindings {
-			if bdg.BlockName == "" {
-				bdg.BlockName = cb.name
-			}
-		}
-		for _, bdg := range cb.pendingLabels {
-			if bdg.BlockName == "" {
-				bdg.BlockName = cb.name
-			}
-		}
+		assignBlockNames(cb)
 		nameBlock(cb)
+	}
+}
+
+func assignBlockNames(blk *block) {
+	for _, bdg := range blk.bindings {
+		if bdg.BlockName == "" {
+			bdg.BlockName = blk.name
+		}
+	}
+	for _, bdg := range blk.lbindings {
+		if bdg.BlockName == "" {
+			bdg.BlockName = blk.name
+		}
+	}
+	for _, bdg := range blk.pendingLabels {
+		if bdg.BlockName == "" {
+			bdg.BlockName = blk.name
+		}
 	}
 }
 

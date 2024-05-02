@@ -226,13 +226,22 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 	}
 
 	r.push(&blk)
+
+	var lcd string
 	switch {
 	case isLoop:
-		blk.fn.loops++
+		lcd = "loop"
+		if blk.fn.pendingLoopLabel != "" {
+			lcd += ":" + blk.fn.pendingLoopLabel
+			blk.fn.pendingLoopLabel = ""
+		}
 	case isDefer:
-		blk.fn.defers++
+		lcd = "defer"
 	case isCatch:
-		blk.fn.catches++
+		lcd = "catch"
+	}
+	if lcd != "" {
+		blk.fn.lcdStack = append(blk.fn.lcdStack, lcd)
 	}
 
 	for _, s := range b.Stmts {
@@ -240,13 +249,8 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 	}
 
 	r.pop()
-	switch {
-	case isLoop:
-		blk.fn.loops--
-	case isDefer:
-		blk.fn.defers--
-	case isCatch:
-		blk.fn.catches--
+	if isLoop || isDefer || isCatch {
+		blk.fn.lcdStack = blk.fn.lcdStack[:len(blk.fn.lcdStack)-1]
 	}
 }
 
@@ -394,46 +398,52 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		}
 
 	case *ast.LabelStmt:
-		loop := stmt.Next != nil && stmt.Next.IsLoop()
-		r.bindLabel(stmt.Name, loop)
+		if loop := stmt.Next != nil && stmt.Next.IsLoop(); loop {
+			r.env.fn.pendingLoopLabel = stmt.Name.Lit
+		}
+		r.bindLabel(stmt.Name)
 
 	case *ast.ReturnLikeStmt:
-		// TODO: break and continue without label should not work in a defer/catch
-		// inside a loop. Keep a stack of loop/defer/catch instead of distinct
-		// counts? Could also help with loop labels for break/continue.
-
-		// Note that break and continue inside a defer cannot refer to a loop label
-		// outside that defer (or catch), this is by design because it cannot see
-		// any label outside its defer/catch. That may be a bit strict for catch
-		// blocks, can be relaxed later.
-
-		// break, continue and goto must refer to a valid label
-		if stmt.Type == token.BREAK || stmt.Type == token.CONTINUE || stmt.Type == token.GOTO {
-			if (stmt.Type == token.BREAK || stmt.Type == token.CONTINUE) && r.env.fn.loops == 0 {
+		switch stmt.Type {
+		case token.BREAK, token.CONTINUE:
+			// break and continue must be inside a loop (but not in a defer/catch).
+			if !r.env.isDirectlyInLoop() {
 				r.errorf(stmt.Start, fmt.Sprintf("invalid %s outside a loop", stmt.Type))
 			}
-			if stmt.Expr != nil {
-				requireLoopLabel := stmt.Type != token.GOTO
-				r.useLabel(stmt.Expr.(*ast.IdentExpr), requireLoopLabel)
-			}
-			break
-		}
 
-		// return or throw is a standard expression
-		if stmt.Type == token.RETURN {
+			// if a label is provided, it must be one associated with an enclosing
+			// loop and not break a defer/catch barrier.
+			//
+			// Note that break and continue inside a defer cannot refer to a loop label
+			// outside that defer (or catch), this is by design because it cannot see
+			// any label outside its defer/catch. That may be a bit strict for catch
+			// blocks, can be relaxed later.
+			if stmt.Expr != nil {
+				r.useLoopLabel(stmt.Expr.(*ast.IdentExpr))
+			}
+
+		case token.GOTO:
 			// note that GOTO inside a defer is ok because it will only see labels
 			// nested in that defer, not outside of it.
-			if r.env.fn.defers > 0 {
+			r.useLabel(stmt.Expr.(*ast.IdentExpr))
+
+		case token.RETURN:
+			// cannot return from a function when inside a defer block.
+			if r.env.isInDefer() {
 				r.errorf(stmt.Start, "invalid return inside defer block")
 			}
-		} else if stmt.Type == token.THROW {
-			if stmt.Expr == nil && r.env.fn.catches == 0 {
+			if stmt.Expr != nil {
+				r.expr(stmt.Expr, false)
+			}
+
+		case token.THROW:
+			// naked throw is only possible inside a catch block
+			if stmt.Expr == nil && !r.env.isInCatch() {
 				r.errorf(stmt.Start, "invalid re-throw: not inside a catch block")
 			}
-		}
-
-		if stmt.Expr != nil {
-			r.expr(stmt.Expr, false)
+			if stmt.Expr != nil {
+				r.expr(stmt.Expr, false)
+			}
 		}
 
 	case *ast.SimpleBlockStmt:
@@ -578,7 +588,7 @@ func (r *resolver) bind(ident *ast.IdentExpr, isConst bool) {
 	ident.Binding = bdg
 }
 
-func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
+func (r *resolver) bindLabel(ident *ast.IdentExpr) {
 	// rule: labels cannot be shadowed.
 	curFn := r.env.fn
 	for env := r.env; env != nil && env.fn == curFn; env = env.parent {
@@ -608,22 +618,14 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 	pbdg := r.env.pendingLabels[ident.Lit]
 	if pbdg != nil {
 		delete(r.env.pendingLabels, ident.Lit)
-		if pbdg.Scope == LoopLabel && !loop {
-			r.errorf(pbdg.Decl.Start, "label %s not associated with a loop", ident.Lit)
-		}
 	}
 
 	var bdg *Binding
-	scope := Label
-	if loop {
-		scope = LoopLabel
-	}
 	if pbdg != nil {
 		bdg = pbdg
-		bdg.Scope = scope
 		bdg.Decl = ident
 	} else {
-		bdg = &Binding{Scope: scope, Decl: ident}
+		bdg = &Binding{Scope: Label, Decl: ident}
 	}
 	ix := len(r.env.fn.Labels)
 	bdg.Index = ix
@@ -709,49 +711,63 @@ func (r *resolver) use(ident *ast.IdentExpr, isAssign bool) {
 	ident.Binding = &Binding{Scope: Undefined}
 }
 
-func (r *resolver) useLabel(ident *ast.IdentExpr, requireLoopLabel bool) {
-	// TODO: break/continue must refer to a label that applies to the current
-	// loop or one of its enclosing loops, not any label loop!
+func (r *resolver) useLoopLabel(ident *ast.IdentExpr) {
+	if !r.env.isValidLoopLabel(ident.Lit) {
+		// check if the label exists, but is just not a valid loop target
+		if bdg, _ := r.lookupLabel(ident.Lit, false); bdg != nil {
+			r.errorf(ident.Start, "label %s not related to current loop", ident.Lit)
+			ident.Binding = bdg
+			return
+		}
+		r.errorf(ident.Start, "undefined label: %s", ident.Lit)
+		ident.Binding = &Binding{Scope: Undefined}
+		return
+	}
+	r.useLabel(ident)
+}
 
+func (r *resolver) useLabel(ident *ast.IdentExpr) {
+	if bdg, _ := r.lookupLabel(ident.Lit, true); bdg != nil {
+		ident.Binding = bdg
+		return
+	}
+
+	// temporarily create the pending label with this first-use identifier as
+	// Decl, to have the position to report the undefined error if needed.
+	bdg := &Binding{Scope: Label, Decl: ident}
+	if r.env.pendingLabels == nil {
+		r.env.pendingLabels = make(map[string]*Binding)
+	}
+	r.env.pendingLabels[ident.Lit] = bdg
+	ident.Binding = bdg
+}
+
+// looks up the specified label name as already declared and, if not found and
+// includePending is true, pending to be declared labels. It returns the
+// binding found (or nil if not found) and a boolean indicating if it was found
+// in pending.
+func (r *resolver) lookupLabel(name string, includePending bool) (*Binding, bool) {
 	// labels in current or any parent block are visible, but only inside the
 	// current function, and not across defer/catch blocks (i.e. a break,
 	// continue or goto in a defer cannot target a label outside that defer).
 	curFn := r.env.fn
 	for env := r.env; env != nil && env.fn == curFn; env = env.parent {
 		// look for a defined label
-		if bdg := env.lbindings[ident.Lit]; bdg != nil {
-			if requireLoopLabel && bdg.Scope != LoopLabel {
-				r.errorf(ident.Start, "label %s not associated with a loop", ident.Lit)
-			}
-			ident.Binding = bdg
-			return
+		if bdg := env.lbindings[name]; bdg != nil {
+			return bdg, false
 		}
 
-		// look for a pending label, if it is in pending it will not exist as
-		// defined higher up.
-		if bdg := r.env.pendingLabels[ident.Lit]; bdg != nil {
-			if bdg.Scope == Label && requireLoopLabel {
-				bdg.Scope = LoopLabel
+		if includePending {
+			// look for a pending label, if it is in pending it will not exist as
+			// defined higher up.
+			if bdg := env.pendingLabels[name]; bdg != nil {
+				return bdg, true
 			}
-			ident.Binding = bdg
-			return
 		}
 
 		if env.isDeferCatch {
 			break // cannot continue looking in parent block
 		}
 	}
-
-	// temporarily create the pending label with this first-use identifier as
-	// Decl, to have the position to report the undefined error if needed.
-	scope := Label
-	if requireLoopLabel {
-		scope = LoopLabel
-	}
-	bdg := &Binding{Scope: scope, Decl: ident}
-	if r.env.pendingLabels == nil {
-		r.env.pendingLabels = make(map[string]*Binding)
-	}
-	r.env.pendingLabels[ident.Lit] = bdg
-	ident.Binding = bdg
+	return nil, false
 }

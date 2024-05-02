@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/mna/nenuphar/lang/ast"
 )
@@ -17,7 +18,6 @@ const (
 	Predeclared              // name is predeclared for this module (provided to its environment)
 	Universal                // name is universal (a language built-in)
 	Label                    // name is a label
-	LoopLabel                // name is a label associated with a loop
 )
 
 var scopeNames = [...]string{
@@ -28,7 +28,6 @@ var scopeNames = [...]string{
 	Predeclared: "predeclared",
 	Universal:   "universal",
 	Label:       "label",
-	LoopLabel:   "loop label",
 }
 
 func (s Scope) String() string {
@@ -99,8 +98,6 @@ func (b *Binding) FormatFor(id *ast.IdentExpr) string {
 		s += "univ"
 	case Label:
 		s += "label"
-	case LoopLabel:
-		s += "loop label"
 	}
 	if b.BlockName != "" {
 		s += " (" + b.BlockName + ")"
@@ -115,12 +112,16 @@ type Function struct {
 	FreeVars   []*Binding // enclosing cells to capture in closure
 	Labels     []*Binding // the labels defined in this function
 
-	// number of enclosing for loops
-	loops int
-	// number of enclosing catch blocks
-	catches int
-	// number of enclosing defer blocks
-	defers int
+	// stack of enclosing loop, catch and defer blocks. For loops, if there is a
+	// matching label the string is "loop:<labelname>", otherwise the blocks are
+	// identified by "loop", "defer" and "catch".
+	lcdStack []string
+
+	// pendingLoopLabel is set to the name of a label associated with a loop in
+	// the short interval where the label has been processed but the loop is
+	// upcoming. Once the loop is entered, it gets cleared and inserted in the
+	// lcdStack.
+	pendingLoopLabel string
 }
 
 // IsClass indicates if the function is a class.
@@ -158,4 +159,49 @@ type block struct {
 
 	// children records the child blocks of the current one.
 	children []*block
+}
+
+// isInDefer returns true if the block is inside a defer (possibly nested in
+// catch or loop blocks).
+func (b *block) isInDefer() bool {
+	for i := len(b.fn.lcdStack) - 1; i >= 0; i-- {
+		if b.fn.lcdStack[i] == "defer" {
+			return true
+		}
+	}
+	return false
+}
+
+// isInCatch returns true if the block is inside a catch (possibly nested in
+// defer or loop blocks).
+func (b *block) isInCatch() bool {
+	for i := len(b.fn.lcdStack) - 1; i >= 0; i-- {
+		if b.fn.lcdStack[i] == "catch" {
+			return true
+		}
+	}
+	return false
+}
+
+// isDirectlyInLoop returns true if the block is directly inside a loop,
+// without a defer or catch block in between.
+func (b *block) isDirectlyInLoop() bool {
+	return len(b.fn.lcdStack) > 0 && strings.HasPrefix(b.fn.lcdStack[len(b.fn.lcdStack)-1], "loop")
+}
+
+// isValidLoopLabel checks in the current and enclosing loops if any are
+// associated with a label with the specified name and returns true if this is
+// the case. A defer or catch block acts as a barrier and labels defined higher
+// up the stack are not visible nor valid.
+func (b *block) isValidLoopLabel(name string) bool {
+	for i := len(b.fn.lcdStack) - 1; i >= 0; i-- {
+		lcd, lbl, _ := strings.Cut(b.fn.lcdStack[i], ":")
+		if lcd != "loop" {
+			break
+		}
+		if lbl == name {
+			return true
+		}
+	}
+	return false
 }

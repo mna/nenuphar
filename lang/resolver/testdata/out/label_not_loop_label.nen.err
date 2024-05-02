@@ -1,1 +1,1 @@
-testdata/in/label_not_loop_label.nen:2:11: label lbl1 not associated with a loop
+testdata/in/label_not_loop_label.nen:2:11: undefined label: lbl1

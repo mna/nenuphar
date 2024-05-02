@@ -1,0 +1,7 @@
+[0:34] chunk testdata/in/continue_in_catch.nen
+. [0:34] block {stmts=1}
+. . [0:33] for {clauses=0}
+. . . [8:30] block {stmts=1}
+. . . . [8:29] catch
+. . . . . [16:26] block {stmts=1}
+. . . . . . [16:24] continue {expr=0}

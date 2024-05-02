@@ -1,0 +1,7 @@
+testdata/in/string_esc_invalid.nen:1:7: escape sequence is invalid byte value
+testdata/in/string_esc_invalid.nen:1:14: illegal character U+005A 'Z' in escape sequence
+testdata/in/string_esc_invalid.nen:1:15: escape sequence has too many hexadecimal digits
+testdata/in/string_esc_invalid.nen:1:33: illegal character U+005A 'Z' in escape sequence
+testdata/in/string_esc_invalid.nen:1:34: unknown escape sequence
+testdata/in/string_esc_invalid.nen:1:36: escape sequence is invalid Unicode code point
+testdata/in/string_esc_invalid.nen:1:53: illegal character U+0020 ' ' in escape sequence

@@ -1,4 +1,8 @@
-PHONY: cover1 coverast
+.DEFAULT_GOAL: build
+
+# build compiles the binary and saves it in the ./bin directory.
+build:
+	./scripts/build.bash
 
 # cover1 runs 'go test -cover' on each package in isolation, so that coverage for
 # this package's unit tests are shown. Running go test ./... -cover doesn't work
@@ -16,3 +20,4 @@ cover1:
 coverast:
 	go test ./lang/parser -coverpkg ./lang/ast
 
+PHONY: build cover1 coverast

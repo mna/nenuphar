@@ -599,7 +599,10 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr, loop bool) {
 
 	// TODO: add validation that label does not jump into a new local variable
 	// declaration's scope. It's the _use_ of a label that determines if it does
-	// this or not, the same label can be valid depending on where it is used.
+	// this or not, the same label can be valid depending on where it is used. Do
+	// this by checking if, in the block immediately containing the label, there
+	// is a new variable declaration between the position of the goto statement
+	// and the position of the label. This is only possible for a forward jump.
 
 	// resolve from pending labels if present
 	pbdg := r.env.pendingLabels[ident.Lit]

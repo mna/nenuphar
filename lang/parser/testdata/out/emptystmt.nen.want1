@@ -1,0 +1,2 @@
+[0:3] chunk testdata/in/emptystmt.nen
+. [0:3] block {stmts=0}

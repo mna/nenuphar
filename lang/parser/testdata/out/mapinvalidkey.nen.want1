@@ -1,0 +1,3 @@
+[0:15] chunk testdata/in/mapinvalidkey.nen
+. [0:15] block {stmts=1}
+. . [0:14] !bad stmt!

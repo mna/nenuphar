@@ -1,0 +1,5 @@
+[0:8] chunk testdata/in/assign_aug_not_assignable.nen
+. [0:8] block {stmts=1}
+. . [0:7] augmented assignment '+=' {left=1, right=1}
+. . . [0:2] map {keyvals=0}
+. . . [6:7] int literal 1

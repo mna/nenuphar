@@ -11,6 +11,50 @@
 // a program that closely matches the binary format of the compiled form.
 package compiler
 
+import "go/token"
+
+// A pcomp holds the compiler state for a Program.
+type pcomp struct {
+	prog *Program // what we're building
+
+	names     map[string]uint32
+	constants map[interface{}]uint32
+	functions map[*Funcode]uint32
+}
+
+// An fcomp holds the compiler state for a Funcode.
+type fcomp struct {
+	fn *Funcode // what we're building
+
+	pcomp *pcomp
+	pos   token.Position // current position of generated code (TODO: token.Pos?)
+	loops []loop
+	block *block
+	// TODO(mna): probably needs to keep track of catch blocks during compilation?
+}
+
+type loop struct {
+	break_, continue_ *block
+}
+
+// block is a block of code - every executable line of code is compiled inside
+// a block.
+type block struct {
+	insns []insn
+
+	// If the last insn is a RETURN, jmp and cjmp are nil.
+	// If the last insn is a CJMP or ITERJMP,
+	//  cjmp and jmp are the "true" and "false" successors.
+	// Otherwise, jmp is the sole successor.
+	jmp, cjmp *block
+
+	initialstack int // for stack depth computation
+
+	// Used during encoding
+	index int // -1 => not encoded yet
+	addr  uint32
+}
+
 type insn struct {
 	op        Opcode
 	arg       uint32

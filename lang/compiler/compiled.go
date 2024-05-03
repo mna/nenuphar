@@ -17,12 +17,9 @@ type Position struct {
 // declaration is changed.
 type Program struct {
 	Filename  string
-	Loads     []Binding     // name (really, string) and position of each load stmt
 	Names     []string      // names of attributes and predeclared variables
 	Constants []interface{} // = string | int64 | float64
-	Functions []*Funcode
-	Globals   []Binding // for error messages and tracing
-	Toplevel  *Funcode  // module initialization function
+	Functions []*Funcode    // funcode at index 0 is the top-level
 }
 
 // A Funcode is the code of a compiled function. Funcodes are serialized by the

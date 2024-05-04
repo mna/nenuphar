@@ -123,7 +123,7 @@ func makeToplevelFunction(p *compiler.Program) *Function {
 	}
 
 	return &Function{
-		Funcode: p.Toplevel,
+		Funcode: p.Functions[0],
 		Module: &Module{
 			Program:   p,
 			Constants: constants,

@@ -35,11 +35,7 @@ func (fn *Function) CallInternal(th *Thread, args *Tuple) (Value, error) {
 func (fn *Function) Name() string {
 	nm := fn.Funcode.Name
 	if nm == "" {
-		if fn.Funcode.Prog.Toplevel == fn.Funcode {
-			nm = "toplevel " + fn.Funcode.Prog.Filename
-		} else {
-			nm = "unknown"
-		}
+		nm = "unknown"
 	}
 	return nm
 }

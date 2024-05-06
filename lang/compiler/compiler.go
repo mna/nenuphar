@@ -11,7 +11,44 @@
 // a program that closely matches the binary format of the compiled form.
 package compiler
 
-import "go/token"
+import (
+	"context"
+
+	"github.com/mna/nenuphar/lang/ast"
+	"github.com/mna/nenuphar/lang/token"
+)
+
+// CompileFiles takes the file set and corresponding list of chunks from
+// a successful resolve result and compiles the AST to bytecode.
+//
+// An AST that resulted in errors in the resolve phase should never be
+// passed to the compiler, the behavior is undefined.
+//
+// Compiling files does not return an error as a valid resolved AST
+// should always generate a valid, executable compiled program.
+func CompileFiles(ctx context.Context, fset *token.FileSet, chunks []*ast.Chunk) []*Program {
+	if len(chunks) == 0 {
+		return nil
+	}
+
+	progs := make([]*Program, len(chunks))
+	for i, ch := range chunks {
+		start, _ := ch.Span()
+		file := fset.File(start)
+		pcomp := &pcomp{
+			prog: &Program{
+				Filename: file.Name(),
+			},
+			names:     make(map[string]uint32),
+			constants: make(map[interface{}]uint32),
+			functions: make(map[*Funcode]uint32),
+		}
+		topLevel := pcomp.function(name, pos, stmts, locals, nil)
+		pcomp.prog.Functions[0] = topLevel
+		progs[i] = pcomp.prog
+	}
+	return progs
+}
 
 // A pcomp holds the compiler state for a Program.
 type pcomp struct {

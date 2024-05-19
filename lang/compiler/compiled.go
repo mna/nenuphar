@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"go/token"
 	"sync"
 )
 
@@ -10,6 +11,11 @@ import (
 // Funcode's Program.
 type Position struct {
 	Line, Col uint32
+}
+
+func positionFromTokenPos(file *token.File, p token.Pos) Position {
+	pp := file.Position(p)
+	return Position{Line: uint32(pp.Line), Col: uint32(pp.Column)}
 }
 
 // A Program is a source code file compiled in executable form. Programs are

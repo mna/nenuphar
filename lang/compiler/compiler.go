@@ -14,7 +14,6 @@ package compiler
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/resolver"
@@ -88,114 +87,116 @@ func (pcomp *pcomp) function(name string, start token.Pos, block *ast.Block, loc
 	// Convert AST to a CFG of instructions.
 	entry := fcomp.newBlock()
 	fcomp.block = entry
-	fcomp.stmts(stmts)
+	fcomp.stmts(block.Stmts)
 	if fcomp.block != nil {
-		fcomp.emit(NONE)
+		fcomp.emit(NIL)
 		fcomp.emit(RETURN)
 	}
 
-	var oops bool // something bad happened
+	/*
+		var oops bool // something bad happened
 
-	setinitialstack := func(b *block, depth int) {
-		if b.initialstack == -1 {
-			b.initialstack = depth
-		} else if b.initialstack != depth {
-			fmt.Fprintf(os.Stderr, "%d: setinitialstack: depth mismatch: %d vs %d\n",
-				b.index, b.initialstack, depth)
-			oops = true
+		setinitialstack := func(b *block, depth int) {
+			if b.initialstack == -1 {
+				b.initialstack = depth
+			} else if b.initialstack != depth {
+				fmt.Fprintf(os.Stderr, "%d: setinitialstack: depth mismatch: %d vs %d\n",
+					b.index, b.initialstack, depth)
+				oops = true
+			}
 		}
-	}
 
-	// Linearize the CFG:
-	// compute order, address, and initial
-	// stack depth of each reachable block.
-	var pc uint32
-	var blocks []*block
-	var maxstack int
-	var visit func(b *block)
-	visit = func(b *block) {
-		if b.index >= 0 {
-			return // already visited
-		}
-		b.index = len(blocks)
-		b.addr = pc
-		blocks = append(blocks, b)
+		// Linearize the CFG:
+		// compute order, address, and initial
+		// stack depth of each reachable block.
+		var pc uint32
+		var blocks []*block
+		var maxstack int
+		var visit func(b *block)
+		visit = func(b *block) {
+			if b.index >= 0 {
+				return // already visited
+			}
+			b.index = len(blocks)
+			b.addr = pc
+			blocks = append(blocks, b)
 
-		stack := b.initialstack
-		if debug {
-			fmt.Fprintf(os.Stderr, "%s block %d: (stack = %d)\n", name, b.index, stack)
-		}
-		var cjmpAddr *uint32
-		var isiterjmp int
-		for i, insn := range b.insns {
-			pc++
+			stack := b.initialstack
+			if debug {
+				fmt.Fprintf(os.Stderr, "%s block %d: (stack = %d)\n", name, b.index, stack)
+			}
+			var cjmpAddr *uint32
+			var isiterjmp int
+			for i, insn := range b.insns {
+				pc++
 
-			// Compute size of argument.
-			if insn.op >= OpcodeArgMin {
-				switch insn.op {
-				case ITERJMP:
-					isiterjmp = 1
-					fallthrough
-				case CJMP:
-					cjmpAddr = &b.insns[i].arg
-					pc += 4
-				default:
-					pc += uint32(varArgLen(insn.arg))
+				// Compute size of argument.
+				if insn.op >= OpcodeArgMin {
+					switch insn.op {
+					case ITERJMP:
+						isiterjmp = 1
+						fallthrough
+					case CJMP:
+						cjmpAddr = &b.insns[i].arg
+						pc += 4
+					default:
+						pc += uint32(varArgLen(insn.arg))
+					}
+				}
+
+				// Compute effect on stack.
+				se := insn.stackeffect()
+				if debug {
+					fmt.Fprintln(os.Stderr, "\t", insn.op, stack, stack+se)
+				}
+				stack += se
+				if stack < 0 {
+					fmt.Fprintf(os.Stderr, "After pc=%d: stack underflow\n", pc)
+					oops = true
+				}
+				if stack+isiterjmp > maxstack {
+					maxstack = stack + isiterjmp
 				}
 			}
 
-			// Compute effect on stack.
-			se := insn.stackeffect()
-			if debug {
-				fmt.Fprintln(os.Stderr, "\t", insn.op, stack, stack+se)
+			// Place the jmp block next.
+			if b.jmp != nil {
+				// jump threading (empty cycles are impossible)
+				for b.jmp.insns == nil {
+					b.jmp = b.jmp.jmp
+				}
+
+				setinitialstack(b.jmp, stack+isiterjmp)
+				if b.jmp.index < 0 {
+					// Successor is not yet visited:
+					// place it next and fall through.
+					visit(b.jmp)
+				} else {
+					// Successor already visited;
+					// explicit backward jump required.
+					pc += 5
+				}
 			}
-			stack += se
-			if stack < 0 {
-				fmt.Fprintf(os.Stderr, "After pc=%d: stack underflow\n", pc)
-				oops = true
-			}
-			if stack+isiterjmp > maxstack {
-				maxstack = stack + isiterjmp
+
+			// Then the cjmp block.
+			if b.cjmp != nil {
+				// jump threading (empty cycles are impossible)
+				for b.cjmp.insns == nil {
+					b.cjmp = b.cjmp.jmp
+				}
+
+				setinitialstack(b.cjmp, stack)
+				visit(b.cjmp)
+
+				// Patch the CJMP/ITERJMP, if present.
+				if cjmpAddr != nil {
+					*cjmpAddr = b.cjmp.addr
+				}
 			}
 		}
-
-		// Place the jmp block next.
-		if b.jmp != nil {
-			// jump threading (empty cycles are impossible)
-			for b.jmp.insns == nil {
-				b.jmp = b.jmp.jmp
-			}
-
-			setinitialstack(b.jmp, stack+isiterjmp)
-			if b.jmp.index < 0 {
-				// Successor is not yet visited:
-				// place it next and fall through.
-				visit(b.jmp)
-			} else {
-				// Successor already visited;
-				// explicit backward jump required.
-				pc += 5
-			}
-		}
-
-		// Then the cjmp block.
-		if b.cjmp != nil {
-			// jump threading (empty cycles are impossible)
-			for b.cjmp.insns == nil {
-				b.cjmp = b.cjmp.jmp
-			}
-
-			setinitialstack(b.cjmp, stack)
-			visit(b.cjmp)
-
-			// Patch the CJMP/ITERJMP, if present.
-			if cjmpAddr != nil {
-				*cjmpAddr = b.cjmp.addr
-			}
-		}
-	}
-	setinitialstack(entry, 0)
-	visit(entry)
+		setinitialstack(entry, 0)
+		visit(entry)
+	*/
 
 	fn := fcomp.fn
 	fn.MaxStack = maxstack
@@ -220,6 +221,377 @@ type fcomp struct {
 	loops []loop
 	block *block
 	// TODO(mna): probably needs to keep track of catch blocks during compilation?
+}
+
+// newBlock returns a new block.
+func (fcomp) newBlock() *block {
+	return &block{index: -1, initialstack: -1}
+}
+
+func (fcomp *fcomp) stmts(stmts []ast.Stmt) {
+	for _, stmt := range stmts {
+		fcomp.stmt(stmt)
+	}
+}
+
+func (fcomp *fcomp) stmt(stmt ast.Stmt) {
+	switch stmt := stmt.(type) {
+	case *ast.ExprStmt:
+		fcomp.expr(stmt.Expr)
+		fcomp.emit(POP)
+
+		/*
+			case *syntax.BranchStmt:
+				// Resolver invariant: break/continue appear only within loops.
+				switch stmt.Token {
+				case syntax.PASS:
+					// no-op
+				case syntax.BREAK:
+					b := fcomp.loops[len(fcomp.loops)-1].break_
+					fcomp.jump(b)
+					fcomp.block = fcomp.newBlock() // dead code
+				case syntax.CONTINUE:
+					b := fcomp.loops[len(fcomp.loops)-1].continue_
+					fcomp.jump(b)
+					fcomp.block = fcomp.newBlock() // dead code
+				}
+
+			case *syntax.IfStmt:
+				// Keep consistent with CondExpr.
+				t := fcomp.newBlock()
+				f := fcomp.newBlock()
+				done := fcomp.newBlock()
+
+				fcomp.ifelse(stmt.Cond, t, f)
+
+				fcomp.block = t
+				fcomp.stmts(stmt.True)
+				fcomp.jump(done)
+
+				fcomp.block = f
+				fcomp.stmts(stmt.False)
+				fcomp.jump(done)
+
+				fcomp.block = done
+
+			case *syntax.AssignStmt:
+				switch stmt.Op {
+				case syntax.EQ:
+					// simple assignment: x = y
+					fcomp.expr(stmt.RHS)
+					fcomp.assign(stmt.OpPos, stmt.LHS)
+
+				case syntax.PLUS_EQ,
+					syntax.MINUS_EQ,
+					syntax.STAR_EQ,
+					syntax.SLASH_EQ,
+					syntax.SLASHSLASH_EQ,
+					syntax.PERCENT_EQ,
+					syntax.AMP_EQ,
+					syntax.PIPE_EQ,
+					syntax.CIRCUMFLEX_EQ,
+					syntax.LTLT_EQ,
+					syntax.GTGT_EQ:
+					// augmented assignment: x += y
+
+					var set func()
+
+					// Evaluate "address" of x exactly once to avoid duplicate side-effects.
+					switch lhs := unparen(stmt.LHS).(type) {
+					case *syntax.Ident:
+						// x = ...
+						fcomp.lookup(lhs)
+						set = func() {
+							fcomp.set(lhs)
+						}
+
+					case *syntax.IndexExpr:
+						// x[y] = ...
+						fcomp.expr(lhs.X)
+						fcomp.expr(lhs.Y)
+						fcomp.emit(DUP2)
+						fcomp.setPos(lhs.Lbrack)
+						fcomp.emit(INDEX)
+						set = func() {
+							fcomp.setPos(lhs.Lbrack)
+							fcomp.emit(SETINDEX)
+						}
+
+					case *syntax.DotExpr:
+						// x.f = ...
+						fcomp.expr(lhs.X)
+						fcomp.emit(DUP)
+						name := fcomp.pcomp.nameIndex(lhs.Name.Name)
+						fcomp.setPos(lhs.Dot)
+						fcomp.emit1(ATTR, name)
+						set = func() {
+							fcomp.setPos(lhs.Dot)
+							fcomp.emit1(SETFIELD, name)
+						}
+
+					default:
+						panic(lhs)
+					}
+
+					fcomp.expr(stmt.RHS)
+
+					// In-place x+=y and x|=y have special semantics:
+					// the resulting x aliases the original x.
+					switch stmt.Op {
+					case syntax.PLUS_EQ:
+						fcomp.setPos(stmt.OpPos)
+						fcomp.emit(INPLACE_ADD)
+					case syntax.PIPE_EQ:
+						fcomp.setPos(stmt.OpPos)
+						fcomp.emit(INPLACE_PIPE)
+					default:
+						fcomp.binop(stmt.OpPos, stmt.Op-syntax.PLUS_EQ+syntax.PLUS)
+					}
+					set()
+				}
+
+			case *syntax.DefStmt:
+				fcomp.function(stmt.Function.(*resolve.Function))
+				fcomp.set(stmt.Name)
+
+			case *syntax.ForStmt:
+				// Keep consistent with ForClause.
+				head := fcomp.newBlock()
+				body := fcomp.newBlock()
+				tail := fcomp.newBlock()
+
+				fcomp.expr(stmt.X)
+				fcomp.setPos(stmt.For)
+				fcomp.emit(ITERPUSH)
+				fcomp.jump(head)
+
+				fcomp.block = head
+				fcomp.condjump(ITERJMP, tail, body)
+
+				fcomp.block = body
+				fcomp.assign(stmt.For, stmt.Vars)
+				fcomp.loops = append(fcomp.loops, loop{break_: tail, continue_: head})
+				fcomp.stmts(stmt.Body)
+				fcomp.loops = fcomp.loops[:len(fcomp.loops)-1]
+				fcomp.jump(head)
+
+				fcomp.block = tail
+				fcomp.emit(ITERPOP)
+
+			case *syntax.WhileStmt:
+				head := fcomp.newBlock()
+				body := fcomp.newBlock()
+				done := fcomp.newBlock()
+
+				fcomp.jump(head)
+				fcomp.block = head
+				fcomp.ifelse(stmt.Cond, body, done)
+
+				fcomp.block = body
+				fcomp.loops = append(fcomp.loops, loop{break_: done, continue_: head})
+				fcomp.stmts(stmt.Body)
+				fcomp.loops = fcomp.loops[:len(fcomp.loops)-1]
+				fcomp.jump(head)
+
+				fcomp.block = done
+
+			case *syntax.ReturnStmt:
+				if stmt.Result != nil {
+					fcomp.expr(stmt.Result)
+				} else {
+					fcomp.emit(NONE)
+				}
+				fcomp.emit(RETURN)
+				fcomp.block = fcomp.newBlock() // dead code
+
+			case *syntax.LoadStmt:
+				for i := range stmt.From {
+					fcomp.string(stmt.From[i].Name)
+				}
+				module := stmt.Module.Value.(string)
+				fcomp.pcomp.prog.Loads = append(fcomp.pcomp.prog.Loads, Binding{
+					Name: module,
+					Pos:  stmt.Module.TokenPos,
+				})
+				fcomp.string(module)
+				fcomp.setPos(stmt.Load)
+				fcomp.emit1(LOAD, uint32(len(stmt.From)))
+				for i := range stmt.To {
+					fcomp.set(stmt.To[len(stmt.To)-1-i])
+				}
+		*/
+
+	default:
+		panic(fmt.Sprintf("unexpected stmt %T", stmt))
+	}
+}
+
+func (fcomp *fcomp) expr(e ast.Expr) {
+	switch e := e.(type) {
+	case *ast.ParenExpr:
+		fcomp.expr(e.Expr)
+
+		/*
+			case *ast.IdentExpr:
+				fcomp.lookup(e)
+
+			case *syntax.Literal:
+				// e.Value is int64, float64, string
+				v := e.Value
+				if e.Token == syntax.BYTES {
+					v = Bytes(v.(string))
+				}
+				fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(v))
+
+			case *syntax.ListExpr:
+				for _, x := range e.List {
+					fcomp.expr(x)
+				}
+				fcomp.emit1(MAKELIST, uint32(len(e.List)))
+
+			case *syntax.CondExpr:
+				// Keep consistent with IfStmt.
+				t := fcomp.newBlock()
+				f := fcomp.newBlock()
+				done := fcomp.newBlock()
+
+				fcomp.ifelse(e.Cond, t, f)
+
+				fcomp.block = t
+				fcomp.expr(e.True)
+				fcomp.jump(done)
+
+				fcomp.block = f
+				fcomp.expr(e.False)
+				fcomp.jump(done)
+
+				fcomp.block = done
+
+			case *syntax.IndexExpr:
+				fcomp.expr(e.X)
+				fcomp.expr(e.Y)
+				fcomp.setPos(e.Lbrack)
+				fcomp.emit(INDEX)
+
+			case *syntax.SliceExpr:
+				fcomp.setPos(e.Lbrack)
+				fcomp.expr(e.X)
+				if e.Lo != nil {
+					fcomp.expr(e.Lo)
+				} else {
+					fcomp.emit(NONE)
+				}
+				if e.Hi != nil {
+					fcomp.expr(e.Hi)
+				} else {
+					fcomp.emit(NONE)
+				}
+				if e.Step != nil {
+					fcomp.expr(e.Step)
+				} else {
+					fcomp.emit(NONE)
+				}
+				fcomp.emit(SLICE)
+
+			case *syntax.Comprehension:
+				if e.Curly {
+					fcomp.emit(MAKEDICT)
+				} else {
+					fcomp.emit1(MAKELIST, 0)
+				}
+				fcomp.comprehension(e, 0)
+
+			case *syntax.TupleExpr:
+				fcomp.tuple(e.List)
+
+			case *syntax.DictExpr:
+				fcomp.emit(MAKEDICT)
+				for _, entry := range e.List {
+					entry := entry.(*syntax.DictEntry)
+					fcomp.emit(DUP)
+					fcomp.expr(entry.Key)
+					fcomp.expr(entry.Value)
+					fcomp.setPos(entry.Colon)
+					fcomp.emit(SETDICTUNIQ)
+				}
+
+			case *syntax.UnaryExpr:
+				fcomp.expr(e.X)
+				fcomp.setPos(e.OpPos)
+				switch e.Op {
+				case syntax.MINUS:
+					fcomp.emit(UMINUS)
+				case syntax.PLUS:
+					fcomp.emit(UPLUS)
+				case syntax.NOT:
+					fcomp.emit(NOT)
+				case syntax.TILDE:
+					fcomp.emit(TILDE)
+				default:
+					log.Panicf("%s: unexpected unary op: %s", e.OpPos, e.Op)
+				}
+
+			case *syntax.BinaryExpr:
+				switch e.Op {
+				// short-circuit operators
+				// TODO(adonovan): use ifelse to simplify conditions.
+				case syntax.OR:
+					// x or y  =>  if x then x else y
+					done := fcomp.newBlock()
+					y := fcomp.newBlock()
+
+					fcomp.expr(e.X)
+					fcomp.emit(DUP)
+					fcomp.condjump(CJMP, done, y)
+
+					fcomp.block = y
+					fcomp.emit(POP) // discard X
+					fcomp.expr(e.Y)
+					fcomp.jump(done)
+
+					fcomp.block = done
+
+				case syntax.AND:
+					// x and y  =>  if x then y else x
+					done := fcomp.newBlock()
+					y := fcomp.newBlock()
+
+					fcomp.expr(e.X)
+					fcomp.emit(DUP)
+					fcomp.condjump(CJMP, y, done)
+
+					fcomp.block = y
+					fcomp.emit(POP) // discard X
+					fcomp.expr(e.Y)
+					fcomp.jump(done)
+
+					fcomp.block = done
+
+				case syntax.PLUS:
+					fcomp.plus(e)
+
+				default:
+					// all other strict binary operator (includes comparisons)
+					fcomp.expr(e.X)
+					fcomp.expr(e.Y)
+					fcomp.binop(e.OpPos, e.Op)
+				}
+
+			case *syntax.DotExpr:
+				fcomp.expr(e.X)
+				fcomp.setPos(e.Dot)
+				fcomp.emit1(ATTR, fcomp.pcomp.nameIndex(e.Name.Name))
+
+			case *syntax.CallExpr:
+				fcomp.call(e)
+
+			case *syntax.LambdaExpr:
+				fcomp.function(e.Function.(*resolve.Function))
+		*/
+
+	default:
+		panic(fmt.Sprintf("unexpected expr %T", e))
+	}
 }
 
 type loop struct {

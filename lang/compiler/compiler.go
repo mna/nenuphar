@@ -237,6 +237,8 @@ func (fcomp *fcomp) stmts(stmts []ast.Stmt) {
 func (fcomp *fcomp) stmt(stmt ast.Stmt) {
 	switch stmt := stmt.(type) {
 	case *ast.ExprStmt:
+		// compute the expression (will be a function call) and ignore the
+		// resulting value (pop it off the stack)
 		fcomp.expr(stmt.Expr)
 		fcomp.emit(POP)
 
@@ -594,6 +596,28 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 	}
 }
 
+// emit emits an instruction to the current block.
+func (fcomp *fcomp) emit(op Opcode) {
+	if op >= OpcodeArgMin {
+		panic("missing argument for opcode " + op.String())
+	}
+	insn := insn{op: op, line: fcomp.pos.Line, col: fcomp.pos.Col}
+	fcomp.block.insns = append(fcomp.block.insns, insn)
+	fcomp.pos.Line = 0
+	fcomp.pos.Col = 0
+}
+
+// emit1 emits an instruction with an immediate operand.
+func (fcomp *fcomp) emit1(op Opcode, arg uint32) {
+	if op < OpcodeArgMin {
+		panic("unwanted arg: " + op.String())
+	}
+	insn := insn{op: op, arg: arg, line: fcomp.pos.Line, col: fcomp.pos.Col}
+	fcomp.block.insns = append(fcomp.block.insns, insn)
+	fcomp.pos.Line = 0
+	fcomp.pos.Col = 0
+}
+
 type loop struct {
 	break_, continue_ *block
 }
@@ -629,7 +653,7 @@ func bindings(file *token.File, bindings []*resolver.Binding) []Binding {
 type insn struct {
 	op        Opcode
 	arg       uint32
-	line, col int32
+	line, col uint32
 }
 
 func encodeInsn(code []byte, op Opcode, arg uint32) []byte {

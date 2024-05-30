@@ -212,6 +212,30 @@ func (pcomp *pcomp) function(name string, start token.Pos, block *ast.Block, loc
 	return fn
 }
 
+// nameIndex returns the index of the specified name within the name pool,
+// adding it if necessary.
+func (pcomp *pcomp) nameIndex(name string) uint32 {
+	index, ok := pcomp.names[name]
+	if !ok {
+		index = uint32(len(pcomp.prog.Names))
+		pcomp.names[name] = index
+		pcomp.prog.Names = append(pcomp.prog.Names, name)
+	}
+	return index
+}
+
+// constantIndex returns the index of the specified constant within the
+// constant pool, adding it if necessary.
+func (pcomp *pcomp) constantIndex(v interface{}) uint32 {
+	index, ok := pcomp.constants[v]
+	if !ok {
+		index = uint32(len(pcomp.prog.Constants))
+		pcomp.constants[v] = index
+		pcomp.prog.Constants = append(pcomp.prog.Constants, v)
+	}
+	return index
+}
+
 // An fcomp holds the compiler state for a Funcode.
 type fcomp struct {
 	fn *Funcode // what we're building
@@ -424,6 +448,7 @@ func (fcomp *fcomp) stmt(stmt ast.Stmt) {
 		*/
 
 	default:
+		// TODO: use a central function to panic with position information
 		panic(fmt.Sprintf("unexpected stmt %T", stmt))
 	}
 }
@@ -433,18 +458,24 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 	case *ast.ParenExpr:
 		fcomp.expr(e.Expr)
 
+	case *ast.IdentExpr:
+		fcomp.lookup(e)
+
+	case *ast.LiteralExpr:
+		switch e.Type {
+		case token.NULL:
+			fcomp.emit(NIL)
+		case token.TRUE:
+			fcomp.emit(TRUE)
+		case token.FALSE:
+			fcomp.emit(FALSE)
+		default:
+			// e.Value is int64, float64, string
+			v := e.Value
+			fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(v))
+		}
+
 		/*
-			case *ast.IdentExpr:
-				fcomp.lookup(e)
-
-			case *syntax.Literal:
-				// e.Value is int64, float64, string
-				v := e.Value
-				if e.Token == syntax.BYTES {
-					v = Bytes(v.(string))
-				}
-				fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(v))
-
 			case *syntax.ListExpr:
 				for _, x := range e.List {
 					fcomp.expr(x)
@@ -596,6 +627,28 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 	}
 }
 
+// lookup emits code to push the value of the specified variable.
+func (fcomp *fcomp) lookup(id *ast.IdentExpr) {
+	bind := id.Binding.(*resolver.Binding)
+	if bind.Scope != resolver.Universal { // (universal lookup can't fail)
+		fcomp.setPos(positionFromTokenPos(fcomp.pcomp.file, id.Start))
+	}
+	switch bind.Scope {
+	case resolver.Local:
+		fcomp.emit1(LOCAL, uint32(bind.Index))
+	case resolver.Free:
+		fcomp.emit1(FREECELL, uint32(bind.Index))
+	case resolver.Cell:
+		fcomp.emit1(LOCALCELL, uint32(bind.Index))
+	case resolver.Predeclared:
+		fcomp.emit1(PREDECLARED, fcomp.pcomp.nameIndex(id.Lit))
+	case resolver.Universal:
+		fcomp.emit1(UNIVERSAL, fcomp.pcomp.nameIndex(id.Lit))
+	default:
+		panic(fmt.Sprintf("%s: compiler.lookup(%s): scope = %d", positionFromTokenPos(fcomp.pcomp.file, id.Start), id.Lit, bind.Scope))
+	}
+}
+
 // emit emits an instruction to the current block.
 func (fcomp *fcomp) emit(op Opcode) {
 	if op >= OpcodeArgMin {
@@ -616,6 +669,13 @@ func (fcomp *fcomp) emit1(op Opcode, arg uint32) {
 	fcomp.block.insns = append(fcomp.block.insns, insn)
 	fcomp.pos.Line = 0
 	fcomp.pos.Col = 0
+}
+
+// setPos sets the current source position, it should be called prior to any
+// operation that can fail dynamically. All positions are assumed to belong to
+// the same file.
+func (fcomp *fcomp) setPos(pos Position) {
+	fcomp.pos = pos
 }
 
 type loop struct {

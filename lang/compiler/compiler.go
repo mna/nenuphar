@@ -475,12 +475,53 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 			fcomp.emit1(CONSTANT, fcomp.pcomp.constantIndex(v))
 		}
 
+	case *ast.ArrayLikeExpr:
+		for _, v := range e.Items {
+			fcomp.expr(v)
+		}
+		if e.Type == token.LBRACK {
+			fcomp.emit1(MAKEARRAY, uint32(len(e.Items)))
+		} else {
+			fcomp.emit1(MAKETUPLE, uint32(len(e.Items)))
+		}
+
+	case *ast.DotExpr:
+		fcomp.expr(e.Left)
+		fcomp.setPos(e.Dot)
+		fcomp.emit1(ATTR, fcomp.pcomp.nameIndex(e.Right.Lit))
+
+	case *ast.IndexExpr:
+		fcomp.expr(e.Prefix)
+		fcomp.expr(e.Index)
+		fcomp.setPos(e.Lbrack)
+		fcomp.emit(INDEX)
+
+	case *ast.MapExpr:
+		fcomp.emit1(MAKEMAP, uint32(len(e.Items)))
+		for _, kv := range e.Items {
+			fcomp.emit(DUP)
+			fcomp.expr(kv.Key)
+			fcomp.expr(kv.Value)
+			fcomp.setPos(kv.Colon)
+			fcomp.emit(SETMAP)
+		}
+
 		/*
-			case *syntax.ListExpr:
-				for _, x := range e.List {
-					fcomp.expr(x)
+			case *syntax.UnaryExpr:
+				fcomp.expr(e.X)
+				fcomp.setPos(e.OpPos)
+				switch e.Op {
+				case syntax.MINUS:
+					fcomp.emit(UMINUS)
+				case syntax.PLUS:
+					fcomp.emit(UPLUS)
+				case syntax.NOT:
+					fcomp.emit(NOT)
+				case syntax.TILDE:
+					fcomp.emit(TILDE)
+				default:
+					log.Panicf("%s: unexpected unary op: %s", e.OpPos, e.Op)
 				}
-				fcomp.emit1(MAKELIST, uint32(len(e.List)))
 
 			case *syntax.CondExpr:
 				// Keep consistent with IfStmt.
@@ -499,12 +540,6 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 				fcomp.jump(done)
 
 				fcomp.block = done
-
-			case *syntax.IndexExpr:
-				fcomp.expr(e.X)
-				fcomp.expr(e.Y)
-				fcomp.setPos(e.Lbrack)
-				fcomp.emit(INDEX)
 
 			case *syntax.SliceExpr:
 				fcomp.setPos(e.Lbrack)
@@ -536,33 +571,6 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 
 			case *syntax.TupleExpr:
 				fcomp.tuple(e.List)
-
-			case *syntax.DictExpr:
-				fcomp.emit(MAKEDICT)
-				for _, entry := range e.List {
-					entry := entry.(*syntax.DictEntry)
-					fcomp.emit(DUP)
-					fcomp.expr(entry.Key)
-					fcomp.expr(entry.Value)
-					fcomp.setPos(entry.Colon)
-					fcomp.emit(SETDICTUNIQ)
-				}
-
-			case *syntax.UnaryExpr:
-				fcomp.expr(e.X)
-				fcomp.setPos(e.OpPos)
-				switch e.Op {
-				case syntax.MINUS:
-					fcomp.emit(UMINUS)
-				case syntax.PLUS:
-					fcomp.emit(UPLUS)
-				case syntax.NOT:
-					fcomp.emit(NOT)
-				case syntax.TILDE:
-					fcomp.emit(TILDE)
-				default:
-					log.Panicf("%s: unexpected unary op: %s", e.OpPos, e.Op)
-				}
 
 			case *syntax.BinaryExpr:
 				switch e.Op {
@@ -610,11 +618,6 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 					fcomp.binop(e.OpPos, e.Op)
 				}
 
-			case *syntax.DotExpr:
-				fcomp.expr(e.X)
-				fcomp.setPos(e.Dot)
-				fcomp.emit1(ATTR, fcomp.pcomp.nameIndex(e.Name.Name))
-
 			case *syntax.CallExpr:
 				fcomp.call(e)
 
@@ -631,7 +634,7 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 func (fcomp *fcomp) lookup(id *ast.IdentExpr) {
 	bind := id.Binding.(*resolver.Binding)
 	if bind.Scope != resolver.Universal { // (universal lookup can't fail)
-		fcomp.setPos(positionFromTokenPos(fcomp.pcomp.file, id.Start))
+		fcomp.setPos(id.Start)
 	}
 	switch bind.Scope {
 	case resolver.Local:
@@ -672,10 +675,10 @@ func (fcomp *fcomp) emit1(op Opcode, arg uint32) {
 }
 
 // setPos sets the current source position, it should be called prior to any
-// operation that can fail dynamically. All positions are assumed to belong to
-// the same file.
-func (fcomp *fcomp) setPos(pos Position) {
-	fcomp.pos = pos
+// operation that can fail dynamically (in the machine interpreter). All positions are assumed to belong to
+// fcomp.pcomp.file.
+func (fcomp *fcomp) setPos(pos token.Pos) {
+	fcomp.pos = positionFromTokenPos(fcomp.pcomp.file, pos)
 }
 
 type loop struct {

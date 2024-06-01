@@ -532,6 +532,12 @@ func (r *resolver) function(fn ast.Node, sig *ast.FuncSignature, body *ast.Block
 		r.bind(e, false)
 	}
 	r.block(body, fn)
+	switch fn := fn.(type) {
+	case *ast.FuncExpr:
+		fn.Function = blk.fn
+	case *ast.FuncStmt:
+		fn.Function = blk.fn
+	}
 	r.pop()
 }
 

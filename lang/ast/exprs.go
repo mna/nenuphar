@@ -108,6 +108,9 @@ type (
 		Sig  *FuncSignature
 		Body *Block
 		End  token.Pos
+
+		// filled by the resolver
+		Function any // *resolver.Function, indirect to avoid cycles
 	}
 
 	// IdentExpr represents an identifier.

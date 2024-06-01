@@ -18,6 +18,7 @@ import (
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/resolver"
 	"github.com/mna/nenuphar/lang/token"
+	"go.starlark.net/resolve"
 )
 
 // CompileFiles takes the file set and corresponding list of chunks from
@@ -506,6 +507,9 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 			fcomp.emit(SETMAP)
 		}
 
+	case *ast.FuncExpr:
+		fcomp.function(e.Function.(*resolver.Function))
+
 		/*
 			case *syntax.UnaryExpr:
 				fcomp.expr(e.X)
@@ -628,6 +632,40 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 	default:
 		panic(fmt.Sprintf("unexpected expr %T", e))
 	}
+}
+
+func (fcomp *fcomp) function(f *resolver.Function) {
+	// Evaluation of the defaults may fail, so record the position.
+	fcomp.setPos(f.Pos)
+
+	// Capture the cells of the function's free variables from the lexical
+	// environment.
+	for _, freevar := range f.FreeVars {
+		// Don't call fcomp.lookup because we want the cell itself, not its
+		// content.
+		switch freevar.Scope {
+		case resolve.Free:
+			fcomp.emit1(FREE, uint32(freevar.Index))
+		case resolve.Cell:
+			fcomp.emit1(LOCAL, uint32(freevar.Index))
+		}
+	}
+
+	fcomp.emit1(MAKETUPLE, uint32(ndefaults+len(f.FreeVars)))
+
+	funcode := fcomp.pcomp.function(f.Name, f.Pos, f.Body, f.Locals, f.FreeVars)
+
+	// def f(a, *, b=1) has only 2 parameters.
+	numParams := len(f.Params)
+	if f.NumKwonlyParams > 0 && !f.HasVarargs {
+		numParams--
+	}
+
+	funcode.NumParams = numParams
+	funcode.NumKwonlyParams = f.NumKwonlyParams
+	funcode.HasVarargs = f.HasVarargs
+	funcode.HasKwargs = f.HasKwargs
+	fcomp.emit1(MAKEFUNC, fcomp.pcomp.functionIndex(funcode))
 }
 
 // lookup emits code to push the value of the specified variable.

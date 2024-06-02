@@ -106,6 +106,7 @@ func (b *Binding) FormatFor(id *ast.IdentExpr) string {
 }
 
 type Function struct {
+	Name       string     // name of the function or class, "anonymous" for function or class expressions, "toplevel" for chunk
 	Definition ast.Node   // can be *Chunk, *ClassStmt, *ClassExpr, *FuncStmt or *FuncExpr
 	HasVarArg  bool       // for function, if last parameter is vararg
 	Locals     []*Binding // this function's local/cell variables, parameters first

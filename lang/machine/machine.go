@@ -603,7 +603,7 @@ func setArgs(locals []Value, fn *Function, args *Tuple) error {
 		return nil
 	}
 
-	if fn.Funcode.HasVarargs {
+	if fn.Funcode.HasVarArg {
 		nparams--
 	} else if nargs > nparams {
 		return fmt.Errorf("function %s accepts at most %d arguments (%d given)", fn.Name(), nparams, nargs)
@@ -615,7 +615,7 @@ func setArgs(locals []Value, fn *Function, args *Tuple) error {
 	}
 
 	// bind surplus positional arguments to *args parameter
-	if fn.Funcode.HasVarargs {
+	if fn.Funcode.HasVarArg {
 		elems := make([]Value, nargs-nparams)
 		for i := nparams; i < nargs; i++ {
 			elems[i-nparams] = args.Index(i)

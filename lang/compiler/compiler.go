@@ -237,6 +237,18 @@ func (pcomp *pcomp) constantIndex(v interface{}) uint32 {
 	return index
 }
 
+// functionIndex returns the index of the specified function within the
+// function pool, adding it if necessary.
+func (pcomp *pcomp) functionIndex(fn *Funcode) uint32 {
+	index, ok := pcomp.functions[fn]
+	if !ok {
+		index = uint32(len(pcomp.prog.Functions))
+		pcomp.functions[fn] = index
+		pcomp.prog.Functions = append(pcomp.prog.Functions, fn)
+	}
+	return index
+}
+
 // An fcomp holds the compiler state for a Funcode.
 type fcomp struct {
 	fn *Funcode // what we're building
@@ -635,8 +647,8 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 }
 
 func (fcomp *fcomp) function(f *resolver.Function) {
-	// Evaluation of the defaults may fail, so record the position.
-	fcomp.setPos(f.Pos)
+	// MAKEFUNC does not fail, no need to record position. It expects a tuple of
+	// freevars on the stack and takes the index of the function as argument.
 
 	// Capture the cells of the function's free variables from the lexical
 	// environment.
@@ -650,21 +662,17 @@ func (fcomp *fcomp) function(f *resolver.Function) {
 			fcomp.emit1(LOCAL, uint32(freevar.Index))
 		}
 	}
+	fcomp.emit1(MAKETUPLE, uint32(len(f.FreeVars)))
+	start, _ := f.Definition.Span()
+	funcode := fcomp.pcomp.function(f.Name, start, f.Body, f.Locals, f.FreeVars)
 
-	fcomp.emit1(MAKETUPLE, uint32(ndefaults+len(f.FreeVars)))
-
-	funcode := fcomp.pcomp.function(f.Name, f.Pos, f.Body, f.Locals, f.FreeVars)
-
-	// def f(a, *, b=1) has only 2 parameters.
 	numParams := len(f.Params)
-	if f.NumKwonlyParams > 0 && !f.HasVarargs {
+	if f.HasVarArg {
 		numParams--
 	}
 
 	funcode.NumParams = numParams
-	funcode.NumKwonlyParams = f.NumKwonlyParams
-	funcode.HasVarargs = f.HasVarargs
-	funcode.HasKwargs = f.HasKwargs
+	funcode.HasVarArg = f.HasVarArg
 	fcomp.emit1(MAKEFUNC, fcomp.pcomp.functionIndex(funcode))
 }
 

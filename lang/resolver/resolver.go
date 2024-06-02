@@ -216,7 +216,7 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 
 	switch v := from.(type) {
 	case *ast.Chunk:
-		blk.fn = &Function{Definition: v}
+		blk.fn = &Function{Name: "toplevel", Definition: v}
 	case *ast.SimpleBlockStmt:
 		isDefer = v.Type == token.DEFER
 		isCatch = v.Type == token.CATCH
@@ -534,8 +534,10 @@ func (r *resolver) function(fn ast.Node, sig *ast.FuncSignature, body *ast.Block
 	r.block(body, fn)
 	switch fn := fn.(type) {
 	case *ast.FuncExpr:
+		blk.fn.Name = "anonymous"
 		fn.Function = blk.fn
 	case *ast.FuncStmt:
+		blk.fn.Name = fn.Name.Lit
 		fn.Function = blk.fn
 	}
 	r.pop()
@@ -546,6 +548,12 @@ func (r *resolver) class(cl ast.Node, body *ast.ClassBody) {
 	// r.block() as we have some special processing of the fields and methods
 	// to do.
 	blk := &block{fn: &Function{Definition: cl}}
+	switch cl := cl.(type) {
+	case *ast.ClassExpr:
+		blk.fn.Name = "anonymous"
+	case *ast.ClassStmt:
+		blk.fn.Name = cl.Name.Lit
+	}
 	r.push(blk)
 
 	// fields get declared first, they are all available to methods and to

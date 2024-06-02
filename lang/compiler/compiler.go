@@ -18,7 +18,6 @@ import (
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/resolver"
 	"github.com/mna/nenuphar/lang/token"
-	"go.starlark.net/resolve"
 )
 
 // CompileFiles takes the file set and corresponding list of chunks from
@@ -200,15 +199,17 @@ func (pcomp *pcomp) function(name string, start token.Pos, block *ast.Block, loc
 	*/
 
 	fn := fcomp.fn
-	fn.MaxStack = maxstack
+	/*
+		fn.MaxStack = maxstack
 
-	// Emit bytecode (and position table).
-	fcomp.generate(blocks, pc)
+		// Emit bytecode (and position table).
+		fcomp.generate(blocks, pc)
 
-	// Don't panic until we've completed printing of the function.
-	if oops {
-		panic("internal error")
-	}
+		// Don't panic until we've completed printing of the function.
+		if oops {
+			panic("internal error")
+		}
+	*/
 
 	return fn
 }
@@ -522,23 +523,48 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 	case *ast.FuncExpr:
 		fcomp.function(e.Function.(*resolver.Function))
 
-		/*
-			case *syntax.UnaryExpr:
-				fcomp.expr(e.X)
-				fcomp.setPos(e.OpPos)
-				switch e.Op {
-				case syntax.MINUS:
-					fcomp.emit(UMINUS)
-				case syntax.PLUS:
-					fcomp.emit(UPLUS)
-				case syntax.NOT:
-					fcomp.emit(NOT)
-				case syntax.TILDE:
-					fcomp.emit(TILDE)
-				default:
-					log.Panicf("%s: unexpected unary op: %s", e.OpPos, e.Op)
-				}
+	case *ast.UnaryOpExpr:
+		fcomp.expr(e.Right)
+		fcomp.setPos(e.Op)
+		switch e.Type {
+		case token.PLUS:
+			fcomp.emit(UPLUS)
+		case token.MINUS:
+			fcomp.emit(UMINUS)
+		case token.TILDE:
+			fcomp.emit(UTILDE)
+		case token.NOT:
+			fcomp.emit(NOT)
+		case token.TRY:
+			// TODO: compile to:
+			// let tmp
+			// do
+			//   catch
+			//     tmp = nil
+			//   end
+			//   tmp = expr
+			// end
+			// <stack value is tmp>
+		case token.MUST:
+			// TODO: compile to:
+			// let tmp
+			// do
+			//   catch
+			//     <raise fatal error>
+			//   end
+			//   tmp = expr
+			// end
+			// <stack value is tmp>
+		case token.POUND:
+			fcomp.emit(POUND)
+		case token.DOTDOTDOT:
+			// TODO: must use emit1 and know how many items we need to unpack...
+			fcomp.emit(UNPACK)
+		default:
+			panic(fmt.Sprintf("%s: unexpected unary op: %s", fcomp.pcomp.file.Position(e.Op), e.Type))
+		}
 
+		/*
 			case *syntax.CondExpr:
 				// Keep consistent with IfStmt.
 				t := fcomp.newBlock()
@@ -656,20 +682,28 @@ func (fcomp *fcomp) function(f *resolver.Function) {
 		// Don't call fcomp.lookup because we want the cell itself, not its
 		// content.
 		switch freevar.Scope {
-		case resolve.Free:
+		case resolver.Free:
 			fcomp.emit1(FREE, uint32(freevar.Index))
-		case resolve.Cell:
+		case resolver.Cell:
 			fcomp.emit1(LOCAL, uint32(freevar.Index))
 		}
 	}
 	fcomp.emit1(MAKETUPLE, uint32(len(f.FreeVars)))
-	start, _ := f.Definition.Span()
-	funcode := fcomp.pcomp.function(f.Name, start, f.Body, f.Locals, f.FreeVars)
 
-	numParams := len(f.Params)
-	if f.HasVarArg {
-		numParams--
+	var body *ast.Block
+	var numParams int
+	switch fn := f.Definition.(type) {
+	case *ast.FuncExpr:
+		body = fn.Body
+		numParams = len(fn.Sig.Params)
+	case *ast.FuncStmt:
+		body = fn.Body
+		numParams = len(fn.Sig.Params)
+	default:
+		panic(fmt.Sprintf("invalid function definition AST node: %T", f.Definition))
 	}
+	start, _ := f.Definition.Span()
+	funcode := fcomp.pcomp.function(f.Name, start, body, f.Locals, f.FreeVars)
 
 	funcode.NumParams = numParams
 	funcode.HasVarArg = f.HasVarArg
@@ -694,7 +728,7 @@ func (fcomp *fcomp) lookup(id *ast.IdentExpr) {
 	case resolver.Universal:
 		fcomp.emit1(UNIVERSAL, fcomp.pcomp.nameIndex(id.Lit))
 	default:
-		panic(fmt.Sprintf("%s: compiler.lookup(%s): scope = %d", positionFromTokenPos(fcomp.pcomp.file, id.Start), id.Lit, bind.Scope))
+		panic(fmt.Sprintf("%s: compiler.lookup(%s): scope = %d", fcomp.pcomp.file.Position(id.Start), id.Lit, bind.Scope))
 	}
 }
 

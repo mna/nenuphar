@@ -92,7 +92,7 @@ const ( //nolint:revive
 	SETFIELD     //               x y SETFIELD<name>      -           x.name = y, fallbacks to x["name"] = y
 	UNPACK       //          iterable UNPACK<n>           vn ... v1
 
-	// n is #args excluding vararg.
+	// n is #args excluding vararg in both cases.
 	CALL     // fn positional                CALL<n>        result
 	CALL_VAR // fn positional *args          CALL_VAR<n>    result
 

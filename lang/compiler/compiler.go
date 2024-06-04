@@ -564,7 +564,13 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 			panic(fmt.Sprintf("%s: unexpected unary op: %s", fcomp.pcomp.file.Position(e.Op), e.Type))
 		}
 
+	case *ast.CallExpr:
+		fcomp.call(e)
+
 		/*
+			case *syntax.CallExpr:
+				fcomp.call(e)
+
 			case *syntax.CondExpr:
 				// Keep consistent with IfStmt.
 				t := fcomp.newBlock()
@@ -660,9 +666,6 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 					fcomp.binop(e.OpPos, e.Op)
 				}
 
-			case *syntax.CallExpr:
-				fcomp.call(e)
-
 			case *syntax.LambdaExpr:
 				fcomp.function(e.Function.(*resolve.Function))
 		*/
@@ -708,6 +711,20 @@ func (fcomp *fcomp) function(f *resolver.Function) {
 	funcode.NumParams = numParams
 	funcode.HasVarArg = f.HasVarArg
 	fcomp.emit1(MAKEFUNC, fcomp.pcomp.functionIndex(funcode))
+}
+
+func (fcomp *fcomp) call(call *ast.CallExpr) {
+	fcomp.expr(call.Fn)
+	for _, arg := range call.Args {
+		fcomp.expr(arg)
+	}
+	_, end := call.Fn.Span()
+	fcomp.setPos(end)
+	// TODO: cannot know the number of args statically, e.g. f(x, ...y, ...g())
+	// Need a way to dynamically get the start of the args slot on the stack.
+	// Also, CALL_VAR does not exist. Should the UNPACK opcode/operator be a
+	// special value on the stack instead, and unpacked only when necessary?
+	fcomp.emit1(CALL, 0)
 }
 
 // lookup emits code to push the value of the specified variable.

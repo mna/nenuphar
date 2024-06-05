@@ -724,6 +724,7 @@ func (fcomp *fcomp) call(call *ast.CallExpr) {
 	// Need a way to dynamically get the start of the args slot on the stack.
 	// Also, CALL_VAR does not exist. Should the UNPACK opcode/operator be a
 	// special value on the stack instead, and unpacked only when necessary?
+	// Use a "set top of stack" opcode option like Lua?
 	fcomp.emit1(CALL, 0)
 }
 

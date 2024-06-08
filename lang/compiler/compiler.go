@@ -559,7 +559,8 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 			fcomp.emit(POUND)
 		case token.DOTDOTDOT:
 			// TODO: must use emit1 and know how many items we need to unpack...
-			fcomp.emit(UNPACK)
+			//fcomp.emit(UNPACK)
+			panic("UNPACK not implemented")
 		default:
 			panic(fmt.Sprintf("%s: unexpected unary op: %s", fcomp.pcomp.file.Position(e.Op), e.Type))
 		}
@@ -567,59 +568,47 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 	case *ast.CallExpr:
 		fcomp.call(e)
 
+	case *ast.ClassExpr:
+		fcomp.class(e)
+
+	case *ast.BinOpExpr:
+		switch e.Type {
+		case token.OR:
+			// x or y  =>  if x then x else y
+			done := fcomp.newBlock()
+			y := fcomp.newBlock()
+
+			fcomp.expr(e.Left)
+			fcomp.emit(DUP)
+			fcomp.condjump(CJMP, done, y)
+
+			fcomp.block = y
+			fcomp.emit(POP) // discard X
+			fcomp.expr(e.Right)
+			fcomp.jump(done)
+
+			fcomp.block = done
+
+		case token.AND:
+			// x and y  =>  if x then y else x
+			done := fcomp.newBlock()
+			y := fcomp.newBlock()
+
+			fcomp.expr(e.Left)
+			fcomp.emit(DUP)
+			fcomp.condjump(CJMP, y, done)
+
+			fcomp.block = y
+			fcomp.emit(POP) // discard Left
+			fcomp.expr(e.Right)
+			fcomp.jump(done)
+
+			fcomp.block = done
+
+		default:
+		}
+
 		/*
-			case *syntax.CallExpr:
-				fcomp.call(e)
-
-			case *syntax.CondExpr:
-				// Keep consistent with IfStmt.
-				t := fcomp.newBlock()
-				f := fcomp.newBlock()
-				done := fcomp.newBlock()
-
-				fcomp.ifelse(e.Cond, t, f)
-
-				fcomp.block = t
-				fcomp.expr(e.True)
-				fcomp.jump(done)
-
-				fcomp.block = f
-				fcomp.expr(e.False)
-				fcomp.jump(done)
-
-				fcomp.block = done
-
-			case *syntax.SliceExpr:
-				fcomp.setPos(e.Lbrack)
-				fcomp.expr(e.X)
-				if e.Lo != nil {
-					fcomp.expr(e.Lo)
-				} else {
-					fcomp.emit(NONE)
-				}
-				if e.Hi != nil {
-					fcomp.expr(e.Hi)
-				} else {
-					fcomp.emit(NONE)
-				}
-				if e.Step != nil {
-					fcomp.expr(e.Step)
-				} else {
-					fcomp.emit(NONE)
-				}
-				fcomp.emit(SLICE)
-
-			case *syntax.Comprehension:
-				if e.Curly {
-					fcomp.emit(MAKEDICT)
-				} else {
-					fcomp.emit1(MAKELIST, 0)
-				}
-				fcomp.comprehension(e, 0)
-
-			case *syntax.TupleExpr:
-				fcomp.tuple(e.List)
-
 			case *syntax.BinaryExpr:
 				switch e.Op {
 				// short-circuit operators
@@ -665,9 +654,6 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 					fcomp.expr(e.Y)
 					fcomp.binop(e.OpPos, e.Op)
 				}
-
-			case *syntax.LambdaExpr:
-				fcomp.function(e.Function.(*resolve.Function))
 		*/
 
 	default:
@@ -725,7 +711,7 @@ func (fcomp *fcomp) call(call *ast.CallExpr) {
 	// Also, CALL_VAR does not exist. Should the UNPACK opcode/operator be a
 	// special value on the stack instead, and unpacked only when necessary?
 	// Use a "set top of stack" opcode option like Lua?
-	fcomp.emit1(CALL, 0)
+	fcomp.emit1(CALL, uint32(len(call.Args)))
 }
 
 // lookup emits code to push the value of the specified variable.

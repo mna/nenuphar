@@ -90,23 +90,23 @@ const ( //nolint:revive
 	UNIVERSAL    //                 - UNIVERSAL<name>     value       universe = part of the language, all programs have access to those
 	ATTR         //                 x ATTR<name>          y           y = x.name, fallbacks to x["name"]
 	SETFIELD     //               x y SETFIELD<name>      -           x.name = y, fallbacks to x["name"] = y
-	UNPACK       //          iterable UNPACK<n>           vn ... v1
+	//UNPACK       //          iterable UNPACK<n>           vn ... v1
 
 	// n is #args excluding vararg in both cases.
-	CALL     // fn positional                CALL<n>        result
-	CALL_VAR // fn positional *args          CALL_VAR<n>    result
+	CALL // fn positional                CALL<n>        result
+	//CALL_VAR // fn positional *args          CALL_VAR<n>    result
 
 	OpcodeArgMin = JMP
-	OpcodeMax    = CALL_VAR
+	OpcodeMax    = CALL
 	opcodeJMPMin = JMP
 	opcodeJMPMax = CATCHJMP
 )
 
 var opcodeNames = [...]string{
-	AMPERSAND:    "ampersand",
-	ATTR:         "attr",
-	CALL:         "call",
-	CALL_VAR:     "call_var",
+	AMPERSAND: "ampersand",
+	ATTR:      "attr",
+	CALL:      "call",
+	//CALL_VAR:     "call_var",
 	CATCHJMP:     "catchjmp",
 	CIRCUMFLEX:   "circumflex",
 	CJMP:         "cjmp",
@@ -162,9 +162,9 @@ var opcodeNames = [...]string{
 	TRUE:         "true",
 	UMINUS:       "uminus",
 	UNIVERSAL:    "universal",
-	UNPACK:       "unpack",
-	UPLUS:        "uplus",
-	UTILDE:       "utilde",
+	//UNPACK:       "unpack",
+	UPLUS:  "uplus",
+	UTILDE: "utilde",
 }
 
 var reverseLookupOpcode = func() map[string]Opcode {
@@ -209,10 +209,10 @@ const variableStackEffect = 0x7f
 // stackEffect records the effect on the size of the operand stack of
 // each kind of instruction. For some instructions this requires computation.
 var stackEffect = [...]int8{
-	AMPERSAND:    -1,
-	ATTR:         0,
-	CALL:         variableStackEffect,
-	CALL_VAR:     variableStackEffect,
+	AMPERSAND: -1,
+	ATTR:      0,
+	CALL:      variableStackEffect,
+	//CALL_VAR:     variableStackEffect,
 	CATCHJMP:     0,
 	CIRCUMFLEX:   -1,
 	CJMP:         -1,
@@ -268,9 +268,9 @@ var stackEffect = [...]int8{
 	TRUE:         +1,
 	UMINUS:       0,
 	UNIVERSAL:    +1,
-	UNPACK:       variableStackEffect,
-	UPLUS:        0,
-	UTILDE:       0,
+	//UNPACK:       variableStackEffect,
+	UPLUS:  0,
+	UTILDE: 0,
 }
 
 func (op Opcode) String() string {

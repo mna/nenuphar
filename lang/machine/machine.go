@@ -210,12 +210,12 @@ loop:
 			}
 			pc = arg
 
-		case compiler.CALL, compiler.CALL_VAR:
-			var varArgs Value
-			if op == compiler.CALL_VAR {
-				varArgs = stack[sp-1]
-				sp--
-			}
+		case compiler.CALL /*, compiler.CALL_VAR*/ :
+			//var varArgs Value
+			//if op == compiler.CALL_VAR {
+			//	varArgs = stack[sp-1]
+			//	sp--
+			//}
 
 			var positional []Value
 			if arg > 0 {
@@ -225,13 +225,13 @@ loop:
 				// Copy positional arguments into a new array, unless the callee is
 				// another Function, in which case it can be trusted not to mutate
 				// them.
-				if _, ok := stack[sp-1].(*Function); !ok || varArgs != nil {
+				if _, ok := stack[sp-1].(*Function); !ok /*|| varArgs != nil*/ {
 					positional = append([]Value(nil), positional...)
 				}
 			}
-			if varArgs != nil {
-				// TODO: implement vararg parameter passing
-			}
+			//if varArgs != nil {
+			//	// TODO: implement vararg parameter passing
+			//}
 
 			function := stack[sp-1]
 			sp--
@@ -307,35 +307,35 @@ loop:
 			stack[sp] = NewMap(int(arg))
 			sp++
 
-		case compiler.UNPACK:
-			n := int(arg)
-			iterable := stack[sp-1]
-			sp--
+		//case compiler.UNPACK:
+		//	n := int(arg)
+		//	iterable := stack[sp-1]
+		//	sp--
 
-			iter := Iterate(iterable)
-			if iter == nil {
-				inFlightErr = fmt.Errorf("%s value is not iterable", iterable.Type())
-				break loop
-			}
+		//	iter := Iterate(iterable)
+		//	if iter == nil {
+		//		inFlightErr = fmt.Errorf("%s value is not iterable", iterable.Type())
+		//		break loop
+		//	}
 
-			i := 0
-			sp += n
-			for i < n && iter.Next(&stack[sp-1-i]) {
-				i++
-			}
+		//	i := 0
+		//	sp += n
+		//	for i < n && iter.Next(&stack[sp-1-i]) {
+		//		i++
+		//	}
 
-			// TODO: define UNPACK semantics - fill missing values with null, ignore extra ones?
-			//var dummy Value
-			//if iter.Next(&dummy) {
-			//	// NB: Len may return -1 here in obscure cases.
-			//	inFlightErr = fmt.Errorf("too many values to unpack (got %d, want %d)", Len(iterable), n)
-			//	break loop
-			//}
-			iter.Done()
-			//if i < n {
-			//	inFlightErr = fmt.Errorf("too few values to unpack (got %d, want %d)", i, n)
-			//	break loop
-			//}
+		//	// TODO: define UNPACK semantics - fill missing values with null, ignore extra ones?
+		//	//var dummy Value
+		//	//if iter.Next(&dummy) {
+		//	//	// NB: Len may return -1 here in obscure cases.
+		//	//	inFlightErr = fmt.Errorf("too many values to unpack (got %d, want %d)", Len(iterable), n)
+		//	//	break loop
+		//	//}
+		//	iter.Done()
+		//	//if i < n {
+		//	//	inFlightErr = fmt.Errorf("too few values to unpack (got %d, want %d)", i, n)
+		//	//	break loop
+		//	//}
 
 		case compiler.CJMP:
 			if Truth(stack[sp-1]) {

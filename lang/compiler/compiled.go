@@ -19,7 +19,7 @@ func positionFromTokenPos(file *token.File, p token.Pos) Position {
 }
 
 // A Program is a source code file compiled in executable form. Programs are
-// serialized by the Program.Encode method, which must be updated whenever this
+// serialized by the CompileFiles function, which must be updated whenever this
 // declaration is changed.
 type Program struct {
 	Filename  string
@@ -29,7 +29,7 @@ type Program struct {
 }
 
 // A Funcode is the code of a compiled function. Funcodes are serialized by the
-// encoder.function method, which must be updated whenever this declaration is
+// pcomp.function method, which must be updated whenever this declaration is
 // changed.
 type Funcode struct {
 	Prog      *Program

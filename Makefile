@@ -1,4 +1,7 @@
-.DEFAULT_GOAL: build
+# See the special targets documentation:
+# https://www.gnu.org/software/make/manual/html_node/Special-Targets.html
+
+.DEFAULT_GOAL := build
 
 # build compiles the binary and saves it in the ./bin directory.
 build:
@@ -20,4 +23,4 @@ cover1:
 coverast:
 	go test ./lang/parser -coverpkg ./lang/ast
 
-PHONY: build cover1 coverast
+.PHONY: build cover1 coverast

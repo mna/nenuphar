@@ -76,6 +76,9 @@
 //     methods.
 //   - FieldDef: e.g. "let x = 1" inside a class. Visible to subsequent fields
 //     and all methods.
+//   - UnaryOpExpr: (an expression, not a statement) when the operation is
+//     "try" or "must", an internal temporary binding is needed for the opcode
+//     compilation. (TODO)
 package resolver
 
 import (

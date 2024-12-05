@@ -59,7 +59,7 @@
 //     on).
 //   - ThreePartForStmt: e.g. "for let x = 1; .. end". The scope of the
 //     bindings are limited to the body of the "for" loop.
-//   - ForInStmt: e.g. "for x, y, x in .. end". The scope of the bindings are
+//   - ForInStmt: e.g. "for x, y, z in .. end". The scope of the bindings are
 //     limited to the body of the "for" loop. New bindings are always defined for
 //     this syntax when identifiers are used (implicit "let").
 //   - FuncStmt: e.g. "fn foo() .. end". The scope of the name of the

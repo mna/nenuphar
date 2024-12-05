@@ -537,22 +537,26 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 			fcomp.emit(NOT)
 		case token.TRY:
 			// TODO: compile to:
-			// let tmp
-			// do
-			//   catch
-			//     tmp = nil
+			// do # so that the tmp var is limited in scope
+			//   let tmp
+			//   do
+			//     catch
+			//       tmp = nil
+			//     end
+			//     tmp = expr
 			//   end
-			//   tmp = expr
 			// end
 			// <stack value is tmp>
 		case token.MUST:
 			// TODO: compile to:
-			// let tmp
-			// do
-			//   catch
-			//     <raise fatal error>
+			// do # so that the tmp var is limited in scope
+			//   let tmp
+			//   do
+			//     catch
+			//       <raise fatal error>
+			//     end
+			//     tmp = expr
 			//   end
-			//   tmp = expr
 			// end
 			// <stack value is tmp>
 		case token.POUND:
@@ -569,7 +573,7 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 		fcomp.call(e)
 
 	case *ast.ClassExpr:
-		fcomp.class(e)
+		//fcomp.class(e)
 
 	case *ast.BinOpExpr:
 		switch e.Type {
@@ -580,12 +584,12 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 
 			fcomp.expr(e.Left)
 			fcomp.emit(DUP)
-			fcomp.condjump(CJMP, done, y)
+			//fcomp.condjump(CJMP, done, y)
 
 			fcomp.block = y
 			fcomp.emit(POP) // discard X
 			fcomp.expr(e.Right)
-			fcomp.jump(done)
+			//fcomp.jump(done)
 
 			fcomp.block = done
 
@@ -596,12 +600,12 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 
 			fcomp.expr(e.Left)
 			fcomp.emit(DUP)
-			fcomp.condjump(CJMP, y, done)
+			//fcomp.condjump(CJMP, y, done)
 
 			fcomp.block = y
 			fcomp.emit(POP) // discard Left
 			fcomp.expr(e.Right)
-			fcomp.jump(done)
+			//fcomp.jump(done)
 
 			fcomp.block = done
 

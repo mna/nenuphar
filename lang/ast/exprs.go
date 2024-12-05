@@ -158,6 +158,10 @@ type (
 		Type  token.Token // unary operator token type
 		Op    token.Pos
 		Right Expr
+
+		// filled by the resolver for the internal temporary binding required to
+		// implement the try/must unary ops.
+		tryMustInternalVar *IdentExpr
 	}
 )
 

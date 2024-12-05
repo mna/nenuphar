@@ -60,7 +60,7 @@ type Binding struct {
 	Decl *ast.IdentExpr
 
 	// BlockName uniquely identifies the block where this binding is defined.
-	// Only set if the resolver is done with tne NameBlocks option.
+	// Only set if the resolver is done with the NameBlocks option.
 	BlockName string
 }
 

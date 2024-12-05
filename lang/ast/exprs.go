@@ -161,7 +161,7 @@ type (
 
 		// filled by the resolver for the internal temporary binding required to
 		// implement the try/must unary ops.
-		tryMustInternalVar *IdentExpr
+		TryMustInternalVar *IdentExpr
 	}
 )
 

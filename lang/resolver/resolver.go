@@ -51,7 +51,7 @@
 //
 // # Bindings
 //
-// The following statements define new bindings:
+// The following statements (names as used in the grammar) define new bindings:
 //   - BindIfStmt: e.g. "if let x = 1 then .. end". The scope of the
 //     bindings are limited to the "true" block of the "if" statement.
 //   - BindGuardStmt: e.g. "guard let x = 1 else .. end". The scope of the
@@ -157,6 +157,10 @@ type resolver struct {
 
 	// predicates to check if an unresolved name is predeclared or universal.
 	isPredeclared, isUniversal func(name string) bool
+
+	// used to generate a unique identifier for internal variables (local
+	// bindings) created for compilation purposes.
+	internalIdentCount int
 }
 
 func (r *resolver) init(file *token.File) {
@@ -255,6 +259,21 @@ func (r *resolver) block(b *ast.Block, from ast.Node) {
 	if isLoop || isDefer || isCatch {
 		blk.fn.lcdStack = blk.fn.lcdStack[:len(blk.fn.lcdStack)-1]
 	}
+}
+
+func (r *resolver) internalIdent(n ast.Node) *ast.IdentExpr {
+	r.internalIdentCount++
+
+	// use the related node's starting position for the identifier
+	start, _ := n.Span()
+	ident := &ast.IdentExpr{
+		Start: start,
+		// impossible to declare an actual variable of this name, so it cannot
+		// collide
+		Lit: fmt.Sprintf("<internal-%d>", r.internalIdentCount),
+	}
+	r.bind(ident, false)
+	return ident
 }
 
 func (r *resolver) stmt(stmt ast.Stmt) {
@@ -411,7 +430,7 @@ func (r *resolver) stmt(stmt ast.Stmt) {
 		case token.BREAK, token.CONTINUE:
 			// break and continue must be inside a loop (but not in a defer/catch).
 			if !r.env.isDirectlyInLoop() {
-				r.errorf(stmt.Start, fmt.Sprintf("invalid %s outside a loop", stmt.Type))
+				r.errorf(stmt.Start, "invalid %s outside a loop", stmt.Type)
 			}
 
 			// if a label is provided, it must be one associated with an enclosing
@@ -515,6 +534,11 @@ func (r *resolver) expr(expr ast.Expr, assignsToIdent bool) {
 
 	case *ast.UnaryOpExpr:
 		r.expr(expr.Right, false)
+		if expr.Type == token.TRY || expr.Type == token.MUST {
+			// create an internal variable identifier so that a temporary local
+			// binding is available for compilation.
+			expr.TryMustInternalVar = r.internalIdent(expr)
+		}
 
 	default:
 		panic(fmt.Sprintf("unexpected expr %T", expr))

@@ -37,6 +37,8 @@ func run(th *Thread, fn *Function, args *Tuple) (Value, error) {
 	// create the locals and operand stack
 	nlocals := len(fcode.Locals)
 	nspace := nlocals + fcode.MaxStack
+	// TODO: experiment with allocating a big slice at startup (configurable)
+	// and allocate from it as a big stack when possible, measure gains.
 	space := make([]Value, nspace)
 	locals := space[:nlocals:nlocals] // local variables, starting with parameters
 	stack := space[nlocals:]          // operand stack
@@ -75,6 +77,9 @@ func run(th *Thread, fn *Function, args *Tuple) (Value, error) {
 		}
 	}()
 
+	// NOTE: any opcode that may assign an inFlightErr *must* be compiled
+	// with its position stored in compiler/compiler.go (setPos) to result
+	// in precise errors.
 	var (
 		pc          uint32
 		result      Value

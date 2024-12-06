@@ -14,6 +14,7 @@ package compiler
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/resolver"
@@ -525,17 +526,7 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 		fcomp.function(e.Function.(*resolver.Function))
 
 	case *ast.UnaryOpExpr:
-		fcomp.expr(e.Right)
-		fcomp.setPos(e.Op)
 		switch e.Type {
-		case token.PLUS:
-			fcomp.emit(UPLUS)
-		case token.MINUS:
-			fcomp.emit(UMINUS)
-		case token.TILDE:
-			fcomp.emit(UTILDE)
-		case token.NOT:
-			fcomp.emit(NOT)
 		case token.TRY:
 			// TODO: compile to:
 			// do # so that the tmp var is limited in scope
@@ -548,6 +539,13 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 			//   end
 			// end
 			// <stack value is tmp>
+			fcomp.openCatch()
+			fcomp.emit(NIL)
+			fcomp.set(e.TryMustInternalVar)
+			fcomp.closeCatch()
+			fcomp.expr(e.Right)
+			fcomp.set(e.TryMustInternalVar)
+
 		case token.MUST:
 			// TODO: compile to:
 			// do # so that the tmp var is limited in scope
@@ -560,14 +558,28 @@ func (fcomp *fcomp) expr(e ast.Expr) {
 			//   end
 			// end
 			// <stack value is tmp>
-		case token.POUND:
-			fcomp.emit(POUND)
-		case token.DOTDOTDOT:
-			// TODO: must use emit1 and know how many items we need to unpack...
-			//fcomp.emit(UNPACK)
-			panic("UNPACK not implemented")
+
 		default:
-			panic(fmt.Sprintf("%s: unexpected unary op: %s", fcomp.pcomp.file.Position(e.Op), e.Type))
+			fcomp.expr(e.Right)
+			fcomp.setPos(e.Op)
+			switch e.Type {
+			case token.PLUS:
+				fcomp.emit(UPLUS)
+			case token.MINUS:
+				fcomp.emit(UMINUS)
+			case token.TILDE:
+				fcomp.emit(UTILDE)
+			case token.NOT:
+				fcomp.emit(NOT)
+			case token.POUND:
+				fcomp.emit(POUND)
+			case token.DOTDOTDOT:
+				// TODO: must use emit1 and know how many items we need to unpack...
+				//fcomp.emit(UNPACK)
+				panic("UNPACK not implemented")
+			default:
+				panic(fmt.Sprintf("%s: unexpected unary op: %s", fcomp.pcomp.file.Position(e.Op), e.Type))
+			}
 		}
 
 	case *ast.CallExpr:
@@ -768,6 +780,20 @@ func (fcomp *fcomp) emit1(op Opcode, arg uint32) {
 // fcomp.pcomp.file.
 func (fcomp *fcomp) setPos(pos token.Pos) {
 	fcomp.pos = positionFromTokenPos(fcomp.pcomp.file, pos)
+}
+
+// set emits code to store the top-of-stack value to the specified local or
+// cell variable.
+func (fcomp *fcomp) set(id *ast.IdentExpr) {
+	bind := id.Binding.(*resolver.Binding)
+	switch bind.Scope {
+	case resolver.Local:
+		fcomp.emit1(SETLOCAL, uint32(bind.Index))
+	case resolver.Cell:
+		fcomp.emit1(SETLOCALCELL, uint32(bind.Index))
+	default:
+		log.Panicf("%s: set(%s): not local/cell (%s)", id.Start, id.Lit, bind.Scope)
+	}
 }
 
 type loop struct {

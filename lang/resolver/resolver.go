@@ -84,6 +84,7 @@ package resolver
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/mna/nenuphar/lang/ast"
 	"github.com/mna/nenuphar/lang/scanner"
@@ -274,6 +275,12 @@ func (r *resolver) internalIdent(n ast.Node) *ast.IdentExpr {
 	}
 	r.bind(ident, false)
 	return ident
+}
+
+func (r *resolver) assertNotInternalIdent(ident *ast.IdentExpr) {
+	if strings.HasPrefix(ident.Lit, "<internal-") {
+		r.errorf(ident.Start, "illegal use of internal identifier %s", ident.Lit)
+	}
 }
 
 func (r *resolver) stmt(stmt ast.Stmt) {
@@ -689,6 +696,8 @@ func (r *resolver) bindLabel(ident *ast.IdentExpr) {
 }
 
 func (r *resolver) use(ident *ast.IdentExpr, isAssign bool) {
+	r.assertNotInternalIdent(ident)
+
 	startFn := r.env.fn
 	for env := r.env; env != nil; env = env.parent {
 		if bdg := env.bindings[ident.Lit]; bdg != nil {

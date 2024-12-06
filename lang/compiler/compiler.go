@@ -26,8 +26,9 @@ import (
 // An AST that resulted in errors in the resolve phase should never be
 // passed to the compiler, the behavior is undefined.
 //
-// Compiling files does not return an error as a valid resolved AST
-// should always generate a valid, executable compiled program.
+// Compiling files does not return an error as a valid resolved AST should
+// always generate a valid, executable compiled program. Failure to do so is a
+// bug that should be reported.
 func CompileFiles(ctx context.Context, fset *token.FileSet, chunks []*ast.Chunk) []*Program {
 	if len(chunks) == 0 {
 		return nil
